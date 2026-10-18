@@ -1,5 +1,5 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
-const E=require('../engine'),F=require('../finance'),O=require('../operations');
+const E=require('../src/engine'),F=require('../src/finance'),O=require('../src/operations');
 function ws(){return E.validate({version:1,currency:'USD',name:'Operations test',demo:false,accounts:[{id:'a',name:'Cash',type:'Checking',currency:'USD',balance:1000000,owner:'Me',updated:'2026-10-06'},{id:'b',name:'Investment',type:'Investment',currency:'USD',balance:1000000,owner:'Me',updated:'2026-10-06'}],debts:[],goals:[],flows:[],transactions:[],tasks:[],cards:[],members:[{id:'me',name:'Me',initials:'ME',role:'Owner'},{id:'other',name:'Partner',initials:'P',role:'Partner'}]});}
 const tx=(changes={})=>({id:'t',name:'Coffee shop',kind:'expense',date:'2026-10-06',category:'Other',amount:10000,accountId:'a',...changes});
 const rule=(changes={})=>({id:'r',name:'Coffee rule',enabled:true,conditions:{contains:'coffee'},actions:{category:'Dining',ownerId:'other',tags:['daily'],reviewerId:'me'},...changes});

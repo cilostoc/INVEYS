@@ -1,4 +1,4 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const A=require('../assistant');
+const {test}=require('node:test');const assert=require('node:assert/strict');const A=require('../src/assistant');
 function state(){return A.migrate({version:1,activeView:{owner:'m1',includeShared:false}});}
 test('assistant migration is local by default, consent/context disabled and financial state untouched',()=>{const s=state();assert.equal(s.assistant.provider,'local');assert.equal(s.assistant.consent,false);assert.equal(s.assistant.shareFinancial,false);assert.equal(s.assistant.useMemory,false);assert.deepEqual(s.assistant.history,[]);A.validate(s.assistant);});
 test('memory rejects oversized preferences and normalizes explicit duplicate entries',()=>{assert.deepEqual(A.memory(' Prefer IDR\n\nPrefer IDR\nKeep explanations short '),['Prefer IDR','Keep explanations short']);assert.throws(()=>A.memory('x'.repeat(301)),/preferences/);assert.throws(()=>A.memory(Array(51).fill('entry').join('\n')),/preferences/);});

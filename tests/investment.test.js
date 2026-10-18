@@ -1,4 +1,4 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const INV=require('../investment');
+const {test}=require('node:test');const assert=require('node:assert/strict');const INV=require('../src/investment');
 const row=(series,date,value,extra={})=>({series,date,value,flow:0,currency:'USD',fxToIDR:16000,usdToIDR:16000,basis:'total',source:'Test fixture',...extra});
 const dates=['2026-01-01','2026-02-01','2026-03-01'];
 test('portfolio end-period deposit and withdrawal do not count as investment returns',()=>{
@@ -43,7 +43,7 @@ test('calculation does not mutate imported data and never interpolates missing d
  const r=INV.compare(data,{selected:['sp500']});assert.equal(r.series.length,0);assert.equal(JSON.stringify(data),before);assert.match(r.unavailable.at(-1).reason,/matching dates/);
 });
 
-const E=require('../engine');
+const E=require('../src/engine');
 function holding(extra={}){return {id:'h1',accountId:'a1',symbol:'TEST',name:'Test stock',type:'stock',assetClass:'Equity',currency:'USD',quantity:2.5,price:120,quoteDate:'2026-10-03',source:'Manual',costBasis:200,costFxToIDR:15000,classifications:{},...extra};}
 function workspace(){return {currency:'IDR',fx:{rates:{IDR:1,USD:16000,EUR:18000},date:'2026-10-03',source:'Test'},activeView:{owner:'all',includeShared:false},accounts:[{id:'a1',name:'Broker A',type:'Investment',ownerId:'m1',currency:'USD',balance:100000},{id:'a2',name:'Broker B',type:'Investment',ownerId:'shared',currency:'IDR',balance:1600000000}],holdings:[holding(),holding({id:'h2',accountId:'a2',symbol:'FUND',type:'fund',currency:'IDR',quantity:10,price:100000,costBasis:900000,costFxToIDR:1,classifications:{category:'Balanced',legalStructure:'Mutual fund'}})],investmentHistory:[],holdingPrices:[],investmentSnapshots:[]};}
 const quote=(holdingId,date,price,extra={})=>({holdingId,date,price,fxToIDR:16000,usdToIDR:16000,source:'Test closing quotes',...extra});

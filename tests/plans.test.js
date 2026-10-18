@@ -1,4 +1,4 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const P=require('../plans');
+const {test}=require('node:test');const assert=require('node:assert/strict');const P=require('../src/plans');
 const catalog=()=>({previewTier:'ultra',prices:Object.fromEntries(P.catalog.map(p=>[p.id,{monthly:p.monthly,annual:p.annual}]))});
 test('three preview tiers have cumulative features and bounded creation limits',()=>{
  assert.deepEqual(P.catalog.map(p=>p.id),['plus','pro','ultra']);

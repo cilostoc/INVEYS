@@ -1,4 +1,4 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const A=require('../appearance');
+const {test}=require('node:test');const assert=require('node:assert/strict');const A=require('../src/appearance');
 test('all theme presets provide readable surfaces and accent colors',()=>{
  for(const preset of Object.keys(A.presets))for(const mode of ['light','dark']){
   const colors=A.colors(mode,preset);A.validateColors(colors);const tokens=A.tokens(colors);

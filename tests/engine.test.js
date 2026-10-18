@@ -1,6 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const E = require('../engine');
+const E = require('../src/engine');
 
 function workspace() {
   return {version:1, currency:'USD', name:'Test', demo:false,

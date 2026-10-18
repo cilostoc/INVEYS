@@ -1,7 +1,7 @@
 import unittest, importlib.util, tempfile, os, json, threading, urllib.request, urllib.error, base64, shutil
 from pathlib import Path
 from unittest.mock import patch
-spec=importlib.util.spec_from_file_location('server',Path(__file__).resolve().parents[1]/'serve.py');s=importlib.util.module_from_spec(spec);spec.loader.exec_module(s)
+spec=importlib.util.spec_from_file_location('server',Path(__file__).resolve().parents[1]/'server'/'serve.py');s=importlib.util.module_from_spec(spec);spec.loader.exec_module(s)
 class Backend(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -16,7 +16,7 @@ class Backend(unittest.TestCase):
         except urllib.error.HTTPError as e:return e.code,json.loads(e.read())
     def test_index_scripts_are_served(self):
         import re
-        index=(Path(__file__).resolve().parents[1]/'index.html').read_text()
+        index=(Path(__file__).resolve().parents[1]/'src'/'index.html').read_text()
         for file in re.findall(r'<script src="([^"]+)"',index):
             request=urllib.request.Request(self.url+'/'+file,headers={'Host':'127.0.0.1:3000'})
             with urllib.request.urlopen(request) as response:
@@ -73,7 +73,9 @@ class Backend(unittest.TestCase):
             self.assertEqual(status,400);self.assertIn('consent',result['error']);transport.assert_not_called()
             self.assertNotIn('secret',json.dumps(result))
     def test_release_manifest(self):
-        manifest=json.loads((Path(__file__).resolve().parents[1]/'releases.json').read_text())
+        rel_file = Path(__file__).resolve().parents[1]/'src'/'releases.json'
+        if not rel_file.exists(): rel_file = Path(__file__).resolve().parents[1]/'releases.json'
+        manifest=json.loads(rel_file.read_text())
         status,result=self.request('/api/updates');self.assertEqual(status,200);self.assertEqual(result['version'],manifest['version']);self.assertEqual(result['history'][0]['version'],result['version']);self.assertEqual(len(result['history']),len(manifest['history']))
     def test_muse_response_and_no_ledger_access(self):
         with patch.dict(os.environ,{'MODEL_API_KEY':'test'}),patch.object(s,'provider',return_value={'choices':[{'message':{'content':'Answer'}}]}) as mock:

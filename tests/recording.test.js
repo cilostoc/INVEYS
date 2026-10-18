@@ -1,4 +1,4 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const R=require('../recording');
+const {test}=require('node:test');const assert=require('node:assert/strict');const R=require('../src/recording');
 test('locale money preserves cents and rejects impossible values',()=>{assert.equal(R.number('1.234,50'),123450);assert.equal(R.number('1,234.50','USD'),123450);assert.equal(R.number('25.000'),2500000);assert.throws(()=>R.number('none'));assert.throws(()=>R.number('999999999999999999'));});
 test('receipt total excludes subtotal and change and detects IDR',()=>{const r=R.parse('CAFE\nSubtotal Rp 20.000\nTOTAL Rp 25.000\nChange 5.000','USD','2026-10-03');assert.equal(r[0].amount,2500000);assert.equal(r[0].currency,'IDR');assert.equal(r[0].date,'2026-10-03');});
 test('Indonesian voice amount multipliers',()=>{assert.equal(R.parse('beli kopi 25 ribu')[0].amount,2500000);assert.equal(R.parse('terima gaji 5 juta')[0].amount,500000000);assert.equal(R.parse('terima gaji 5 juta')[0].kind,'income');});

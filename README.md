@@ -12,9 +12,59 @@ Untuk penyimpanan browser yang lebih konsisten, jalankan proyek sumber dengan Py
 
 ```sh
 python3 serve.py
+# atau
+npm start
 ```
 
-Buka http://127.0.0.1:3000. Server hanya mendengarkan koneksi lokal. Tidak ada backend multi-pengguna atau autentikasi produksi.
+Buka http://127.0.0.1:3000. Server hanya mendengarkan koneksi lokal.
+
+## Struktur Direktori Proyek
+
+Proyek INVEYS menggunakan arsitektur modular yang rapi sesuai *best practice*:
+
+```text
+INVYES/
+├── docs/                     # Dokumentasi teknis & panduan sistem
+│   ├── README.md             # Indeks dokumentasi lengkap
+│   ├── ARCHITECTURE.md       # Arsitektur sistem 4-segmen & skema data
+│   ├── AI_SETUP.md           # Panduan konfigurasi model AI (Gemini, OpenAI, Muse)
+│   ├── INVESTMENT_ENGINE.md  # Spesifikasi mesin investasi & formula TWR
+│   ├── MONETIZATION.md       # Spesifikasi tier & model lokal
+│   ├── VERIFICATION.md       # Prosedur QA & verifikasi keamanan
+│   └── updates/              # Arsip rilis historis (v0.14.0 s/d v0.23.0)
+├── src/                      # Frontend web client & aset PWA
+│   ├── index.html            # Antarmuka SPA utama
+│   ├── styles.css            # Stylesheet design system
+│   ├── app.js                # Orkestrasi UI & navigasi aplikasi
+│   ├── engine.js             # Financial integer & calculation engine
+│   ├── finance.js            # Shared views & life-event projection
+│   ├── investment.js         # Portofolio sekuritas & cicilan emas Pegadaian
+│   ├── operations.js         # Aturan transaksi & kartu kredit
+│   ├── assistant.js          # Antarmuka AI copilot lokal
+│   ├── recording.js          # Parser input struk, audio, & statement
+│   ├── plans.js              # Manajemen tier preview
+│   ├── appearance.js         # Tema & personalisasi visual
+│   ├── i18n.js               # Lokalisasi bahasa (ID / EN)
+│   ├── releases.js           # Changelog UI viewer
+│   ├── releases.json         # Metadata rilis & riwayat fitur
+│   ├── manifest.webmanifest  # Konfigurasi PWA
+│   ├── sw.js                 # Service worker untuk offline caching
+│   └── icon.svg              # Logo & ikon vektor aplikasi
+├── server/                   # Python backend daemon & micro-services
+│   ├── serve.py              # Server HTTP & API gateway
+│   ├── inveys_ai.py          # Multimodal AI adapters (Gemini, OpenAI, Muse)
+│   └── inveys_crypto.py      # CCXT crypto connector
+├── scripts/                  # Otomasi build & rilis
+│   ├── build.py              # Kompiler single-file standalone HTML
+│   └── build-manifest.json   # Checksum integritas rilis
+├── tests/                    # Pengujian otomatis (Unit, render, backend, & AI)
+├── .gitignore                # Filter berkas Git standar
+├── package.json              # Konfigurasi skrip Node.js (test runner)
+├── requirements.txt          # Dependensi Python
+├── serve.py                  # Entry point server utama (root runner)
+├── build.py                  # Entry point build mandiri (root runner)
+└── inveys-app.html           # Berkas kompilasi mandiri (standalone app)
+```
 
 ## Mulai dengan versi 0.4.0
 

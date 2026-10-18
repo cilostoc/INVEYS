@@ -6,6 +6,9 @@
   "scripts": {
     "start": "python3 serve.py",
     "test": "node --test tests/engine.test.js tests/recording.test.js tests/finance.test.js tests/investment.test.js tests/appearance.test.js tests/plans.test.js tests/render.test.js tests/assistant.test.js tests/operations.test.js",
+    "test:calendar": "node --test tests/calendar.test.js",
+    "test:backend": "python3 tests/backend_test.py && python3 tests/ai_test.py",
+    "test:all": "npm test && npm run test:calendar && npm run test:backend",
     "build": "python3 build.py"
   }
 }

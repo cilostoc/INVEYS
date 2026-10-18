@@ -27,7 +27,7 @@ function boot(saved) {
     location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
-  for(const file of ['engine.js','finance.js','investment.js','appearance.js','plans.js','i18n.js','recording.js','releases.js','assistant.js','operations.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),context,{filename:file});
+  for(const file of ['engine.js','finance.js','investment.js','appearance.js','plans.js','i18n.js','recording.js','releases.js','assistant.js','operations.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..','src',file),'utf8'),context,{filename:file});
   element('#language-switch').value='en';element('#language-switch').handlers.get('change')();
   function click(dataset){const button={dataset};for(const fn of events.get('click'))fn({target:{closest:()=>button}});}
   function input(id,value,dataset={}){element('#'+id).value=value;for(const fn of events.get('input'))fn({target:{id,value,dataset}});}

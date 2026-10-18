@@ -25,7 +25,7 @@ function boot(saved) {
     location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
-  for(const file of ['engine.js','finance.js','investment.js','appearance.js','plans.js','i18n.js','recording.js','releases.js','assistant.js','operations.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),context,{filename:file});
+  for(const file of ['engine.js','finance.js','investment.js','appearance.js','plans.js','i18n.js','recording.js','releases.js','assistant.js','operations.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..','src',file),'utf8'),context,{filename:file});
   function click(dataset){const button={dataset};for(const fn of events.get('click'))fn({target:{closest:()=>button}});}
   function submitModal(data){const form=element('#modal form');form.testData=data;form.handlers.get('submit')({preventDefault(){}});}
   return {elements,context,click,submitModal,html:()=>element('#main').innerHTML,state:()=>JSON.parse(store.get('inveys-workspace-v1'))};

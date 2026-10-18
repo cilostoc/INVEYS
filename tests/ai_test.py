@@ -1,7 +1,7 @@
 import unittest,importlib.util,os,base64
 from pathlib import Path
 from unittest.mock import patch
-spec=importlib.util.spec_from_file_location('inveys_ai',Path(__file__).resolve().parents[1]/'inveys_ai.py');a=importlib.util.module_from_spec(spec);spec.loader.exec_module(a)
+spec=importlib.util.spec_from_file_location('inveys_ai',Path(__file__).resolve().parents[1]/'server'/'inveys_ai.py');a=importlib.util.module_from_spec(spec);spec.loader.exec_module(a)
 class AI(unittest.TestCase):
  def request(self,provider='openai',**extra):return {'provider':provider,'prompt':'Explain my cash flow','history':[],'memory':[],'summary':'','consent':True,**extra}
  def test_consent_configuration_and_untrusted_roles_rejected(self):
