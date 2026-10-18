@@ -1,0 +1,17 @@
+{
+  "name": "INVEYS — Financial Operating System",
+  "short_name": "INVEYS",
+  "description": "Your financial life, connected. Household wealth, cash flow, debt and retirement system.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111b18",
+  "theme_color": "#244e3e",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

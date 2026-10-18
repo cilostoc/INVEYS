@@ -1,0 +1,11 @@
+(function(root){
+'use strict';const E=typeof module!=='undefined'&&module.exports?require('./engine'):root.InveysEngine;
+const catalog=[{id:'plus',name:'Plus',monthly:49000,annual:490000,scenarios:1,events:3},{id:'pro',name:'Pro',monthly:129000,annual:1290000,scenarios:5,events:20},{id:'ultra',name:'Ultra',monthly:299000,annual:2990000,scenarios:20,events:100}];
+const features=[{id:'core',name:'Accounts, transactions, credit cards & reports',min:'plus'},{id:'autorules',name:'Auto-rules & transaction correction',min:'plus'},{id:'forecast',name:'Forecast & retirement planning',min:'plus'},{id:'investment',name:'Investment benchmark comparison',min:'pro'},{id:'rebalance',name:'Portfolio rebalance & drift analysis',min:'pro'},{id:'montecarlo',name:'Integrated Monte Carlo',min:'pro'},{id:'scenarios',name:'Multiple forecast scenarios',min:'pro'},{id:'integrations',name:'Telegram & external AI access',min:'ultra'},{id:'crypto',name:'Automated Crypto CEX synchronization',min:'ultra'}];
+function allowed(tier,feature){const f=features.find(f=>f.id===feature);return !!f&&catalog.findIndex(p=>p.id===tier)>=catalog.findIndex(p=>p.id===f.min);}
+function migrate(s){if(s?.version===1)s.commercial??={previewTier:'ultra',prices:Object.fromEntries(catalog.map(p=>[p.id,{monthly:p.monthly,annual:p.annual}]))};return s;}
+function validate(c){if(!c||!catalog.some(p=>p.id===c.previewTier)||!c.prices||catalog.some(p=>!c.prices[p.id]||['monthly','annual'].some(k=>!Number.isSafeInteger(c.prices[p.id][k])||c.prices[p.id][k]<=0||c.prices[p.id][k]>1000000000)))throw Error('Invalid plan catalog / Katalog paket tidak valid');return c;}
+function quote(c,tier,cycle){validate(c);if(!catalog.some(p=>p.id===tier)||!['monthly','annual'].includes(cycle))throw Error('Invalid plan or cycle');const p=c.prices[tier];return {amount:p[cycle],currency:'IDR',cycle,saving:cycle==='annual'?1-p.annual/(p.monthly*12):0};}
+const oldMigrate=E.migrate,oldValidate=E.validate;E.migrate=s=>migrate(oldMigrate(s));E.validate=s=>{const next=migrate(oldValidate(s));validate(next.commercial);return next;};
+const api={catalog,features,allowed,quote,validate};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysPlans=api;
+})(typeof window!=='undefined'?window:globalThis);

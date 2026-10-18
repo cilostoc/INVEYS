@@ -1,0 +1,11 @@
+{
+  "name": "inveys",
+  "version": "0.23.0",
+  "private": true,
+  "description": "A local-first Financial Operating System MVP",
+  "scripts": {
+    "start": "python3 serve.py",
+    "test": "node --test tests/engine.test.js tests/recording.test.js tests/finance.test.js tests/investment.test.js tests/appearance.test.js tests/plans.test.js tests/render.test.js tests/assistant.test.js tests/operations.test.js",
+    "build": "python3 build.py"
+  }
+}
