@@ -7,6 +7,7 @@ Folder ini memuat seluruh dokumentasi teknis, panduan konfigurasi, batasan arsit
 | Dokumen | Deskripsi |
 |---|---|
 | [**ARCHITECTURE.md**](./ARCHITECTURE.md) | Desain arsitektur 4-segmen terisolasi, batasan modul, invarian akuntansi, skema data workspace, dan alur pembaruan 1-klik di VPS. |
+| [**DOCKER_DEPLOYMENT.md**](./DOCKER_DEPLOYMENT.md) | Panduan komprehensif deployment VPS berbasis Docker & Docker Compose (Standalone HTTP & Caddy HTTPS otomatis). |
 | [**AI_SETUP.md**](./AI_SETUP.md) | Panduan konfigurasi penyedia AI multimodal (Google Gemini 3.8 Flash, OpenAI GPT-4.1 Mini & Whisper, Meta AI / Muse Spark, dan 9Router gateway). |
 | [**INVESTMENT_ENGINE.md**](./INVESTMENT_ENGINE.md) | Spesifikasi mesin investasi, Time-Weighted Return (TWR), backtest portofolio, pelacakan dividen, dan rekonsiliasi sekuritas. |
 | [**MONETIZATION.md**](./MONETIZATION.md) | Batasan fitur tingkat lanjut (preview tiers) dan filosofi komersialisasi lokal. |

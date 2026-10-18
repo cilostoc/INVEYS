@@ -1,0 +1,37 @@
+# Git & VCS
+.git
+.gitignore
+
+# Documentation & Test suites (kept out of runtime image to minimize size)
+docs/
+tests/
+*.md
+!README.md
+!CHANGELOG.md
+
+# macOS / OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Python & Node artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.env.*
+node_modules/
+npm-debug.log*
+
+# Local SQLite databases & backups
+.inveys/
+inbox.sqlite3*
+*.sqlite3*
+backups/
+
+# Scratch & Temporary files
+scratch/
+.system_generated/
+*.log

@@ -9,6 +9,10 @@
     "test:calendar": "node --test tests/calendar.test.js",
     "test:backend": "python3 tests/backend_test.py && python3 tests/ai_test.py",
     "test:all": "npm test && npm run test:calendar && npm run test:backend",
-    "build": "python3 build.py"
+    "build": "python3 build.py",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   }
 }
