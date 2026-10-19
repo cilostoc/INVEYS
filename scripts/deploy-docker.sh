@@ -94,7 +94,9 @@ if [ "$HEALTHY" = true ]; then
     echo -e "${GREEN}    [SUKSES] Kontainer INVEYS Berjalan & Sehat!     ${NC}"
     echo -e "${GREEN}=====================================================${NC}"
     if [ "$DEPLOY_MODE" == "prod" ] || [ "$DEPLOY_MODE" == "production" ]; then
-        echo -e "Aplikasi dapat diakses dengan aman di: ${CYAN}https://${DOMAIN:-localhost}${NC}"
+        echo -e "Aplikasi dapat diakses dengan aman di:"
+        echo -e "  1. Domain Resmi : ${CYAN}https://${DOMAIN:-inveys.io}${NC}"
+        echo -e "  2. VPS Direct IP: ${CYAN}https://${SERVER_IP:-187.77.134.249}:3000${NC}"
     else
         echo -e "Aplikasi dapat diakses di: ${CYAN}http://IP-VPS-ANDA:3000${NC} atau ${CYAN}http://localhost:3000${NC}"
     fi

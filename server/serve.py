@@ -336,24 +336,34 @@ class Handler(SimpleHTTPRequestHandler):
     def allowed(self):
         host = self.headers.get('Host') or self.headers.get('X-Forwarded-Host') or ''
         host_clean = host.split(':')[0].lower()
-        allowed_set = {'127.0.0.1', 'localhost', '0.0.0.0'}
+        allowed_set = {'127.0.0.1', 'localhost', '0.0.0.0', '187.77.134.249', 'inveys.io', 'www.inveys.io'}
         if DOMAIN:
-            allowed_set.add(DOMAIN.split(':')[0].lower())
+            d = DOMAIN.split(':')[0].lower()
+            allowed_set.add(d)
+            if d.startswith('www.'):
+                allowed_set.add(d[4:])
+            else:
+                allowed_set.add(f"www.{d}")
         for ah in ALLOWED_HOSTS:
             allowed_set.add(ah.split(':')[0].lower())
-        return host_clean in allowed_set or host in ('127.0.0.1:3000', 'localhost:3000')
+        return host_clean in allowed_set or host in ('127.0.0.1:3000', 'localhost:3000', '187.77.134.249:3000')
 
     def allowed_origin(self):
         origin = self.headers.get('Origin')
         if not origin:
             return True
-        if origin in ('http://127.0.0.1:3000', 'http://localhost:3000'):
+        if origin in ('http://127.0.0.1:3000', 'http://localhost:3000', 'https://127.0.0.1:3000', 'https://localhost:3000', 'https://187.77.134.249:3000', 'http://187.77.134.249:3000', 'https://inveys.io', 'https://www.inveys.io', 'http://inveys.io', 'http://www.inveys.io'):
             return True
         parsed = urllib.parse.urlsplit(origin)
         host_clean = (parsed.hostname or '').lower()
-        allowed_set = {'127.0.0.1', 'localhost'}
+        allowed_set = {'127.0.0.1', 'localhost', '187.77.134.249', 'inveys.io', 'www.inveys.io'}
         if DOMAIN:
-            allowed_set.add(DOMAIN.split(':')[0].lower())
+            d = DOMAIN.split(':')[0].lower()
+            allowed_set.add(d)
+            if d.startswith('www.'):
+                allowed_set.add(d[4:])
+            else:
+                allowed_set.add(f"www.{d}")
         for ah in ALLOWED_HOSTS:
             allowed_set.add(ah.split(':')[0].lower())
         return host_clean in allowed_set
@@ -629,11 +639,52 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({'error': 'Service unavailable'}, 503)
 
 
+def setup_ssl(server):
+    ssl_cert = os.environ.get('SSL_CERT', '').strip()
+    ssl_key = os.environ.get('SSL_KEY', '').strip()
+    ssl_auto = os.environ.get('SSL_AUTO', '').strip().lower() in ('1', 'true', 'yes')
+
+    cert_path, key_path = None, None
+    if ssl_cert and ssl_key and os.path.exists(ssl_cert) and os.path.exists(ssl_key):
+        cert_path, key_path = ssl_cert, ssl_key
+    elif ssl_auto:
+        cert_file = DB_DIR / 'cert.pem'
+        key_file = DB_DIR / 'key.pem'
+        if not (cert_file.exists() and key_file.exists()):
+            try:
+                DB_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+                cmd = [
+                    'openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
+                    '-keyout', str(key_file), '-out', str(cert_file), '-days', '365',
+                    '-subj', '/CN=187.77.134.249/O=INVEYS/C=ID'
+                ]
+                subprocess.run(cmd, check=True, capture_output=True)
+                os.chmod(key_file, 0o600)
+            except Exception as e:
+                print(f"[!] Warning: Failed to auto-generate SSL cert: {e}", flush=True)
+                return 'http'
+        if cert_file.exists() and key_file.exists():
+            cert_path, key_path = str(cert_file), str(key_file)
+
+    if cert_path and key_path:
+        try:
+            import ssl
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.load_cert_chain(cert_path, key_path)
+            server.socket = ctx.wrap_socket(server.socket, server_side=True)
+            return 'https'
+        except Exception as e:
+            print(f"[!] Warning: Failed to enable SSL: {e}", flush=True)
+            return 'http'
+    return 'http'
+
+
 def main():
     HOST = os.environ.get('HOST', '0.0.0.0')
     PORT = int(os.environ.get('PORT', 3000))
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    print(f'INVEYS {VERSION} Production Server · http://{HOST}:{PORT} · secrets stay on server', flush=True)
+    proto = setup_ssl(server)
+    print(f'INVEYS {VERSION} Production Server · {proto}://{HOST}:{PORT} · secrets stay on server', flush=True)
     try: server.serve_forever()
     except KeyboardInterrupt: server.server_close()
 

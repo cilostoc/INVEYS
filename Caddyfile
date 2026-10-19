@@ -1,7 +1,14 @@
-{$DOMAIN} {
+# ==============================================================================
+# Caddy Reverse Proxy Configuration for INVEYS
+# 1. inveys.io & www.inveys.io: Automatic Let's Encrypt TLS (Port 80/443)
+# 2. https://187.77.134.249:3000: Direct IP HTTPS via internal TLS (Port 3000)
+# ==============================================================================
+
+# Public Domain (inveys.io and www.inveys.io)
+inveys.io, www.inveys.io {
     encode gzip zstd
 
-    # Security headers
+    # Security & isolation headers
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
@@ -10,6 +17,25 @@
     }
 
     # Reverse proxy to INVEYS app container
+    reverse_proxy inveys:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Direct IP Access over HTTPS on Port 3000
+https://187.77.134.249:3000 {
+    tls internal
+    encode gzip zstd
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
     reverse_proxy inveys:3000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}

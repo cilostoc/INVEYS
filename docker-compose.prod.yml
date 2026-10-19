@@ -12,8 +12,8 @@ services:
       - HOST=0.0.0.0
       - PORT=3000
       - INVEYS_DATA_DIR=/data
-      - DOMAIN=${DOMAIN}
-      - ALLOWED_HOSTS=${DOMAIN},127.0.0.1,localhost
+      - DOMAIN=${DOMAIN:-inveys.io}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-inveys.io,www.inveys.io,187.77.134.249,127.0.0.1,localhost}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -46,8 +46,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "3000:3000"
     environment:
-      - DOMAIN=${DOMAIN}
+      - DOMAIN=${DOMAIN:-inveys.io}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

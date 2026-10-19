@@ -29,6 +29,12 @@ class Backend(unittest.TestCase):
         self.assertEqual(self.request('/api/status',headers={'Host':'evil.example'})[0],403)
         self.assertEqual(self.request('/api/status',headers={'Origin':'https://evil.example'})[0],403)
         self.assertEqual(self.request('/api/telegram/send',{'text':'hello','consent':True})[0],403)
+    def test_inveys_domain_and_ip_allowed(self):
+        for h in ['inveys.io', 'www.inveys.io', '187.77.134.249', '187.77.134.249:3000']:
+            status, _ = self.request('/api/auth/status', headers={'Host': h})
+            self.assertEqual(status, 200)
+            status, _ = self.request('/api/auth/status', headers={'Host': h, 'Origin': f'https://{h}'})
+            self.assertEqual(status, 200)
     def test_status_no_credentials(self):
         with patch.dict(os.environ,{'MODEL_API_KEY':'secret-key','TELEGRAM_BOT_TOKEN':'secret-token','TELEGRAM_CHAT_ID':'123'}):
             status,result=self.request('/api/status');self.assertEqual(status,200);self.assertTrue(result['muse']);self.assertNotIn('secret',json.dumps(result))
