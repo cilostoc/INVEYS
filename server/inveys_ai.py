@@ -14,7 +14,7 @@ def valid_date(value):
  try:return isinstance(value,str) and datetime.date.fromisoformat(value).isoformat()==value
  except (ValueError,TypeError):return False
 def configuration():
- return {k:{'enabled':bool(os.environ.get(key)) and (k!='9router' or bool(os.environ.get(model))), 'model':os.environ.get(model,default)} for k,key,model,default in [('openai','OPENAI_API_KEY','OPENAI_MODEL','gpt-4.1-mini'),('gemini','GEMINI_API_KEY','GEMINI_MODEL','gemini-3.8-flash'),('muse','MODEL_API_KEY','MUSE_MODEL','muse-spark-1.3'),('9router','NINEROUTER_API_KEY','NINEROUTER_MODEL','')]}
+ return {k:{'enabled':bool(os.environ.get(key)) and (k!='9router' or bool(os.environ.get(model,default))), 'model':os.environ.get(model,default)} for k,key,model,default in [('openai','OPENAI_API_KEY','OPENAI_MODEL','gpt-4.1-mini'),('gemini','GEMINI_API_KEY','GEMINI_MODEL','gemini-3.8-flash'),('muse','MODEL_API_KEY','MUSE_MODEL','muse-spark-1.3'),('9router','NINEROUTER_API_KEY','NINEROUTER_MODEL','claude-3-5-sonnet')]}
 def transport(url,payload,key,google=False):
  headers={'Content-Type':'application/json',('x-goog-api-key' if google else 'Authorization'):key if google else 'Bearer '+key}
  try:
@@ -28,7 +28,7 @@ def transport(url,payload,key,google=False):
 def router_base():
  url=os.environ.get('NINEROUTER_BASE_URL','http://127.0.0.1:20128/v1').rstrip('/')
  parsed=urllib.parse.urlsplit(url)
- if parsed.username or parsed.password or parsed.query or parsed.fragment or not parsed.hostname or parsed.scheme not in ('http','https') or (parsed.scheme=='http' and parsed.hostname not in ('localhost','127.0.0.1','::1')) or parsed.path!='/v1':raise ValueError('9Router base URL must be HTTPS or loopback HTTP, ending in /v1, without credentials/query/fragment')
+ if parsed.username or parsed.password or parsed.query or parsed.fragment or not parsed.hostname or parsed.scheme not in ('http','https') or (parsed.scheme=='http' and parsed.hostname not in ('localhost','127.0.0.1','::1','host.docker.internal','9router')) or parsed.path!='/v1':raise ValueError('9Router base URL must be HTTPS or loopback HTTP, ending in /v1, without credentials/query/fragment')
  try:parsed.port
  except ValueError:raise ValueError('Invalid 9Router port') from None
  return url

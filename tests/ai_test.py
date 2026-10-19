@@ -48,6 +48,12 @@ class AI(unittest.TestCase):
    for url in ['http://evil.example/v1','https://user:pass@example.com/v1','https://example.com/v1?key=x','file:///v1','https://example.com/not-v1']:
     with patch.dict(os.environ,{'NINEROUTER_BASE_URL':url}):
      with self.assertRaises(ValueError):a.chat(self.request('9router'),None,None)
+  with patch.dict(os.environ,{'NINEROUTER_API_KEY':'my-key'},clear=True):
+   cfg=a.configuration()
+   self.assertTrue(cfg['9router']['enabled'])
+   self.assertEqual(cfg['9router']['model'],'claude-3-5-sonnet')
+  with patch.dict(os.environ,{'NINEROUTER_BASE_URL':'http://host.docker.internal:20128/v1'}):
+   self.assertEqual(a.router_base(),'http://host.docker.internal:20128/v1')
  def test_router_documents_and_audio_use_gateway_not_another_provider(self):
   env={'NINEROUTER_API_KEY':'secret','NINEROUTER_MODEL':'combo'}
   pdf={'name':'test.pdf','type':'application/pdf','data':base64.b64encode(b'%PDF-1.7').decode()}

@@ -36,8 +36,8 @@ class Backend(unittest.TestCase):
             status, _ = self.request('/api/auth/status', headers={'Host': h, 'Origin': f'https://{h}'})
             self.assertEqual(status, 200)
     def test_status_no_credentials(self):
-        with patch.dict(os.environ,{'MODEL_API_KEY':'secret-key','TELEGRAM_BOT_TOKEN':'secret-token','TELEGRAM_CHAT_ID':'123'}):
-            status,result=self.request('/api/status');self.assertEqual(status,200);self.assertTrue(result['muse']);self.assertNotIn('secret',json.dumps(result))
+        with patch.dict(os.environ,{'MODEL_API_KEY':'secret-key','TELEGRAM_BOT_TOKEN':'secret-token','TELEGRAM_CHAT_ID':'123','NINEROUTER_API_KEY':'sk-test-key'}):
+            status,result=self.request('/api/status');self.assertEqual(status,200);self.assertTrue(result['muse']);self.assertTrue(result['ai']['9router']['enabled']);self.assertNotIn('secret',json.dumps(result));self.assertNotIn('sk-test-key',json.dumps(result))
     def test_muse_requires_consent(self):
         headers={'Origin':'http://127.0.0.1:3000','X-INVEYS-CSRF':s.TOKEN}
         with patch.object(s,'muse') as mock:
