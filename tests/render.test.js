@@ -639,3 +639,41 @@ test('investment page renders Pegadaian gold installment tracker and handles syn
   assert.equal(updatedDebt.balance, (107613400 - 1793557) * 100);
 });
 
+test('integrations and settings render API key manager and allow tab switching', async () => {
+  const app = boot();
+  // Verify button in Settings
+  app.click({page: 'settings'});
+  assert.match(app.html(), /api-keys:all/);
+  assert.match(app.html(), /Kelola Kunci API & Bot|AI API Keys & Telegram Bot/);
+
+  // Verify buttons in Integrations
+  app.click({page: 'integrations'});
+  assert.match(app.html(), /api-keys:all/);
+  assert.match(app.html(), /api-keys:gemini/);
+  assert.match(app.html(), /api-keys:telegram/);
+  assert.match(app.html(), /int-node-interactive/);
+
+  // Open modal via api-keys:all
+  app.click({action: 'api-keys:all'});
+  await new Promise(resolve => setImmediate(resolve));
+  const title = app.elements.get('#modal-title').textContent;
+  const body = app.elements.get('#modal-body').innerHTML;
+  assert.match(title, /Kelola Kunci API & Telegram Bot|Manage API Keys/);
+  assert.match(body, /key-mgr-dialog/);
+  assert.match(body, /api-key-tab:all/);
+  assert.match(body, /api-key-tab:gemini/);
+  assert.match(body, /api-key-tab:telegram/);
+  assert.match(body, /api-key-save:gemini/);
+  assert.match(body, /api-key-test:gemini/);
+  assert.match(body, /api-key-save:telegram/);
+  assert.match(body, /api-key-test:telegram/);
+
+  // Target-specific modal opening
+  app.click({action: 'api-keys:gemini'});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(app.elements.get('#modal-body').innerHTML, /class="key-pane active" id="pane-gemini"/);
+
+  app.click({action: 'api-keys:telegram'});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(app.elements.get('#modal-body').innerHTML, /class="key-pane active" id="pane-telegram"/);
+});

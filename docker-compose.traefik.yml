@@ -1,0 +1,61 @@
+services:
+  inveys:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: inveys:latest
+    container_name: inveys-app
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - INVEYS_DATA_DIR=/data
+      - DOMAIN=${DOMAIN:-inveys.io}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-inveys.io,www.inveys.io,127.0.0.1,localhost}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-}
+      - MODEL_API_KEY=${MODEL_API_KEY:-}
+      - MUSE_MODEL=${MUSE_MODEL:-}
+      - NINEROUTER_API_KEY=${NINEROUTER_API_KEY:-}
+      - NINEROUTER_MODEL=${NINEROUTER_MODEL:-}
+      - NINEROUTER_BASE_URL=${NINEROUTER_BASE_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - inveys_data:/data
+    networks:
+      - default
+      - traefik_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.inveys.rule=Host(`${DOMAIN:-inveys.io}`) || Host(`www.${DOMAIN:-inveys.io}`)"
+      - "traefik.http.routers.inveys.entrypoints=websecure"
+      - "traefik.http.routers.inveys.tls=true"
+      - "traefik.http.routers.inveys.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}"
+      - "traefik.http.services.inveys.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/auth/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  inveys_data:
+    name: inveys_vault_data
+
+networks:
+  traefik_network:
+    name: ${TRAEFIK_NETWORK:-traefik_default}
+    external: true

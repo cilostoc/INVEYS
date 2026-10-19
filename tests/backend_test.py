@@ -168,4 +168,61 @@ class Backend(unittest.TestCase):
         self.assertEqual(res['version'], '0.23.0')
         self.assertEqual(len(res['updatedSegments']), 4)
 
+    def test_api_keys_management_and_persistence(self):
+        headers = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+
+        # 1. GET /api/keys returns valid structure
+        status, keys = self.request('/api/keys', headers=headers)
+        self.assertEqual(status, 200)
+        self.assertTrue(keys['ok'])
+        self.assertIn('gemini', keys)
+        self.assertIn('openai', keys)
+        self.assertIn('ninerouter', keys)
+        self.assertIn('telegram', keys)
+
+        # 2. POST /api/keys save Gemini key
+        status, res = self.request('/api/keys', {'provider': 'gemini', 'action': 'save', 'apiKey': 'AIzaSyTestGeminiKey123', 'model': 'gemini-3.8-flash'}, headers)
+        self.assertEqual(status, 200)
+        self.assertTrue(res['ok'])
+        self.assertEqual(res['action'], 'saved')
+        self.assertTrue(res['ai']['gemini']['enabled'])
+
+        # 3. POST /api/keys save Telegram bot token and chat id
+        status, res = self.request('/api/keys', {'provider': 'telegram', 'action': 'save', 'botToken': '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ', 'chatId': '987654321'}, headers)
+        self.assertEqual(status, 200)
+        self.assertTrue(res['ok'])
+        self.assertTrue(res['telegram'])
+
+        # 4. GET /api/keys shows masked keys without revealing full key by default
+        status, keys = self.request('/api/keys', headers=headers)
+        self.assertEqual(status, 200)
+        self.assertTrue(keys['gemini']['configured'])
+        self.assertTrue(keys['telegram']['configured'])
+        self.assertIn('••••••••', keys['gemini']['keyMasked'])
+        self.assertIn('••••••••', keys['telegram']['tokenMasked'])
+        self.assertEqual(keys['gemini']['rawKey'], '')
+
+        # 5. GET /api/keys?reveal=1 reveals raw key with valid CSRF/session
+        status, keys_revealed = self.request('/api/keys?reveal=1', headers=headers)
+        self.assertEqual(status, 200)
+        self.assertEqual(keys_revealed['gemini']['rawKey'], 'AIzaSyTestGeminiKey123')
+        self.assertEqual(keys_revealed['telegram']['rawToken'], '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ')
+
+        # 6. POST /api/keys delete Gemini key and Telegram key
+        status, res = self.request('/api/keys', {'provider': 'gemini', 'action': 'delete'}, headers)
+        self.assertEqual(status, 200)
+        self.assertTrue(res['ok'])
+        self.assertEqual(res['action'], 'deleted')
+        self.assertFalse(res['ai']['gemini']['enabled'])
+
+        status, res = self.request('/api/keys', {'provider': 'telegram', 'action': 'delete'}, headers)
+        self.assertEqual(status, 200)
+        self.assertTrue(res['ok'])
+        self.assertFalse(res['telegram'])
+
+        # Verify deletion in GET /api/keys
+        status, keys_after = self.request('/api/keys', headers=headers)
+        self.assertFalse(keys_after['gemini']['configured'])
+        self.assertFalse(keys_after['telegram']['configured'])
+
 if __name__=='__main__':unittest.main()

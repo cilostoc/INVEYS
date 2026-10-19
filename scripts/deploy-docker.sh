@@ -56,6 +56,9 @@ COMPOSE_FILE="docker-compose.yml"
 if [ "$DEPLOY_MODE" == "prod" ] || [ "$DEPLOY_MODE" == "production" ]; then
     COMPOSE_FILE="docker-compose.prod.yml"
     echo -e "${CYAN}[i] Menjalankan mode: Production HTTPS (Caddy Reverse Proxy)${NC}"
+elif [ "$DEPLOY_MODE" == "traefik" ]; then
+    COMPOSE_FILE="docker-compose.traefik.yml"
+    echo -e "${CYAN}[i] Menjalankan mode: Traefik Reverse Proxy (Docker Labels)${NC}"
 else
     echo -e "${CYAN}[i] Menjalankan mode: Standalone HTTP (Port 3000)${NC}"
 fi

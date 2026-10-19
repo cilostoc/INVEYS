@@ -11,7 +11,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from contextlib import contextmanager
 import sys
-import os, json, urllib.request, urllib.error, urllib.parse, base64, tempfile, subprocess, shutil, secrets, sqlite3, threading, time, hashlib, hmac, datetime
+import os, json, urllib.request, urllib.error, urllib.parse, base64, tempfile, subprocess, shutil, secrets, sqlite3, threading, time, hashlib, hmac, datetime, re
 
 SERVER_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SERVER_DIR.parent
@@ -147,9 +147,172 @@ def db():
     c.execute('CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, ip TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, data TEXT NOT NULL, checksum TEXT NOT NULL, updated_at TEXT NOT NULL)')
     c.execute('CREATE TABLE IF NOT EXISTS backups (id INTEGER PRIMARY KEY AUTOINCREMENT, workspace_id TEXT NOT NULL, data TEXT NOT NULL, created_at TEXT NOT NULL, note TEXT)')
+    c.execute('CREATE TABLE IF NOT EXISTS server_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)')
     try:
         with c: yield c
     finally: c.close()
+
+
+def mask_secret(s: str) -> str:
+    if not s:
+        return ''
+    s = str(s).strip()
+    if len(s) <= 8:
+        return '••••••••'
+    return s[:4] + '••••••••' + s[-4:]
+
+
+def update_env_file(key: str, val: str):
+    env_file = PROJECT_ROOT / '.env'
+    if not env_file.exists():
+        return
+    try:
+        lines = env_file.read_text(encoding='utf-8').splitlines()
+        found = False
+        new_lines = []
+        pattern = re.compile(rf'^\s*{re.escape(key)}\s*=.*$')
+        for line in lines:
+            if pattern.match(line):
+                new_lines.append(f'{key}={val}')
+                found = True
+            else:
+                new_lines.append(line)
+        if not found:
+            new_lines.append(f'{key}={val}')
+        env_file.write_text('\n'.join(new_lines) + '\n', encoding='utf-8')
+    except Exception as e:
+        print(f"[!] Warning updating .env: {e}", flush=True)
+
+
+def save_server_setting(key: str, val: str):
+    with db() as c:
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        c.execute('CREATE TABLE IF NOT EXISTS server_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)')
+        val_str = str(val).strip() if val is not None else ''
+        if val_str:
+            c.execute("INSERT INTO server_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at", (key, val_str, now_iso))
+            os.environ[key] = val_str
+            update_env_file(key, val_str)
+        else:
+            c.execute("DELETE FROM server_settings WHERE key=?", (key,))
+            os.environ.pop(key, None)
+            update_env_file(key, '')
+
+
+def delete_server_setting(key: str):
+    save_server_setting(key, '')
+
+
+def load_env_file():
+    env_file = PROJECT_ROOT / '.env'
+    if env_file.exists():
+        try:
+            for line in env_file.read_text(encoding='utf-8').splitlines():
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    k = k.strip()
+                    v = v.strip().strip('"').strip("'")
+                    if k and k not in os.environ:
+                        os.environ[k] = v
+        except Exception:
+            pass
+
+
+def init_server_settings():
+    load_env_file()
+    try:
+        with db() as c:
+            c.execute('CREATE TABLE IF NOT EXISTS server_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)')
+            for row in c.execute('SELECT key, value FROM server_settings').fetchall():
+                if row[0] and row[1]:
+                    os.environ[row[0]] = row[1]
+    except Exception:
+        pass
+
+
+init_server_settings()
+
+
+def test_api_key_connection(provider_name: str, payload: dict) -> dict:
+    prov = str(provider_name).lower().strip()
+    try:
+        if prov == 'gemini':
+            key = payload.get('apiKey') or os.environ.get('GEMINI_API_KEY', '')
+            if not key:
+                return {'ok': False, 'error': 'Kunci API Gemini belum diisi'}
+            model = payload.get('model') or os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model)}?key={urllib.parse.quote(key)}"
+            req = urllib.request.Request(url, headers={'User-Agent': f'INVEYS/{VERSION}'})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                res = json.loads(r.read(MAX))
+                disp = res.get('displayName') or model
+                return {'ok': True, 'message': f'✅ Koneksi Gemini Berhasil! Model aktif: {disp}'}
+
+        elif prov == 'openai':
+            key = payload.get('apiKey') or os.environ.get('OPENAI_API_KEY', '')
+            if not key:
+                return {'ok': False, 'error': 'Kunci API OpenAI belum diisi'}
+            model = payload.get('model') or os.environ.get('OPENAI_MODEL', 'gpt-4.1-mini')
+            url = "https://api.openai.com/v1/models"
+            req = urllib.request.Request(url, headers={'Authorization': f'Bearer {key}', 'User-Agent': f'INVEYS/{VERSION}'})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return {'ok': True, 'message': f'✅ Koneksi OpenAI Berhasil! Model target: {model}'}
+
+        elif prov in ('9router', 'ninerouter'):
+            key = payload.get('apiKey') or os.environ.get('NINEROUTER_API_KEY', '')
+            if not key:
+                return {'ok': False, 'error': 'Kunci API 9Router belum diisi'}
+            base_url = (payload.get('baseUrl') or os.environ.get('NINEROUTER_BASE_URL', 'http://127.0.0.1:20128/v1')).rstrip('/')
+            url = f"{base_url}/models"
+            req = urllib.request.Request(url, headers={'Authorization': f'Bearer {key}', 'User-Agent': f'INVEYS/{VERSION}'})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return {'ok': True, 'message': f'✅ Koneksi 9Router Berhasil! Gateway: {base_url}'}
+
+        elif prov == 'muse':
+            key = payload.get('apiKey') or os.environ.get('MODEL_API_KEY', '')
+            if not key:
+                return {'ok': False, 'error': 'Kunci API Muse/Meta belum diisi'}
+            return {'ok': True, 'message': '✅ Kunci API Muse tersimpan di server.'}
+
+        elif prov == 'telegram':
+            token = payload.get('botToken') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+            if not token:
+                return {'ok': False, 'error': 'Telegram Bot Token belum diisi'}
+            url = f"https://api.telegram.org/bot{urllib.parse.quote(token)}/getMe"
+            req = urllib.request.Request(url, headers={'User-Agent': f'INVEYS/{VERSION}'})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                res = json.loads(r.read(MAX))
+                if not res.get('ok'):
+                    return {'ok': False, 'error': 'Telegram menolak token bot'}
+                bot = res.get('result', {})
+                bot_name = bot.get('username') or bot.get('first_name', 'Bot')
+                msg = f'✅ Bot Terverifikasi: @{bot_name}'
+                chat_id = payload.get('chatId') or os.environ.get('TELEGRAM_CHAT_ID', '')
+                if chat_id:
+                    try:
+                        c_url = f"https://api.telegram.org/bot{urllib.parse.quote(token)}/getChat"
+                        c_data = json.dumps({'chat_id': chat_id}).encode('utf-8')
+                        c_req = urllib.request.Request(c_url, data=c_data, headers={'Content-Type': 'application/json'})
+                        with urllib.request.urlopen(c_req, timeout=10) as cr:
+                            c_res = json.loads(cr.read(MAX))
+                            if c_res.get('ok'):
+                                title = c_res.get('result', {}).get('first_name') or c_res.get('result', {}).get('title') or chat_id
+                                msg += f' · Chat: {title}'
+                    except Exception:
+                        pass
+                return {'ok': True, 'message': msg}
+        else:
+            return {'ok': False, 'error': f'Penyedia tidak dikenal: {provider_name}'}
+    except urllib.error.HTTPError as err:
+        try:
+            err_data = json.loads(err.read().decode('utf-8'))
+            msg = err_data.get('error', {}).get('message') or err_data.get('description') or str(err)
+        except Exception:
+            msg = str(err)
+        return {'ok': False, 'error': f'Koneksi gagal ({err.code}): {msg}'}
+    except Exception as err:
+        return {'ok': False, 'error': f'Koneksi gagal: {str(err)}'}
 
 
 def telegram(method, payload):
@@ -470,6 +633,57 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path == '/api/vps/segments': return self.send_json(get_vps_segments())
         if self.path == '/api/crypto/exchanges': return self.send_json(inveys_crypto.get_supported_exchanges())
 
+        if self.path.startswith('/api/keys'):
+            if not self.allowed_origin(): return self.send_json({'error': 'Invalid origin'}, 403)
+            parsed = urllib.parse.urlsplit(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            reveal = qs.get('reveal', ['0'])[0] == '1'
+            authed, _ = self.is_authenticated()
+            csrf_valid = self.headers.get('X-INVEYS-CSRF') == TOKEN
+            allow_reveal = reveal and (authed or csrf_valid)
+
+            gemini_key = os.environ.get('GEMINI_API_KEY', '')
+            openai_key = os.environ.get('OPENAI_API_KEY', '')
+            nine_key = os.environ.get('NINEROUTER_API_KEY', '')
+            muse_key = os.environ.get('MODEL_API_KEY', '')
+            tg_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+            tg_chat = os.environ.get('TELEGRAM_CHAT_ID', '')
+
+            return self.send_json({
+                'ok': True,
+                'gemini': {
+                    'configured': bool(gemini_key),
+                    'keyMasked': mask_secret(gemini_key),
+                    'rawKey': gemini_key if allow_reveal else '',
+                    'model': os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
+                },
+                'openai': {
+                    'configured': bool(openai_key),
+                    'keyMasked': mask_secret(openai_key),
+                    'rawKey': openai_key if allow_reveal else '',
+                    'model': os.environ.get('OPENAI_MODEL', 'gpt-4.1-mini')
+                },
+                'ninerouter': {
+                    'configured': bool(nine_key),
+                    'keyMasked': mask_secret(nine_key),
+                    'rawKey': nine_key if allow_reveal else '',
+                    'model': os.environ.get('NINEROUTER_MODEL', 'claude-3-5-sonnet'),
+                    'baseUrl': os.environ.get('NINEROUTER_BASE_URL', 'http://127.0.0.1:20128/v1')
+                },
+                'muse': {
+                    'configured': bool(muse_key),
+                    'keyMasked': mask_secret(muse_key),
+                    'rawKey': muse_key if allow_reveal else '',
+                    'model': os.environ.get('MUSE_MODEL', 'muse-spark-1.3')
+                },
+                'telegram': {
+                    'configured': bool(tg_token and tg_chat),
+                    'tokenMasked': mask_secret(tg_token),
+                    'rawToken': tg_token if allow_reveal else '',
+                    'chatId': tg_chat
+                }
+            })
+
         # Protected workspace sync endpoints
         if self.path == '/api/workspace':
             authed, reason = self.is_authenticated()
@@ -632,6 +846,78 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(res, 200 if res.get('ok') else 400)
             if self.path == '/api/vps/update':
                 return self.send_json(run_vps_update())
+
+            if self.path == '/api/keys':
+                action = data.get('action', 'save')
+                provider_name = str(data.get('provider', '')).lower().strip()
+
+                if action == 'test':
+                    res = test_api_key_connection(provider_name, data)
+                    return self.send_json(res, 200 if res.get('ok') else 400)
+
+                if action == 'delete':
+                    if provider_name == 'gemini':
+                        delete_server_setting('GEMINI_API_KEY')
+                    elif provider_name == 'openai':
+                        delete_server_setting('OPENAI_API_KEY')
+                    elif provider_name in ('9router', 'ninerouter'):
+                        delete_server_setting('NINEROUTER_API_KEY')
+                    elif provider_name == 'muse':
+                        delete_server_setting('MODEL_API_KEY')
+                    elif provider_name == 'telegram':
+                        delete_server_setting('TELEGRAM_BOT_TOKEN')
+                        delete_server_setting('TELEGRAM_CHAT_ID')
+                    else:
+                        return self.send_json({'error': f'Penyedia tidak valid: {provider_name}'}, 400)
+                    return self.send_json({
+                        'ok': True,
+                        'action': 'deleted',
+                        'provider': provider_name,
+                        'ai': inveys_ai.configuration(),
+                        'telegram': bool(os.environ.get('TELEGRAM_BOT_TOKEN') and os.environ.get('TELEGRAM_CHAT_ID'))
+                    })
+
+                if action in ('save', 'update'):
+                    if provider_name == 'gemini':
+                        if 'apiKey' in data and str(data['apiKey']).strip():
+                            save_server_setting('GEMINI_API_KEY', str(data['apiKey']).strip())
+                        if 'model' in data and str(data['model']).strip():
+                            save_server_setting('GEMINI_MODEL', str(data['model']).strip())
+                    elif provider_name == 'openai':
+                        if 'apiKey' in data and str(data['apiKey']).strip():
+                            save_server_setting('OPENAI_API_KEY', str(data['apiKey']).strip())
+                        if 'model' in data and str(data['model']).strip():
+                            save_server_setting('OPENAI_MODEL', str(data['model']).strip())
+                    elif provider_name in ('9router', 'ninerouter'):
+                        if 'apiKey' in data and str(data['apiKey']).strip():
+                            save_server_setting('NINEROUTER_API_KEY', str(data['apiKey']).strip())
+                        if 'model' in data and str(data['model']).strip():
+                            save_server_setting('NINEROUTER_MODEL', str(data['model']).strip())
+                        if 'baseUrl' in data and str(data['baseUrl']).strip():
+                            save_server_setting('NINEROUTER_BASE_URL', str(data['baseUrl']).strip())
+                    elif provider_name == 'muse':
+                        if 'apiKey' in data and str(data['apiKey']).strip():
+                            save_server_setting('MODEL_API_KEY', str(data['apiKey']).strip())
+                        if 'model' in data and str(data['model']).strip():
+                            save_server_setting('MUSE_MODEL', str(data['model']).strip())
+                    elif provider_name == 'telegram':
+                        if 'botToken' in data and str(data['botToken']).strip():
+                            save_server_setting('TELEGRAM_BOT_TOKEN', str(data['botToken']).strip())
+                        if 'chatId' in data and str(data['chatId']).strip():
+                            save_server_setting('TELEGRAM_CHAT_ID', str(data['chatId']).strip())
+                    else:
+                        return self.send_json({'error': f'Penyedia tidak valid: {provider_name}'}, 400)
+
+                    return self.send_json({
+                        'ok': True,
+                        'action': 'saved',
+                        'provider': provider_name,
+                        'ai': inveys_ai.configuration(),
+                        'telegram': bool(os.environ.get('TELEGRAM_BOT_TOKEN') and os.environ.get('TELEGRAM_CHAT_ID'))
+                    })
+
+                return self.send_json({'error': f'Aksi tidak dikenal: {action}'}, 400)
+
             return self.send_json({'error': 'Not found'}, 404)
         except (ValueError, KeyError, TypeError, subprocess.SubprocessError) as err:
             return self.send_json({'error': f'Request failed: {str(err)}'}, 400)

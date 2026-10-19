@@ -1346,14 +1346,18 @@
           <path d="M 360 90 C 480 90, 520 135, 630 135" class="int-conn-line ${srvOnline?'active':''}"/>
 
           <!-- Node 1: AI Provider (Top Left) -->
-          <circle cx="90" cy="45" r="22" class="int-node-circle ${aiOnline?'active':''}"/>
-          <text x="90" y="49" class="int-label" font-size="14">🤖</text>
-          <text x="90" y="78" class="int-sublabel">${aiProviderName(state.assistant.provider)}</text>
+          <g class="int-node-interactive" data-action="api-keys:gemini" role="button" aria-label="${L('Kelola API Key AI','Manage AI Keys')}">
+            <circle cx="90" cy="45" r="22" class="int-node-circle ${aiOnline?'active':''}"/>
+            <text x="90" y="49" class="int-label" font-size="14">🤖</text>
+            <text x="90" y="78" class="int-sublabel">${aiProviderName(state.assistant.provider)}</text>
+          </g>
 
           <!-- Node 2: Telegram (Bottom Left) -->
-          <circle cx="90" cy="135" r="22" class="int-node-circle ${tgOnline?'active':''}"/>
-          <text x="90" y="139" class="int-label" font-size="14">💬</text>
-          <text x="90" y="168" class="int-sublabel">Telegram</text>
+          <g class="int-node-interactive" data-action="api-keys:telegram" role="button" aria-label="${L('Konfigurasi Telegram Bot','Configure Telegram Bot')}">
+            <circle cx="90" cy="135" r="22" class="int-node-circle ${tgOnline?'active':''}"/>
+            <text x="90" y="139" class="int-label" font-size="14">💬</text>
+            <text x="90" y="168" class="int-sublabel">Telegram</text>
+          </g>
 
           <!-- Central INVEYS Core Hub -->
           <circle cx="360" cy="90" r="40" class="int-hub-pulse"/>
@@ -1371,9 +1375,14 @@
           <text x="630" y="139" class="int-label" font-size="14">⚡</text>
           <text x="630" y="168" class="int-sublabel">Python Core</text>
         </svg>
-        <button type="button" class="int-sim-btn" data-action="int-ping-all">
-          <span>⚡</span> ${L('Simulasi Alur Koneksi (Uji Sinyal)','Simulate Connection Flow (Ping All)')}
-        </button>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+          <button type="button" class="int-sim-btn" data-action="int-ping-all">
+            <span>⚡</span> ${L('Simulasi Alur Koneksi (Uji Sinyal)','Simulate Connection Flow (Ping All)')}
+          </button>
+          <button type="button" class="int-sim-btn" data-action="api-keys:all" style="background:var(--ink);color:#fff">
+            <span>🔑</span> ${L('Kelola Semua Kunci API & Bot','Manage All API Keys & Bot')}
+          </button>
+        </div>
       </div>
     </div>`;
 
@@ -1393,7 +1402,8 @@
         <p class="int-card-desc">${L('Asisten cerdas untuk konsultasi keuangan, menganalisis pola belanja, dan membaca struk otomatis.','Smart AI assistant to analyze cash flow, extract receipts and answer financial questions.')}</p>
         <p class="note" style="margin-bottom:12px">${service.ai?.['9router']?.enabled?L('9Router dikonfigurasi; gateway OpenAI-compatible aktif.','9Router configured; OpenAI-compatible gateway active.'):L('Mendukung Gemini, OpenAI, 9Router, atau mode Lokal tanpa API key.','Supports Gemini, OpenAI, 9Router, or offline Local mode.')}</p>
         <div class="int-card-actions">
-          ${button(L('⚙️ Pengaturan AI & Kunci API','⚙️ Assistant Settings'),'quick-ai-settings','primary')}
+          ${button(L('🔑 Kelola API Key AI','🔑 Manage AI API Keys'),'api-keys:gemini','primary')}
+          ${button(L('⚙️ Pengaturan AI & Kunci API','⚙️ Assistant Settings'),'quick-ai-settings')}
           ${button(L('🔍 Periksa Konfigurasi','🔍 Check Config'),'quick-ai-status')}
         </div>
       </section>
@@ -1412,6 +1422,7 @@
         <p class="int-card-desc">${L('Kirim pesan teks atau foto struk langsung dari chat Telegram pribadi di HP Anda untuk dicatat ke INVEYS.','Send text notes or receipt photos directly from your private Telegram chat to INVEYS.')}</p>
         <p class="note" style="margin-bottom:12px">${service.telegram?L('Bot Token & Chat ID terhubung di server lokal.','Bot Token & Chat ID configured on local server.'):L('Set TELEGRAM_BOT_TOKEN dan TELEGRAM_CHAT_ID di server lokal Anda.','Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID on your local server.')}</p>
         <div class="int-card-actions">
+          ${button(L('🔑 Atur Bot Token & Chat ID','🔑 Configure Bot Token'),'api-keys:telegram','primary')}
           ${button(L('📥 Ambil Inbox Telegram','📥 Fetch Inbox'),'telegram-inbox')}
           ${button(L('📤 Kirim Pesan / Pengingat','📤 Send Reminder'),'telegram-send')}
         </div>
@@ -1753,7 +1764,7 @@
   const aiProviderName=id=>({local:L('Lokal (Kalkulator)','Local (Calculator)'),openai:'OpenAI (ChatGPT / GPT-4o)',gemini:'Google Gemini',muse:'Meta AI (Muse Spark)','9router':'9Router (Claude / OpenRouter)'})[id]||id;
   function aiRichText(value){return escape(value).replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/^#{1,3} (.+)$/gm,'<strong>$1</strong>').replace(/^[-*] /gm,'• ');}
   function aiThread(){const rows=CHAT.history(state).slice(-8);return rows.length?`<div class="ai-thread" role="log" aria-live="polite">${rows.map(m=>`<div class="ai-message ${m.role}"><small>${m.role==='user'?L('Anda','You'):aiProviderName(m.provider)}</small><div>${m.role==='assistant'?aiRichText(m.text):user(m.text)}</div></div>`).join('')}</div>`:'';}
-  function aiSettings(){openModal(L('Asisten INVEYS','INVEYS assistant'),form(`<p class="note">${L('API key disimpan di server lokal. Pilih penyedia, lalu izinkan pengiriman pesan dan lampiran.','API keys stay on the local server. Select a provider and allow messages and attachments to be sent.')}</p>${field(L('Penyedia','Provider'),'provider','','select',CHAT.providers.map(id=>`<option value="${id}" ${state.assistant.provider===id?'selected':''}>${aiProviderName(id)}</option>`).join(''))}<label><input name="consent" type="checkbox" ${state.assistant.consent?'checked':''}> ${L('Izinkan pesan, riwayat percakapan tampilan ini dan lampiran dikirim ke penyedia yang saya pilih','Allow messages, conversation history for this view and attachments to my selected provider')}</label><label><input name="shareFinancial" type="checkbox" ${state.assistant.shareFinancial?'checked':''}> ${L('Sertakan ringkasan keuangan tampilan aktif','Include the active view’s financial summary')}</label><label><input name="useMemory" type="checkbox" ${state.assistant.useMemory?'checked':''}> ${L('Gunakan preferensi tersimpan sebagai konteks','Use saved preferences as context')}</label><label>${L('Memori preferensi · satu per baris','Preference memory · one per line')}<textarea name="memory" rows="5" maxlength="15500">${escape(state.assistant.memory.join('\n'))}</textarea></label><p class="note">${L('Memori dapat diedit/dihapus di sini. Tidak melatih ulang model atau menyimpan isi dokumen otomatis.','Edit/delete memory here. It does not retrain a model or automatically retain document contents.')}</p><p class="note">${Object.entries(service.ai||{}).map(([id,c])=>`${aiProviderName(id)}: ${c.enabled?L('key tersedia','key configured'):L('belum dikonfigurasi','not configured')}`).join(' · ')||L('Periksa koneksi server untuk melihat konfigurasi API.','Check server connection to see API configuration.')}</p>`),d=>{const next={...state.assistant,provider:d.provider,consent:!!d.consent,shareFinancial:!!d.shareFinancial,useMemory:!!d.useMemory,memory:CHAT.memory(d.memory),mode:'auto'};CHAT.validate(next);state.assistant=next;});}
+  function aiSettings(){openModal(L('Asisten INVEYS','INVEYS assistant'),form(`<p class="note">${L('API key disimpan di server lokal. Pilih penyedia, lalu izinkan pengiriman pesan dan lampiran.','API keys stay on the local server. Select a provider and allow messages and attachments to be sent.')}</p>${field(L('Penyedia','Provider'),'provider','','select',CHAT.providers.map(id=>`<option value="${id}" ${state.assistant.provider===id?'selected':''}>${aiProviderName(id)}</option>`).join(''))}<label><input name="consent" type="checkbox" ${state.assistant.consent?'checked':''}> ${L('Izinkan pesan, riwayat percakapan tampilan ini dan lampiran dikirim ke penyedia yang saya pilih','Allow messages, conversation history for this view and attachments to my selected provider')}</label><label><input name="shareFinancial" type="checkbox" ${state.assistant.shareFinancial?'checked':''}> ${L('Sertakan ringkasan keuangan tampilan aktif','Include the active view’s financial summary')}</label><label><input name="useMemory" type="checkbox" ${state.assistant.useMemory?'checked':''}> ${L('Gunakan preferensi tersimpan sebagai konteks','Use saved preferences as context')}</label><label>${L('Memori preferensi · satu per baris','Preference memory · one per line')}<textarea name="memory" rows="5" maxlength="15500">${escape(state.assistant.memory.join('\n'))}</textarea></label><p class="note">${L('Memori dapat diedit/dihapus di sini. Tidak melatih ulang model atau menyimpan isi dokumen otomatis.','Edit/delete memory here. It does not retrain a model or automatically retain document contents.')}</p><p class="note">${Object.entries(service.ai||{}).map(([id,c])=>`${aiProviderName(id)}: ${c.enabled?L('key tersedia','key configured'):L('belum dikonfigurasi','not configured')}`).join(' · ')||L('Periksa koneksi server untuk melihat konfigurasi API.','Check server connection to see API configuration.')}</p><div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);display:flex;justify-content:flex-end">${button(L('🔑 Atur Kunci API AI & Bot Telegram','🔑 Configure AI API Keys & Telegram Bot'),'api-keys:gemini')}</div>`),d=>{const next={...state.assistant,provider:d.provider,consent:!!d.consent,shareFinancial:!!d.shareFinancial,useMemory:!!d.useMemory,memory:CHAT.memory(d.memory),mode:'auto'};CHAT.validate(next);state.assistant=next;});}
   async function aiSend(text,accountId){
     if(aiBusy){toast(L('Tunggu jawaban selesai.','Wait for the reply.'));return;}
     const cfg=structuredClone(state.assistant),file=quickAttachment,scope=CHAT.scope(state),generation=aiGeneration;
@@ -2738,6 +2749,720 @@
     save();
     render();
     toast(L(`Berhasil mengimpor ${importedCount} aset crypto dari ${data.exchangeName}!`, `Successfully imported ${importedCount} crypto holdings from ${data.exchangeName}!`));
+  }
+
+  let cachedApiKeys = null;
+
+  async function openApiKeysModal(targetTab = 'all') {
+    try {
+      cachedApiKeys = await api('keys');
+    } catch (e) {
+      cachedApiKeys = {
+        gemini: { configured: !!service.ai?.gemini?.enabled, keyMasked: '', model: 'gemini-3.8-flash' },
+        openai: { configured: !!service.ai?.openai?.enabled, keyMasked: '', model: 'gpt-4.1-mini' },
+        ninerouter: { configured: !!service.ai?.['9router']?.enabled, keyMasked: '', model: 'claude-3-5-sonnet', baseUrl: 'http://127.0.0.1:20128/v1' },
+        muse: { configured: !!service.ai?.muse?.enabled, keyMasked: '', model: 'muse-spark-1.3' },
+        telegram: { configured: !!service.telegram, tokenMasked: '', chatId: '' }
+      };
+    }
+    renderApiKeysModalView(targetTab || 'all');
+  }
+
+  function renderApiKeysModalView(currentTab = 'all') {
+    const k = cachedApiKeys || {};
+    const gemini = k.gemini || {};
+    const openai = k.openai || {};
+    const nine = k.ninerouter || {};
+    const muse = k.muse || {};
+    const tg = k.telegram || {};
+
+    const activeCount = [gemini, openai, nine, muse, tg].filter(x => x.configured).length;
+    const totalCount = 5;
+
+    const tabs = [
+      { id: 'all', icon: '📋', name: L('Ringkasan', 'Overview'), badge: `${activeCount}/${totalCount}`, online: false },
+      { id: 'gemini', icon: '🤖', name: 'Gemini', online: !!gemini.configured },
+      { id: 'openai', icon: '🧠', name: 'OpenAI', online: !!openai.configured },
+      { id: 'ninerouter', icon: '🔀', name: '9Router', online: !!nine.configured },
+      { id: 'muse', icon: '🌌', name: 'Meta AI', online: !!muse.configured },
+      { id: 'telegram', icon: '💬', name: 'Telegram Bot', online: !!tg.configured }
+    ];
+
+    const tabsHtml = `
+      <div class="key-tabs-bar" role="tablist">
+        ${tabs.map(t => `
+          <button type="button" class="key-tab-btn ${t.id === currentTab ? 'active' : ''}" data-action="api-key-tab:${t.id}" role="tab" aria-selected="${t.id === currentTab}">
+            <span class="key-tab-icon">${t.icon}</span>
+            <span class="key-tab-name">${t.name}</span>
+            ${t.badge ? `<span class="key-tab-badge">${t.badge}</span>` : ''}
+            ${t.id !== 'all' ? `<span class="key-tab-dot ${t.online ? 'online' : ''}"></span>` : ''}
+          </button>
+        `).join('')}
+      </div>
+    `;
+
+    const eyeIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+
+    // --- Tab 1: Gemini ---
+    const geminiPane = `
+      <div class="key-pane ${currentTab === 'gemini' ? 'active' : ''}" id="pane-gemini">
+        <div class="key-card ${gemini.configured ? 'configured' : ''}">
+          <div class="key-card-banner">
+            <div class="key-provider-meta">
+              <span class="key-provider-icon">🤖</span>
+              <div>
+                <div class="key-provider-name">Google Gemini AI</div>
+                <div class="key-provider-sub">Google AI Studio · Multimodal OCR, Audio & Fast Financial Analysis</div>
+              </div>
+            </div>
+            <span class="key-status-pill ${gemini.configured ? 'online' : 'standby'}">
+              ${gemini.configured ? L('● Terkonfigurasi', '● Configured') : L('● Belum Dikonfigurasi', '● Not Configured')}
+            </span>
+          </div>
+
+          ${gemini.configured ? `
+            <div class="key-active-preview">
+              <span>${L('Kunci Aktif:', 'Active Key:')} <code>${escape(gemini.keyMasked || '••••••••••••••••')}</code></span>
+              <button type="button" class="key-btn" data-action="api-key-reveal:gemini">👁️ ${L('Intip Kunci', 'Reveal')}</button>
+            </div>
+          ` : ''}
+
+          <div class="key-guide-note">
+            <span>💡</span>
+            <div><b>${L('Dapatkan API Key Google Gemini:','Get Google Gemini API Key:')}</b> ${L('Buka Google AI Studio di <b>aistudio.google.com</b>, klik <b>Get API key</b>, lalu salin kunci ke kolom di bawah. Model Gemini 3.8 Flash sangat cepat untuk pembacaan struk dan e-statement bank.','Open Google AI Studio at <b>aistudio.google.com</b>, click <b>Get API key</b>, and paste below. Gemini 3.8 Flash is optimized for fast receipt and bank statement reading.')}</div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-val-gemini">
+              <span>${L('API Key Gemini:','Gemini API Key:')}</span>
+              <small>${gemini.configured ? L('(Kosongkan jika tidak ingin mengubah)','(Leave blank to keep current)') : L('(Wajib diisi)','(Required)')}</small>
+            </label>
+            <div class="key-input-wrapper">
+              <input type="password" id="key-val-gemini" placeholder="${gemini.configured ? L('Biarkan kosong untuk mempertahankan kunci saat ini…','Leave blank to keep current key…') : 'AIzaSy...'}">
+              <button type="button" class="key-input-toggle" data-action="api-key-toggle-eye:key-val-gemini" title="${L('Tampilkan/Sembunyikan','Show/Hide')}">${eyeIcon}</button>
+            </div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-model-gemini"><span>${L('Pilihan Model Gemini:','Gemini Model:')}</span></label>
+            <select class="key-select" id="key-model-gemini">
+              <option value="gemini-3.8-flash" ${gemini.model==='gemini-3.8-flash'?'selected':''}>gemini-3.8-flash (${L('Tercepat, Multimodal & Rekomendasi Utama','Fastest, Multimodal & Primary')})</option>
+              <option value="gemini-2.5-flash" ${gemini.model==='gemini-2.5-flash'?'selected':''}>gemini-2.5-flash</option>
+              <option value="gemini-2.5-pro" ${gemini.model==='gemini-2.5-pro'?'selected':''}>gemini-2.5-pro (${L('Penalaran Keuangan Kompleks','Complex Financial Reasoning')})</option>
+            </select>
+          </div>
+
+          <div id="key-feedback-gemini" class="key-test-feedback"></div>
+
+          <div class="key-actions-row">
+            <button type="button" class="key-btn primary" data-action="api-key-save:gemini">💾 ${L('Simpan Kunci Gemini','Save Gemini Key')}</button>
+            <button type="button" class="key-btn test" data-action="api-key-test:gemini">⚡ ${L('Uji Koneksi','Test Connection')}</button>
+            ${gemini.configured ? `<button type="button" class="key-btn danger key-btn-delete" data-action="api-key-delete:gemini">🗑️ ${L('Hapus Kunci','Delete Key')}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // --- Tab 2: OpenAI ---
+    const openaiPane = `
+      <div class="key-pane ${currentTab === 'openai' ? 'active' : ''}" id="pane-openai">
+        <div class="key-card ${openai.configured ? 'configured' : ''}">
+          <div class="key-card-banner">
+            <div class="key-provider-meta">
+              <span class="key-provider-icon">🧠</span>
+              <div>
+                <div class="key-provider-name">OpenAI API</div>
+                <div class="key-provider-sub">OpenAI Platform · GPT-4.1 Mini, GPT-4o & Whisper Audio Transcription</div>
+              </div>
+            </div>
+            <span class="key-status-pill ${openai.configured ? 'online' : 'standby'}">
+              ${openai.configured ? L('● Terkonfigurasi', '● Configured') : L('● Belum Dikonfigurasi', '● Not Configured')}
+            </span>
+          </div>
+
+          ${openai.configured ? `
+            <div class="key-active-preview">
+              <span>${L('Kunci Aktif:', 'Active Key:')} <code>${escape(openai.keyMasked || '••••••••••••••••')}</code></span>
+              <button type="button" class="key-btn" data-action="api-key-reveal:openai">👁️ ${L('Intip Kunci', 'Reveal')}</button>
+            </div>
+          ` : ''}
+
+          <div class="key-guide-note">
+            <span>💡</span>
+            <div><b>${L('Dapatkan API Key OpenAI:','Get OpenAI API Key:')}</b> ${L('Buka dashboard OpenAI di <b>platform.openai.com/api-keys</b>, buat API Key baru (format <code>sk-...</code>), lalu tempelkan di bawah.','Open OpenAI dashboard at <b>platform.openai.com/api-keys</b>, create a new API Key (starts with <code>sk-...</code>), then paste below.')}</div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-val-openai">
+              <span>${L('API Key OpenAI:','OpenAI API Key:')}</span>
+              <small>${openai.configured ? L('(Kosongkan jika tidak ingin mengubah)','(Leave blank to keep current)') : L('(Wajib diisi)','(Required)')}</small>
+            </label>
+            <div class="key-input-wrapper">
+              <input type="password" id="key-val-openai" placeholder="${openai.configured ? L('Biarkan kosong untuk mempertahankan kunci saat ini…','Leave blank to keep current key…') : 'sk-proj-...'}">
+              <button type="button" class="key-input-toggle" data-action="api-key-toggle-eye:key-val-openai" title="${L('Tampilkan/Sembunyikan','Show/Hide')}">${eyeIcon}</button>
+            </div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-model-openai"><span>${L('Pilihan Model OpenAI:','OpenAI Model:')}</span></label>
+            <select class="key-select" id="key-model-openai">
+              <option value="gpt-4.1-mini" ${openai.model==='gpt-4.1-mini'?'selected':''}>gpt-4.1-mini (${L('Efisien, Cepat & Cerdas — Default','Efficient & Fast - Default')})</option>
+              <option value="gpt-4o" ${openai.model==='gpt-4o'?'selected':''}>gpt-4o (${L('Model Unggulan Multimodal','Flagship Multimodal')})</option>
+              <option value="gpt-4o-mini" ${openai.model==='gpt-4o-mini'?'selected':''}>gpt-4o-mini</option>
+              <option value="o3-mini" ${openai.model==='o3-mini'?'selected':''}>o3-mini (${L('Penalaran Tingkat Tinggi','High Reasoning')})</option>
+            </select>
+          </div>
+
+          <div id="key-feedback-openai" class="key-test-feedback"></div>
+
+          <div class="key-actions-row">
+            <button type="button" class="key-btn primary" data-action="api-key-save:openai">💾 ${L('Simpan Kunci OpenAI','Save OpenAI Key')}</button>
+            <button type="button" class="key-btn test" data-action="api-key-test:openai">⚡ ${L('Uji Koneksi','Test Connection')}</button>
+            ${openai.configured ? `<button type="button" class="key-btn danger key-btn-delete" data-action="api-key-delete:openai">🗑️ ${L('Hapus Kunci','Delete Key')}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // --- Tab 3: 9Router ---
+    const ninePane = `
+      <div class="key-pane ${currentTab === 'ninerouter' ? 'active' : ''}" id="pane-ninerouter">
+        <div class="key-card ${nine.configured ? 'configured' : ''}">
+          <div class="key-card-banner">
+            <div class="key-provider-meta">
+              <span class="key-provider-icon">🔀</span>
+              <div>
+                <div class="key-provider-name">9Router Gateway</div>
+                <div class="key-provider-sub">Self-hosted OpenAI-Compatible Reverse Gateway (Claude, DeepSeek, dll.)</div>
+              </div>
+            </div>
+            <span class="key-status-pill ${nine.configured ? 'online' : 'standby'}">
+              ${nine.configured ? L('● Terkonfigurasi', '● Configured') : L('● Belum Dikonfigurasi', '● Not Configured')}
+            </span>
+          </div>
+
+          ${nine.configured ? `
+            <div class="key-active-preview">
+              <span>${L('Kunci Aktif:', 'Active Key:')} <code>${escape(nine.keyMasked || '••••••••••••••••')}</code></span>
+              <button type="button" class="key-btn" data-action="api-key-reveal:ninerouter">👁️ ${L('Intip Kunci', 'Reveal')}</button>
+            </div>
+          ` : ''}
+
+          <div class="key-guide-note">
+            <span>💡</span>
+            <div><b>${L('9Router Gateway Terpadu:','Integrated 9Router Gateway:')}</b> ${L('Gunakan endpoint lokal OpenAI-compatible Anda (contoh: <code>http://127.0.0.1:20128/v1</code>) untuk mengakses Claude 3.5 Sonnet, DeepSeek, atau model kustom lainnya.','Connect via local OpenAI-compatible endpoint (e.g. <code>http://127.0.0.1:20128/v1</code>) to access Claude 3.5 Sonnet, DeepSeek, or custom combo models.')}</div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-val-ninerouter">
+              <span>${L('API Key 9Router:','9Router API Key:')}</span>
+              <small>${nine.configured ? L('(Kosongkan jika tidak ingin mengubah)','(Leave blank to keep current)') : L('(Wajib diisi)','(Required)')}</small>
+            </label>
+            <div class="key-input-wrapper">
+              <input type="password" id="key-val-ninerouter" placeholder="${nine.configured ? L('Biarkan kosong untuk mempertahankan kunci saat ini…','Leave blank to keep current key…') : 'sk-...'}">
+              <button type="button" class="key-input-toggle" data-action="api-key-toggle-eye:key-val-ninerouter" title="${L('Tampilkan/Sembunyikan','Show/Hide')}">${eyeIcon}</button>
+            </div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-model-ninerouter"><span>${L('Model / Combo ID 9Router:','9Router Model / Combo ID:')}</span></label>
+            <input type="text" class="key-input" id="key-model-ninerouter" list="presets-ninerouter" value="${escape(nine.model || 'claude-3-5-sonnet')}" placeholder="claude-3-5-sonnet, deepseek-chat, gpt-4o...">
+            <datalist id="presets-ninerouter">
+              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="deepseek-chat">DeepSeek Chat</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+            </datalist>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-baseurl-9router"><span>${L('Base URL Endpoint (akhiri dengan /v1):','Base URL Endpoint (ending in /v1):')}</span></label>
+            <input type="text" class="key-input" id="key-baseurl-9router" value="${escape(nine.baseUrl || 'http://127.0.0.1:20128/v1')}" placeholder="http://127.0.0.1:20128/v1">
+          </div>
+
+          <div id="key-feedback-ninerouter" class="key-test-feedback"></div>
+
+          <div class="key-actions-row">
+            <button type="button" class="key-btn primary" data-action="api-key-save:ninerouter">💾 ${L('Simpan Kunci 9Router','Save 9Router Key')}</button>
+            <button type="button" class="key-btn test" data-action="api-key-test:ninerouter">⚡ ${L('Uji Koneksi','Test Connection')}</button>
+            ${nine.configured ? `<button type="button" class="key-btn danger key-btn-delete" data-action="api-key-delete:ninerouter">🗑️ ${L('Hapus Kunci','Delete Key')}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // --- Tab 4: Muse ---
+    const musePane = `
+      <div class="key-pane ${currentTab === 'muse' ? 'active' : ''}" id="pane-muse">
+        <div class="key-card ${muse.configured ? 'configured' : ''}">
+          <div class="key-card-banner">
+            <div class="key-provider-meta">
+              <span class="key-provider-icon">🌌</span>
+              <div>
+                <div class="key-provider-name">Meta AI / Muse Spark</div>
+                <div class="key-provider-sub">Muse Financial Explainer & Audio Transcriptions</div>
+              </div>
+            </div>
+            <span class="key-status-pill ${muse.configured ? 'online' : 'standby'}">
+              ${muse.configured ? L('● Terkonfigurasi', '● Configured') : L('● Belum Dikonfigurasi', '● Not Configured')}
+            </span>
+          </div>
+
+          ${muse.configured ? `
+            <div class="key-active-preview">
+              <span>${L('Kunci Aktif:', 'Active Key:')} <code>${escape(muse.keyMasked || '••••••••••••••••')}</code></span>
+              <button type="button" class="key-btn" data-action="api-key-reveal:muse">👁️ ${L('Intip Kunci', 'Reveal')}</button>
+            </div>
+          ` : ''}
+
+          <div class="key-guide-note">
+            <span>💡</span>
+            <div><b>${L('Meta AI / Muse Spark:','Meta AI / Muse Spark:')}</b> ${L('Gunakan endpoint lokal vLLM atau API key model Meta Llama (contoh: <code>llama-3.3-70b-instruct</code>, <code>muse-spark-1.3</code>). Model ini menggerakkan narasi analisis keuangan dan transkripsi suara.','Connect a compatible Meta AI / vLLM / Llama endpoint or API key (e.g. <code>muse-spark-1.3</code>, <code>llama-3.3-70b-instruct</code>) to power financial narrative reviews and audio transcriptions.')}</div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-val-muse">
+              <span>${L('API Key Meta AI (Muse):','Meta AI (Muse) API Key:')}</span>
+              <small>${muse.configured ? L('(Kosongkan jika tidak ingin mengubah)','(Leave blank to keep current)') : L('(Wajib diisi)','(Required)')}</small>
+            </label>
+            <div class="key-input-wrapper">
+              <input type="password" id="key-val-muse" placeholder="${muse.configured ? L('Biarkan kosong untuk mempertahankan kunci saat ini…','Leave blank to keep current key…') : 'API Key...'}">
+              <button type="button" class="key-input-toggle" data-action="api-key-toggle-eye:key-val-muse" title="${L('Tampilkan/Sembunyikan','Show/Hide')}">${eyeIcon}</button>
+            </div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-model-muse"><span>${L('Model Meta AI (Muse):','Meta AI Model:')}</span></label>
+            <input type="text" class="key-input" id="key-model-muse" list="presets-muse" value="${escape(muse.model || 'muse-spark-1.3')}" placeholder="muse-spark-1.3">
+            <datalist id="presets-muse">
+              <option value="muse-spark-1.3">muse-spark-1.3 (Default)</option>
+              <option value="llama-3.3-70b-instruct">llama-3.3-70b-instruct</option>
+              <option value="meta-llama-3.1-8b">meta-llama-3.1-8b</option>
+            </datalist>
+          </div>
+
+          <div id="key-feedback-muse" class="key-test-feedback"></div>
+
+          <div class="key-actions-row">
+            <button type="button" class="key-btn primary" data-action="api-key-save:muse">💾 ${L('Simpan Kunci Muse','Save Muse Key')}</button>
+            <button type="button" class="key-btn test" data-action="api-key-test:muse">⚡ ${L('Uji Koneksi','Test Connection')}</button>
+            ${muse.configured ? `<button type="button" class="key-btn danger key-btn-delete" data-action="api-key-delete:muse">🗑️ ${L('Hapus Kunci','Delete Key')}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // --- Tab 5: Telegram Bot ---
+    const tgPane = `
+      <div class="key-pane ${currentTab === 'telegram' ? 'active' : ''}" id="pane-telegram">
+        <div class="key-card ${tg.configured ? 'configured' : ''}">
+          <div class="key-card-banner">
+            <div class="key-provider-meta">
+              <span class="key-provider-icon">💬</span>
+              <div>
+                <div class="key-provider-name">Telegram Bot Integration</div>
+                <div class="key-provider-sub">${L('Kirim pesan transaksi & terima pengingat langsung di Telegram HP Anda','Send transactions & receive card reminders directly on your mobile Telegram')}</div>
+              </div>
+            </div>
+            <span class="key-status-pill ${tg.configured ? 'online' : 'standby'}">
+              ${tg.configured ? L('● Terhubung', '● Connected') : L('● Belum Dikonfigurasi', '● Not Configured')}
+            </span>
+          </div>
+
+          ${tg.configured ? `
+            <div class="key-active-preview">
+              <div>
+                <div>${L('Token Bot Aktif:', 'Active Bot Token:')} <code>${escape(tg.tokenMasked || '••••••••••••••••')}</code></div>
+                <div style="margin-top:4px">${L('Chat ID:', 'Chat ID:')} <code>${escape(tg.chatId || '-')}</code></div>
+              </div>
+              <button type="button" class="key-btn" data-action="api-key-reveal:telegram">👁️ ${L('Intip Token', 'Reveal')}</button>
+            </div>
+          ` : ''}
+
+          <div class="key-guide-note">
+            <span>💡</span>
+            <div>
+              <b>${L('Panduan Cepat Setup Telegram Bot:','Quick Telegram Bot Setup:')}</b>
+              <ol style="margin:6px 0 0;padding-left:18px;line-height:1.6">
+                <li>${L('Buka Telegram, cari akun <b>@BotFather</b>, lalu kirim perintah <code>/newbot</code>.','Open Telegram, message <b>@BotFather</b> with <code>/newbot</code>.')}</li>
+                <li>${L('Ikuti instruksi untuk memberi nama bot Anda. Salin <b>HTTP API Token</b> ke kolom di bawah.','Follow instructions to name your bot. Copy the <b>HTTP API Token</b> below.')}</li>
+                <li>${L('Cari bot <b>@userinfobot</b> di Telegram, kirim pesan apa saja untuk mendapatkan <b>Id</b> numerik Anda.','Message <b>@userinfobot</b> on Telegram to find your numeric account <b>Id</b>.')}</li>
+                <li>${L('Masukkan ID angka tersebut ke kolom <b>Chat ID Pribadi</b> di bawah.','Enter that number into <b>Private Chat ID</b> below.')}</li>
+                <li>${L('Buka bot Anda di Telegram dan tekan <b>Start</b> agar bot dapat mengirim pesan.','Open your new bot in Telegram and press <b>Start</b>.')}</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-val-telegram">
+              <span>${L('Telegram Bot Token:','Telegram Bot Token:')}</span>
+              <small>${tg.configured ? L('(Kosongkan jika tidak ingin mengubah)','(Leave blank to keep current)') : L('(Format: 123456789:ABCdef...)','(Format: 123456789:ABCdef...)')}</small>
+            </label>
+            <div class="key-input-wrapper">
+              <input type="password" id="key-val-telegram" placeholder="${tg.configured ? L('Biarkan kosong untuk mempertahankan token saat ini…','Leave blank to keep current token…') : '123456789:ABCdefGHIjklMNO...'}">
+              <button type="button" class="key-input-toggle" data-action="api-key-toggle-eye:key-val-telegram" title="${L('Tampilkan/Sembunyikan','Show/Hide')}">${eyeIcon}</button>
+            </div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-chatid-telegram">
+              <span>${L('Private Telegram Chat ID:','Private Telegram Chat ID:')}</span>
+              <small>${L('(ID akun pribadi Anda)','(Your private numerical ID)')}</small>
+            </label>
+            <input type="text" class="key-input" id="key-chatid-telegram" value="${escape(tg.chatId || '')}" placeholder="Contoh: 123456789" maxlength="32">
+          </div>
+
+          <div id="key-feedback-telegram" class="key-test-feedback"></div>
+
+          <div class="key-actions-row">
+            <button type="button" class="key-btn primary" data-action="api-key-save:telegram">💾 ${L('Simpan Token & Chat ID','Save Bot Token & Chat ID')}</button>
+            <button type="button" class="key-btn test" data-action="api-key-test:telegram">⚡ ${L('Uji Bot Telegram','Test Telegram Bot')}</button>
+            ${tg.configured ? `<button type="button" class="key-btn danger key-btn-delete" data-action="api-key-delete:telegram">🗑️ ${L('Hapus Konfigurasi Bot','Delete Bot Config')}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // --- Tab 6: Overview (All) ---
+    const allPane = `
+      <div class="key-pane ${currentTab === 'all' ? 'active' : ''}" id="pane-all">
+        <div class="key-overview-header">
+          <div class="key-overview-stats">
+            <span class="key-stat-chip active"><i class="key-tab-dot online"></i> ${activeCount} ${L('Saluran Aktif','Active')}</span>
+            <span class="key-stat-chip standby"><i class="key-tab-dot"></i> ${totalCount - activeCount} ${L('Standby','Standby')}</span>
+          </div>
+          <button type="button" class="key-btn test" data-action="api-key-ping-all">⚡ ${L('Uji Semua Saluran','Ping All Channels')}</button>
+        </div>
+
+        <div class="key-overview-grid">
+          <!-- Gemini -->
+          <div class="key-ov-card ${gemini.configured ? 'configured' : ''}">
+            <div class="key-ov-head">
+              <span class="key-ov-title"><span>🤖</span> Google Gemini</span>
+              <span class="key-status-pill ${gemini.configured ? 'online' : 'standby'}">${gemini.configured ? '● Online' : '● Standby'}</span>
+            </div>
+            <div class="key-ov-body">
+              <div><b>Model:</b> <code class="key-chip">${escape(gemini.model || 'gemini-3.8-flash')}</code></div>
+              <div><b>Kunci:</b> <code class="key-chip">${escape(gemini.keyMasked || L('Belum diatur','Not configured'))}</code></div>
+            </div>
+            <div class="key-ov-actions">
+              <button type="button" class="key-btn key-btn-sm" data-action="api-key-tab:gemini">✏️ ${L('Atur Kunci','Configure')}</button>
+              ${gemini.configured ? `<button type="button" class="key-btn danger key-btn-sm" data-action="api-key-delete:gemini" title="${L('Hapus Kunci','Delete')}">🗑️</button>` : ''}
+            </div>
+          </div>
+
+          <!-- OpenAI -->
+          <div class="key-ov-card ${openai.configured ? 'configured' : ''}">
+            <div class="key-ov-head">
+              <span class="key-ov-title"><span>🧠</span> OpenAI API</span>
+              <span class="key-status-pill ${openai.configured ? 'online' : 'standby'}">${openai.configured ? '● Online' : '● Standby'}</span>
+            </div>
+            <div class="key-ov-body">
+              <div><b>Model:</b> <code class="key-chip">${escape(openai.model || 'gpt-4.1-mini')}</code></div>
+              <div><b>Kunci:</b> <code class="key-chip">${escape(openai.keyMasked || L('Belum diatur','Not configured'))}</code></div>
+            </div>
+            <div class="key-ov-actions">
+              <button type="button" class="key-btn key-btn-sm" data-action="api-key-tab:openai">✏️ ${L('Atur Kunci','Configure')}</button>
+              ${openai.configured ? `<button type="button" class="key-btn danger key-btn-sm" data-action="api-key-delete:openai" title="${L('Hapus Kunci','Delete')}">🗑️</button>` : ''}
+            </div>
+          </div>
+
+          <!-- 9Router -->
+          <div class="key-ov-card ${nine.configured ? 'configured' : ''}">
+            <div class="key-ov-head">
+              <span class="key-ov-title"><span>🔀</span> 9Router Gateway</span>
+              <span class="key-status-pill ${nine.configured ? 'online' : 'standby'}">${nine.configured ? '● Online' : '● Standby'}</span>
+            </div>
+            <div class="key-ov-body">
+              <div><b>Model:</b> <code class="key-chip">${escape(nine.model || 'claude-3-5-sonnet')}</code></div>
+              <div><b>Kunci:</b> <code class="key-chip">${escape(nine.keyMasked || L('Belum diatur','Not configured'))}</code></div>
+            </div>
+            <div class="key-ov-actions">
+              <button type="button" class="key-btn key-btn-sm" data-action="api-key-tab:ninerouter">✏️ ${L('Atur Kunci','Configure')}</button>
+              ${nine.configured ? `<button type="button" class="key-btn danger key-btn-sm" data-action="api-key-delete:ninerouter" title="${L('Hapus Kunci','Delete')}">🗑️</button>` : ''}
+            </div>
+          </div>
+
+          <!-- Telegram Bot -->
+          <div class="key-ov-card ${tg.configured ? 'configured' : ''}">
+            <div class="key-ov-head">
+              <span class="key-ov-title"><span>💬</span> Telegram Bot</span>
+              <span class="key-status-pill ${tg.configured ? 'online' : 'standby'}">${tg.configured ? '● Terhubung' : '● Standby'}</span>
+            </div>
+            <div class="key-ov-body">
+              <div><b>Token:</b> <code class="key-chip">${escape(tg.tokenMasked || L('Belum diatur','Not configured'))}</code></div>
+              <div><b>Chat ID:</b> <code class="key-chip">${escape(tg.chatId || '-')}</code></div>
+            </div>
+            <div class="key-ov-actions">
+              <button type="button" class="key-btn key-btn-sm" data-action="api-key-tab:telegram">✏️ ${L('Atur Bot','Configure')}</button>
+              ${tg.configured ? `<button type="button" class="key-btn danger key-btn-sm" data-action="api-key-delete:telegram" title="${L('Hapus Konfigurasi','Delete')}">🗑️</button>` : ''}
+            </div>
+          </div>
+
+          <!-- Muse -->
+          <div class="key-ov-card ${muse.configured ? 'configured' : ''}">
+            <div class="key-ov-head">
+              <span class="key-ov-title"><span>🌌</span> Meta AI (Muse)</span>
+              <span class="key-status-pill ${muse.configured ? 'online' : 'standby'}">${muse.configured ? '● Online' : '● Standby'}</span>
+            </div>
+            <div class="key-ov-body">
+              <div><b>Model:</b> <code class="key-chip">${escape(muse.model || 'muse-spark-1.3')}</code></div>
+              <div><b>Kunci:</b> <code class="key-chip">${escape(muse.keyMasked || L('Belum diatur','Not configured'))}</code></div>
+            </div>
+            <div class="key-ov-actions">
+              <button type="button" class="key-btn key-btn-sm" data-action="api-key-tab:muse">✏️ ${L('Atur Kunci','Configure')}</button>
+              ${muse.configured ? `<button type="button" class="key-btn danger key-btn-sm" data-action="api-key-delete:muse" title="${L('Hapus Kunci','Delete')}">🗑️</button>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const modalBody = `
+      <div class="key-mgr-dialog">
+        <div class="key-mgr-head">
+          <div class="key-mgr-title-area">
+            <div class="key-mgr-avatar">🔑</div>
+            <div>
+              <div class="key-mgr-eyebrow">${L('KREDENSIAL & KEAMANAN', 'CREDENTIALS & SECURITY')}</div>
+              <h2>${L('Kelola Kunci API & Telegram Bot','Manage API Keys & Telegram Bot')}</h2>
+              <p>${L('Tambah, edit, uji, dan simpan kunci langsung di aplikasi. Kredensial tersimpan aman di server lokal.','Add, edit, test, and save keys directly in-app. Credentials stay secure on your local server.')}</p>
+            </div>
+          </div>
+          <div class="key-mgr-head-actions">
+            <div class="key-vault-badge">
+              <span class="key-vault-dot"></span>
+              <span>${L('Server Lokal Terproteksi','Local Server Protected')}</span>
+            </div>
+            <button type="button" class="icon-button key-close-btn" data-action="modal-close" aria-label="${L('Tutup','Close')}">✕</button>
+          </div>
+        </div>
+        ${tabsHtml}
+        <div class="key-mgr-content">
+          ${allPane}
+          ${geminiPane}
+          ${openaiPane}
+          ${ninePane}
+          ${musePane}
+          ${tgPane}
+        </div>
+      </div>
+    `;
+
+    openModal(L('Kelola Kunci API & Telegram Bot','Manage API Keys & Telegram Bot'), modalBody);
+  }
+
+  async function handleSaveKey(prov) {
+    const btn = document.querySelector(`[data-action="api-key-save:${prov}"]`);
+    const feedback = $(`#key-feedback-${prov}`);
+    if (btn) btn.classList.add('saving');
+    if (feedback) {
+      feedback.className = 'key-test-feedback active loading';
+      feedback.innerHTML = `<span class="key-radar-spinner"></span> ${L('Menyimpan konfigurasi ke server lokal…','Saving configuration to local server…')}`;
+    }
+
+    let payload = { action: 'save', provider: prov };
+    if (prov === 'telegram') {
+      const token = $(`#key-val-telegram`)?.value?.trim();
+      const chatId = $(`#key-chatid-telegram`)?.value?.trim();
+      if (token) payload.botToken = token;
+      if (chatId) payload.chatId = chatId;
+    } else {
+      const key = $(`#key-val-${prov}`)?.value?.trim();
+      const model = $(`#key-model-${prov}`)?.value?.trim();
+      if (key) payload.apiKey = key;
+      if (model) payload.model = model;
+      if (prov === '9router') {
+        const baseUrl = $(`#key-baseurl-9router`)?.value?.trim();
+        if (baseUrl) payload.baseUrl = baseUrl;
+      }
+    }
+
+    try {
+      const res = await api('keys', payload);
+      if (res.ok) {
+        if (res.ai) service.ai = res.ai;
+        if (res.telegram !== undefined) service.telegram = res.telegram;
+        cachedApiKeys = await api('keys');
+        if (feedback) {
+          feedback.className = 'key-test-feedback active success';
+          feedback.innerHTML = `<span>✅</span> <b>${L('Berhasil Disimpan!','Saved Successfully!')}</b> ${L('Kunci API kini aktif di server lokal dan database.','API key is now active on the local server and persistent database.')}`;
+        }
+        toast(L(`Kunci ${prov.toUpperCase()} berhasil disimpan!`, `${prov.toUpperCase()} key saved successfully!`));
+        setTimeout(() => renderApiKeysModalView(prov), 700);
+        if (['integrations', 'copilot', 'capture'].includes(page)) render();
+      }
+    } catch (err) {
+      if (feedback) {
+        feedback.className = 'key-test-feedback active error';
+        feedback.innerHTML = `<span>❌</span> <b>${L('Gagal menyimpan:','Save failed:')}</b> ${escape(err.message)}`;
+      }
+      toast(err.message);
+    } finally {
+      if (btn) btn.classList.remove('saving');
+    }
+  }
+
+  async function handleDeleteKey(prov) {
+    confirmAction(
+      L(`Hapus Kunci ${prov.toUpperCase()}?`, `Delete ${prov.toUpperCase()} Key?`),
+      L(`Kunci API ${prov.toUpperCase()} akan dihapus dari server lokal, database, dan file konfigurasi. Layanan ini akan dinonaktifkan sampai Anda memasukkan kunci baru. Lanjutkan?`, `The ${prov.toUpperCase()} API key will be deleted from the server, database, and env file. This service will be disabled until you enter a new key. Proceed?`),
+      async () => {
+        try {
+          toast(L('Menghapus kunci…', 'Deleting key…'));
+          const res = await api('keys', { action: 'delete', provider: prov });
+          if (res.ai) service.ai = res.ai;
+          if (res.telegram !== undefined) service.telegram = res.telegram;
+          cachedApiKeys = await api('keys');
+          toast(L(`Kunci ${prov.toUpperCase()} berhasil dihapus.`, `${prov.toUpperCase()} key deleted.`));
+          renderApiKeysModalView(prov);
+          if (['integrations', 'copilot', 'capture'].includes(page)) render();
+        } catch (err) {
+          toast(err.message);
+        }
+      },
+      L('Hapus Kunci', 'Delete Key')
+    );
+  }
+
+  async function handleTestKey(prov) {
+    const feedback = $(`#key-feedback-${prov}`);
+    if (feedback) {
+      feedback.className = 'key-test-feedback active loading';
+      feedback.innerHTML = `<span class="key-radar-spinner"></span> ${L('Menguji koneksi ke ' + prov.toUpperCase() + '…', 'Testing connection to ' + prov.toUpperCase() + '…')}`;
+    }
+
+    let payload = { action: 'test', provider: prov };
+    if (prov === 'telegram') {
+      const token = $(`#key-val-telegram`)?.value?.trim();
+      const chatId = $(`#key-chatid-telegram`)?.value?.trim();
+      if (token) payload.botToken = token;
+      if (chatId) payload.chatId = chatId;
+    } else {
+      const key = $(`#key-val-${prov}`)?.value?.trim();
+      const model = $(`#key-model-${prov}`)?.value?.trim();
+      if (key) payload.apiKey = key;
+      if (model) payload.model = model;
+      if (prov === '9router') {
+        const baseUrl = $(`#key-baseurl-9router`)?.value?.trim();
+        if (baseUrl) payload.baseUrl = baseUrl;
+      }
+    }
+
+    try {
+      const res = await api('keys', payload);
+      if (res.ok) {
+        if (feedback) {
+          feedback.className = 'key-test-feedback active success';
+          feedback.innerHTML = `<span>✅</span> <b>${escape(res.message || L('Koneksi berhasil!', 'Connection successful!'))}</b>`;
+        }
+        toast(res.message || L('Koneksi berhasil!', 'Connection successful!'));
+      } else {
+        if (feedback) {
+          feedback.className = 'key-test-feedback active error';
+          feedback.innerHTML = `<span>❌</span> <b>${escape(res.error || L('Koneksi gagal.', 'Connection failed.'))}</b>`;
+        }
+        toast(res.error || L('Koneksi gagal.', 'Connection failed.'));
+      }
+    } catch (err) {
+      if (feedback) {
+        feedback.className = 'key-test-feedback active error';
+        feedback.innerHTML = `<span>❌</span> <b>${L('Uji gagal: ', 'Test failed: ')}</b>${escape(err.message)}`;
+      }
+      toast(err.message);
+    }
+  }
+
+  async function handleRevealKey(prov) {
+    try {
+      toast(L('Mengambil kunci dari server terproteksi…', 'Fetching key from protected server…'));
+      const revealed = await api('keys?reveal=1');
+      if (prov === 'telegram') {
+        const raw = revealed.telegram?.rawToken;
+        const inp = $('#key-val-telegram');
+        if (inp && raw) {
+          inp.value = raw;
+          inp.type = 'text';
+        }
+      } else {
+        const raw = revealed[prov]?.rawKey;
+        const inp = $(`#key-val-${prov}`);
+        if (inp && raw) {
+          inp.value = raw;
+          inp.type = 'text';
+        }
+      }
+      toast(L('Kunci ditampilkan di formulir', 'Key revealed in input field'));
+    } catch (e) {
+      toast(e.message);
+    }
+  }
+
+  async function handlePingAll() {
+    toast(L('⚡ Menguji sinyal ke semua saluran aktif…', '⚡ Testing connection signals to all channels…'));
+    const providers = ['gemini', 'openai', 'ninerouter', 'muse', 'telegram'];
+    let results = [];
+    for (const p of providers) {
+      if (cachedApiKeys?.[p]?.configured) {
+        try {
+          const r = await api('keys', { action: 'test', provider: p });
+          results.push(`${p.toUpperCase()}: ${r.ok ? '✅ ' + (r.message || 'OK') : '❌ ' + (r.error || 'Gagal')}`);
+        } catch (e) {
+          results.push(`${p.toUpperCase()}: ❌ ${e.message}`);
+        }
+      }
+    }
+    if (!results.length) {
+      toast(L('Belum ada kunci API yang dikonfigurasi untuk diuji.', 'No API keys configured to test.'));
+    } else {
+      toast(L('Uji sinyal selesai!', 'Signal tests completed!'));
+      openModal(L('Hasil Uji Sinyal Saluran', 'Channel Signal Test Results'), `<div style="padding:8px 0;display:flex;flex-direction:column;gap:8px">${results.map(r => `<div style="padding:10px 12px;border-radius:8px;background:var(--paper);border:1px solid var(--line);font-size:12px">${escape(r)}</div>`).join('')}</div>`);
+    }
+  }
+
+  async function apiKeyAction(name, id, extra) {
+    if (name === 'api-keys') {
+      openApiKeysModal(id || 'all');
+      return;
+    }
+    if (name === 'api-key-tab') {
+      const tabs = document.querySelectorAll('.key-tab-btn');
+      const panes = document.querySelectorAll('.key-pane');
+      tabs.forEach(t => {
+        const isMatch = t.getAttribute('data-action') === `api-key-tab:${id}`;
+        t.classList.toggle('active', isMatch);
+        t.setAttribute('aria-selected', isMatch);
+      });
+      panes.forEach(p => {
+        p.classList.toggle('active', p.id === `pane-${id}`);
+      });
+      return;
+    }
+    if (name === 'api-key-toggle-eye') {
+      const inp = document.getElementById(id);
+      if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+      return;
+    }
+    if (name === 'api-key-save') {
+      await handleSaveKey(id);
+      return;
+    }
+    if (name === 'api-key-delete') {
+      await handleDeleteKey(id);
+      return;
+    }
+    if (name === 'api-key-test') {
+      await handleTestKey(id);
+      return;
+    }
+    if (name === 'api-key-reveal') {
+      await handleRevealKey(id);
+      return;
+    }
+    if (name === 'api-key-ping-all') {
+      await handlePingAll();
+      return;
+    }
   }
 
   function investmentGoldTracker(){
@@ -4156,7 +4881,7 @@
     `;
   }
 
-  function settings(){return header('Your information. Your control.','Manage your local workspace and take your records with you.','','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
+  function settings(){return header('Your information. Your control.','Manage your local workspace and take your records with you.','','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
   function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();save();syncPreferences();localize();}
   function refreshCharts(){
     if(page==='scenarios'){updateScenario();localize();return;}
@@ -4169,7 +4894,7 @@
   window.addEventListener('resize',refreshCharts);
   function field(label,name,value='',type='text',opts=''){return `<div class="field"><label for="field-${name}">${label}</label>${type==='select'?`<select name="${name}" id="field-${name}">${opts}</select>`:`<input id="field-${name}" name="${name}" type="${type}" value="${escape(value)}" ${type==='number'?'step="0.01"':''} ${opts}>`}</div>`;}
   const options=(values,selected)=>values.map(v=>`<option value="${escape(v)}" ${v===selected?'selected':''}>${escape(v)}</option>`).join('');
-  function openModal(title,body,handler=null){$('#modal-title').textContent=title;$('#modal-body').innerHTML=body;$('#modal').classList.toggle('has-monarch-tx',body.includes('monarch-tx-form'));if(!$('#modal').open)$('#modal').showModal();localize();const form=$('form',$('#modal'));if(form&&handler)form.addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form));try{handler(data);$('#modal').close();render();}catch(err){const errEl=$('#form-error',form)||$('#form-error');if(errEl)errEl.textContent=t(err.message);else toast(err.message);}});}
+  function openModal(title,body,handler=null){$('#modal-title').textContent=title;$('#modal-body').innerHTML=body;$('#modal').classList.toggle('has-monarch-tx',body.includes('monarch-tx-form'));$('#modal').classList.toggle('has-key-mgr',body.includes('key-mgr-dialog'));if(!$('#modal').open)$('#modal').showModal();localize();const form=$('form',$('#modal'));if(form&&handler)form.addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form));try{handler(data);$('#modal').close();render();}catch(err){const errEl=$('#form-error',form)||$('#form-error');if(errEl)errEl.textContent=t(err.message);else toast(err.message);}});}
   function form(fields,submit='Save',note=''){return `<form><div class="form-grid">${fields}</div>${note?`<p class="note">${note}</p>`:''}<p class="form-error" id="form-error" role="alert"></p><div class="form-actions"><button type="button" class="btn" data-action="modal-close">Cancel</button><button class="btn primary" type="submit">${submit}</button></div></form>`;}
   function requireText(v){const t=String(v||'').trim();if(!t)throw Error('A name is required.');return t.slice(0,120);}
   function positive(v,allowZero=false){const n=E.cents(v);if(n<0||(!allowZero&&n===0))throw Error('Enter a positive amount.');if(!Number.isSafeInteger(n))throw Error('Amount is too large.');return n;}
@@ -4719,7 +5444,7 @@
   function exportCSV(){const sanitize=v=>{let str=String(v??'');if(/^[=+@-]/.test(str))str="'"+str;return '"'+str.replaceAll('"','""')+'"';};const rows=[['Date','Description','Type','Amount','Currency','Account','Destination','Category'],...state.transactions.map(t=>[t.date,t.name,t.kind,(t.amount/100).toFixed(2),t.currency,getAccount(t.accountId)?.name||'',getAccount(t.targetId)?.name||'',t.category])];download('inveys-transactions.csv',rows.map(r=>r.map(sanitize).join(',')).join('\r\n'),'text/csv');toast('Transaction CSV exported.');}
   function importFile(file){if(!file)return;if(file.size>5000000){toast('Choose a JSON file smaller than 5 MB.');return;}file.text().then(text=>{const candidate=E.validate(JSON.parse(text));const p=E.position(candidate);confirmAction('Restore this workspace?',`${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, ${candidate.goals.length} goals. Reporting currency: ${escape(candidate.currency)}. This replaces all current local records. Export your current workspace first if needed.`,()=>{state=candidate;resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;toast('Workspace restored.');},'Replace workspace');}).catch(error=>toast('Import failed: '+error.message));}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
-  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'budget-setup':openBudgetSetupModal();break;
     case 'budget-edit':openBudgetSetupModal(id);break;
     case 'budget-remove':removeBudgetCategory(id);break;
