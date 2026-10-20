@@ -59,7 +59,31 @@ if [ "$DEPLOY_MODE" == "prod" ] || [ "$DEPLOY_MODE" == "production" ]; then
 elif [ "$DEPLOY_MODE" == "traefik" ]; then
     COMPOSE_FILE="docker-compose.traefik.yml"
     echo -e "${CYAN}[i] Menjalankan mode: Traefik Reverse Proxy (Docker Labels)${NC}"
+
+    # Load .env variables if present
+    if [ -f .env ]; then
+        set -a
+        source .env 2>/dev/null || true
+        set +a
+    fi
+
+    # Auto-detect Traefik network if not explicitly set or default
+    if [ -z "$TRAEFIK_NETWORK" ] || [ "$TRAEFIK_NETWORK" == "traefik_default" ]; then
+        DETECTED_NET=$(docker ps --filter "name=traefik" --format "{{.Networks}}" 2>/dev/null | tr ',' '\n' | head -n1)
+        if [ -n "$DETECTED_NET" ]; then
+            export TRAEFIK_NETWORK="$DETECTED_NET"
+            echo -e "${GREEN}[✓] Mendeteksi network Traefik otomatis dari kontainer: '$TRAEFIK_NETWORK'${NC}"
+        fi
+    fi
+
+    TARGET_NET="${TRAEFIK_NETWORK:-traefik_default}"
+    export TRAEFIK_NETWORK="$TARGET_NET"
+    if ! docker network inspect "$TARGET_NET" &>/dev/null; then
+        echo -e "${YELLOW}[!] Network Docker '$TARGET_NET' belum ada. Membuat network secara otomatis...${NC}"
+        docker network create "$TARGET_NET" || true
+    fi
 else
+    COMPOSE_FILE="docker-compose.yml"
     echo -e "${CYAN}[i] Menjalankan mode: Standalone HTTP (Port 3000)${NC}"
 fi
 
@@ -72,7 +96,11 @@ fi
 # 5. Build and Deploy Container
 echo -e "${CYAN}[i] Memulai proses kompilasi image dan startup kontainer...${NC}"
 $DOCKER_COMPOSE -f "$COMPOSE_FILE" build --pull
-$DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d
+if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d; then
+    echo -e "${RED}[ERROR] Gagal menyalakan kontainer.${NC}"
+    echo -e "Silakan periksa pesan error di atas."
+    exit 1
+fi
 
 # 6. Wait and Verify Healthcheck
 echo -e "${CYAN}[i] Menunggu status kesiapan kontainer (Healthcheck)...${NC}"
