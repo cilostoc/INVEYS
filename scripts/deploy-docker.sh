@@ -67,12 +67,31 @@ elif [ "$DEPLOY_MODE" == "traefik" ]; then
         set +a
     fi
 
+    # Sanitize TRAEFIK_NETWORK:
+    # Docker strictly requires a user-defined network for network-scoped aliases.
+    # Non-user-defined networks ('host', 'bridge', 'none') cause:
+    # "network-scoped aliases are only supported for user-defined networks"
+    if [ "$TRAEFIK_NETWORK" == "host" ] || [ "$TRAEFIK_NETWORK" == "bridge" ] || [ "$TRAEFIK_NETWORK" == "none" ]; then
+        echo -e "${YELLOW}[!] TRAEFIK_NETWORK bernilai '$TRAEFIK_NETWORK' (bukan user-defined network).${NC}"
+        echo -e "${YELLOW}[!] Mengalihkan ke network user-defined 'traefik_default'...${NC}"
+        unset TRAEFIK_NETWORK
+    fi
+
     # Auto-detect Traefik network if not explicitly set or default
     if [ -z "$TRAEFIK_NETWORK" ] || [ "$TRAEFIK_NETWORK" == "traefik_default" ]; then
-        DETECTED_NET=$(docker ps --filter "name=traefik" --format "{{.Networks}}" 2>/dev/null | tr ',' '\n' | head -n1)
-        if [ -n "$DETECTED_NET" ]; then
-            export TRAEFIK_NETWORK="$DETECTED_NET"
-            echo -e "${GREEN}[✓] Mendeteksi network Traefik otomatis dari kontainer: '$TRAEFIK_NETWORK'${NC}"
+        TRAEFIK_CONTAINER=$(docker ps --filter "name=traefik" --format "{{.Names}}" 2>/dev/null | head -n1)
+        if [ -n "$TRAEFIK_CONTAINER" ]; then
+            USER_NET=$(docker inspect --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' "$TRAEFIK_CONTAINER" 2>/dev/null | grep -v -E '^(host|bridge|none)$' | head -n1)
+            if [ -n "$USER_NET" ]; then
+                export TRAEFIK_NETWORK="$USER_NET"
+                echo -e "${GREEN}[✓] Mendeteksi user-defined network Traefik dari '$TRAEFIK_CONTAINER': '$TRAEFIK_NETWORK'${NC}"
+            else
+                echo -e "${CYAN}[i] Traefik ('$TRAEFIK_CONTAINER') berjalan dalam Host Network mode (network_mode: host).${NC}"
+                echo -e "${CYAN}[i] Menggunakan user-defined network 'traefik_default' untuk isolasi kontainer INVEYS.${NC}"
+                export TRAEFIK_NETWORK="traefik_default"
+            fi
+        else
+            export TRAEFIK_NETWORK="traefik_default"
         fi
     fi
 
@@ -95,6 +114,9 @@ fi
 
 # 5. Build and Deploy Container
 echo -e "${CYAN}[i] Memulai proses kompilasi image dan startup kontainer...${NC}"
+# Bersihkan kontainer lama atau yang terhenti agar tidak ada konflik id/endpoint
+docker rm -f inveys-app 2>/dev/null || true
+
 $DOCKER_COMPOSE -f "$COMPOSE_FILE" build --pull
 if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d; then
     echo -e "${RED}[ERROR] Gagal menyalakan kontainer.${NC}"
@@ -128,6 +150,10 @@ if [ "$HEALTHY" = true ]; then
         echo -e "Aplikasi dapat diakses dengan aman di:"
         echo -e "  1. Domain Resmi : ${CYAN}https://${DOMAIN:-inveys.io}${NC}"
         echo -e "  2. VPS Direct IP: ${CYAN}https://${SERVER_IP:-187.77.134.249}:3000${NC}"
+    elif [ "$DEPLOY_MODE" == "traefik" ]; then
+        echo -e "Aplikasi dapat diakses dengan aman di:"
+        echo -e "  1. Domain Resmi : ${CYAN}https://${DOMAIN:-inveys.io}${NC} atau ${CYAN}https://www.${DOMAIN:-inveys.io}${NC}"
+        echo -e "  2. VPS Localhost: ${CYAN}http://127.0.0.1:${INVEYS_HOST_PORT:-3000}${NC} (Akses internal VPS)"
     else
         echo -e "Aplikasi dapat diakses di: ${CYAN}http://IP-VPS-ANDA:3000${NC} atau ${CYAN}http://localhost:3000${NC}"
     fi

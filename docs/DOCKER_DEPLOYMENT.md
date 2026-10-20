@@ -133,18 +133,17 @@ Aplikasi kini dapat diakses dengan protokol terenkripsi di `https://keuangan.dom
 ### Opsi C: Mode Traefik Reverse Proxy (Jika VPS Sudah Memiliki Traefik)
 Gunakan opsi ini jika di VPS Anda sudah berjalan **Traefik** (mengelola port 80 & 443). Anda **tidak boleh** menjalankan Caddy agar tidak terjadi tabrakan port (*port collision*).
 
-1. Pastikan DNS `A Record` untuk `inveys.io` dan `www.inveys.io` sudah mengarah ke IP publik VPS Anda.
-2. Periksa nama Docker network yang digunakan oleh kontainer Traefik Anda:
+1. Pastikan DNS `A Record` untuk `inveys.io` dan `www.inveys.io` sudah mengarah ke IP publik VPS Anda (`187.77.134.249`).
+2. Jalankan deployment otomatis untuk Traefik:
    ```bash
-   docker network ls
+   ./scripts/deploy-docker.sh traefik
    ```
-   *(Umumnya bernama `traefik_default`, `proxy`, atau `web`)*.
-3. Jalankan kontainer INVEYS dengan konfigurasi Traefik:
+   *Skrip otomatis mendeteksi apakah Traefik Anda berjalan dalam mode **Host Network** (`network_mode: host`) atau **User-defined Bridge Network** (`proxy`/`web`), menyiapkan user-defined network `traefik_default`, membersihkan kontainer lama, dan menghubungkan label routing Traefik secara presisi.*
+3. Traefik akan secara otomatis mendeteksi label Docker kontainer `inveys-app`, merouting hostname `inveys.io` & `www.inveys.io`, dan menerbitkan sertifikat SSL TLS HTTPS.
+4. Anda juga dapat memverifikasi respons server lokal di VPS melalui:
    ```bash
-   # Ganti TRAEFIK_NETWORK sesuai nama network Traefik Anda (default: traefik_default)
-   TRAEFIK_NETWORK=traefik_default docker compose -f docker-compose.traefik.yml up -d --build
+   curl -I http://127.0.0.1:3000/api/auth/status
    ```
-Traefik akan secara otomatis mendeteksi label Docker kontainer `inveys-app`, merouting hostname `inveys.io`, dan menerbitkan sertifikat SSL TLS HTTPS.
 
 ---
 

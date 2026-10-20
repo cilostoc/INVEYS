@@ -6,6 +6,8 @@ services:
     image: inveys:latest
     container_name: inveys-app
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:${INVEYS_HOST_PORT:-3000}:3000"
     expose:
       - "3000"
     environment:
@@ -13,7 +15,7 @@ services:
       - PORT=3000
       - INVEYS_DATA_DIR=/data
       - DOMAIN=${DOMAIN:-inveys.io}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-inveys.io,www.inveys.io,127.0.0.1,localhost}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-inveys.io,www.inveys.io,187.77.134.249,127.0.0.1,localhost}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -30,15 +32,15 @@ services:
     volumes:
       - inveys_data:/data
     networks:
-      - default
       - traefik_network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.inveys.rule=Host(`${DOMAIN:-inveys.io}`) || Host(`www.${DOMAIN:-inveys.io}`)"
-      - "traefik.http.routers.inveys.entrypoints=websecure"
+      - "traefik.http.routers.inveys.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
       - "traefik.http.routers.inveys.tls=true"
       - "traefik.http.routers.inveys.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}"
       - "traefik.http.services.inveys.loadbalancer.server.port=3000"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_default}"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/auth/status"]
       interval: 30s
