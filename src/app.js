@@ -565,7 +565,7 @@
     return text;
   }
   function ask(q){quickMinimized=false;quickSend(q,quickAccount);$('#chat-question').value='';}
-  function renderMessages(){if(!$('#chat-messages'))return;$('#chat-messages').innerHTML=`<div class="chat-message assistant"><span class="ai-avatar">✧</span><div><p>${L('Tanya atau catat melalui asisten INVEYS. Draft selalu ditinjau sebelum disimpan.','Ask or record with INVEYS. Drafts always require review before saving.')}</p><small>${escape(aiProviderName(state.assistant.provider))}</small></div></div>`+CHAT.history(state).map(m=>m.role==='user'?`<div class="chat-message user">${escape(m.text)}</div>`:`<div class="chat-message assistant"><span class="ai-avatar">✧</span><div>${aiRichText(m.text)}<small>${escape(aiProviderName(m.provider))} · ${escape(m.date)}</small></div></div>`).join('');$('#chat-messages').scrollTop=$('#chat-messages').scrollHeight;}
+  function renderMessages(){if(!$('#chat-messages'))return;const history=CHAT.history(state);$('#chat-messages').innerHTML=`<div class="chat-message assistant"><span class="ai-avatar">✧</span><div><p>${L('Tanya atau catat melalui asisten INVEYS. Draft selalu ditinjau sebelum disimpan.','Ask or record with INVEYS. Drafts always require review before saving.')}</p><small>${escape(aiProviderName(state.assistant.provider))}</small></div></div>`+history.map((m,idx)=>{const isLatestAssistant=m.role==='assistant'&&idx===history.length-1&&streamState.active;const textToShow=isLatestAssistant?streamState.displayedText:m.text;return m.role==='user'?`<div class="chat-message user">${escape(m.text)}</div>`:`<div class="chat-message assistant ${isLatestAssistant?'typing-streaming':''}" onclick="skipStreaming()"><span class="ai-avatar">✧</span><div><div class="ai-content">${aiRichText(textToShow)}${isLatestAssistant?'<span class="ai-typing-cursor"></span>':''}</div><small>${escape(aiProviderName(m.provider))} · ${escape(m.date)}</small></div></div>`;}).join('');$('#chat-messages').scrollTop=$('#chat-messages').scrollHeight;}
   let mcResult=null,mcConfig=null;
   function syncPreferences(){
     document.documentElement?.setAttribute('lang',state.language);
@@ -1723,7 +1723,7 @@
     const title=L('Catat atau tanya INVEYS','Record or ask INVEYS');
     if(quickMinimized)return `<section class="quick-dock minimized" aria-label="${title}"><button class="quick-launcher" data-action="quick-expand" aria-expanded="false" aria-controls="quick-chat-body">${icon('copilot')}<span>${L('Tanya INVEYS','Ask INVEYS')}</span>${drafts.length?`<span class="badge">${drafts.length} draft</span>`:''}</button></section>`;
     const starters=CHAT.history(state).length===0?`<div class="quick-starters"><button type="button" class="quick-starter-pill" data-starter="${L('Berapa total kekayaan bersih saya saat ini?','What is my current net worth?')}">💡 ${L('Kekayaan Bersih','Net Worth')}</button><button type="button" class="quick-starter-pill" data-starter="${L('Berapa sisa kapasitas kas saya bulan ini?','How much available cash flow do I have this month?')}">📈 ${L('Arus Kas Bulan Ini','Cash Flow')}</button><button type="button" class="quick-starter-pill" data-starter="${L('Bagaimana progres pencapaian target tabungan saya?','How are my savings goals progressing?')}">🎯 ${L('Target Tabungan','Goal Progress')}</button></div>`:'';
-    return `<section class="panel quick-composer quick-dock" aria-label="${L('Pencatatan cepat dan chatbot','Quick capture and chatbot')}"><div id="quick-chat-body"><div class="quick-chat-output">${aiThread()}${aiBusy?`<div class="ai-wait" role="status"><div class="ai-typing-dots"><span></span><span></span><span></span></div><span>${L('INVEYS sedang menganalisis data keuangan…','INVEYS is thinking and analyzing…')}</span></div>`:''}${quickReply?`<div class="quick-response" role="status" aria-live="polite">${quickReply}</div>`:''}${page==='capture'?'':draftPanel()}</div>${starters}${quickAttachment?`<div class="quick-attachment"><span>${icon('capture')}${quickAttachmentTag(quickAttachment)} ${user(quickAttachment.name)}<small>${(quickAttachment.size/1024).toFixed(0)} KB</small></span>${!quickAttachment.type.startsWith('audio/')&&!quickAttachment.type.startsWith('video/')&&!['text/plain','text/csv'].includes(quickAttachment.type)?button(quickFileBusy?L('Memproses…','Processing…'):L('Ekstrak & tinjau','Extract & review'),'quick-extract'):''}${button(L('Hapus lampiran','Remove attachment'),'quick-file-clear')}</div>`:''}<form id="quick-form" class="quick-chat-input"><details class="quick-popover"><summary class="quick-icon-button" aria-label="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}" title="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}">+</summary><div class="quick-popover-menu"><div class="quick-popover-head"><span class="quick-popover-title">✨ ${L('Tambah Lampiran & Media','Add Media & Attachments')}</span><span class="quick-popover-sub">${L('Pilih file dokumen, foto atau rekaman','Select document, photo or media')}</span></div><div class="quick-media-grid"><button type="button" class="quick-tile-btn" data-action="quick-camera"><span class="quick-tile-icon photo">${icon('capture')}</span><b>${L('Kamera','Camera')}</b><small>${L('Ambil foto','Take photo')}</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:doc"><span class="quick-tile-icon doc">${icon('capture')}</span><b>${L('Dokumen','Document')}</b><small>PDF / CSV / Struk</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:video"><span class="quick-tile-icon video">${icon('capture')}</span><b>${L('Video','Video')}</b><small>MP4 / WebM</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:audio"><span class="quick-tile-icon audio">${icon('copilot')}</span><b>${L('Audio','Audio')}</b><small>M4A / WAV</small></button></div><div class="quick-actions-list"><button type="button" class="quick-list-btn" data-action="quick-new-chat">${icon('plus')}<span>${L('Percakapan baru','New conversation')}</span></button><button type="button" class="quick-list-btn" data-action="quick-voice">${icon('copilot')}<span>${L('Input suara','Voice input')}</span></button><button type="button" class="quick-list-btn" data-action="quick-ai-settings">${icon('settings')}<span>${L('Model AI & Memori','AI Model & Memory')}<small>${aiProviderName(state.assistant.provider)}</small></span></button></div><div class="quick-popover-account"><label for="quick-account">${L('Akun untuk pencatatan','Recording account')}</label><select id="quick-account" name="accountId"><option value="">${L('Pilih akun','Choose account')}</option>${viewState().accounts.map(a=>`<option value="${a.id}" ${a.id===quickAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></div><div class="quick-popover-account"><label for="quick-source-kind">${L('Jenis dokumen','Document type')}</label><select id="quick-source-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk','Receipt')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank historis','Historical bank statement')}</option></select></div><button type="button" class="quick-list-btn" data-page="copilot" style="margin-top:4px">${icon('copilot')}<span>${L('Buka chatbot lengkap','Open full chatbot')}</span></button></div></details><label class="screen-reader" for="quick-text">${L('Perintah atau pertanyaan','Command or question')}</label><textarea id="quick-text" name="text" rows="1" maxlength="6000" placeholder="${L('Tanya INVEYS atau ketik instruksi keuangan…','Ask INVEYS or enter a financial instruction…')}">${escape(quickText)}</textarea><button class="quick-icon-button quick-microphone ${recorder?'recording':''}" type="button" data-action="quick-record-audio" aria-label="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}" title="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3m-3 0h6"/></svg></button><button class="quick-icon-button quick-send" type="submit" aria-label="${L('Kirim','Send')}" title="${L('Kirim','Send')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></form></div></section>`;
+    return `<section class="panel quick-composer quick-dock" aria-label="${L('Pencatatan cepat dan chatbot','Quick capture and chatbot')}"><div id="quick-chat-body"><div class="quick-chat-output">${aiThread()}${aiBusy?`<div class="ai-wait-card" role="status"><div class="ai-aura-pill"><div class="ai-spark-orb"><span class="sparkle-star">✧</span><div class="sparkle-ring"></div></div><div class="ai-wait-content"><div class="ai-wait-status-line"><span class="ai-live-indicator"></span><span class="ai-status-text" id="ai-dynamic-status">${escape(aiThinkingStatusText())}</span></div><div class="ai-shimmer-bar"><div class="ai-shimmer-progress"></div></div></div></div></div>`:''}${quickReply?`<div class="quick-response" role="status" aria-live="polite">${quickReply}</div>`:''}${page==='capture'?'':draftPanel()}</div>${starters}${quickAttachment?`<div class="quick-attachment"><span>${icon('capture')}${quickAttachmentTag(quickAttachment)} ${user(quickAttachment.name)}<small>${(quickAttachment.size/1024).toFixed(0)} KB</small></span>${!quickAttachment.type.startsWith('audio/')&&!quickAttachment.type.startsWith('video/')&&!['text/plain','text/csv'].includes(quickAttachment.type)?button(quickFileBusy?L('Memproses…','Processing…'):L('Ekstrak & tinjau','Extract & review'),'quick-extract'):''}${button(L('Hapus lampiran','Remove attachment'),'quick-file-clear')}</div>`:''}<form id="quick-form" class="quick-chat-input"><details class="quick-popover"><summary class="quick-icon-button" aria-label="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}" title="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}">+</summary><div class="quick-popover-menu"><div class="quick-popover-head"><span class="quick-popover-title">✨ ${L('Tambah Lampiran & Media','Add Media & Attachments')}</span><span class="quick-popover-sub">${L('Pilih file dokumen, foto atau rekaman','Select document, photo or media')}</span></div><div class="quick-media-grid"><button type="button" class="quick-tile-btn" data-action="quick-camera"><span class="quick-tile-icon photo">${icon('capture')}</span><b>${L('Kamera','Camera')}</b><small>${L('Ambil foto','Take photo')}</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:doc"><span class="quick-tile-icon doc">${icon('capture')}</span><b>${L('Dokumen','Document')}</b><small>PDF / CSV / Struk</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:video"><span class="quick-tile-icon video">${icon('capture')}</span><b>${L('Video','Video')}</b><small>MP4 / WebM</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:audio"><span class="quick-tile-icon audio">${icon('copilot')}</span><b>${L('Audio','Audio')}</b><small>M4A / WAV</small></button></div><div class="quick-actions-list"><button type="button" class="quick-list-btn" data-action="quick-new-chat">${icon('plus')}<span>${L('Percakapan baru','New conversation')}</span></button><button type="button" class="quick-list-btn" data-action="quick-voice">${icon('copilot')}<span>${L('Input suara','Voice input')}</span></button><button type="button" class="quick-list-btn" data-action="quick-ai-settings">${icon('settings')}<span>${L('Model AI & Memori','AI Model & Memory')}<small>${aiProviderName(state.assistant.provider)}</small></span></button></div><div class="quick-popover-account"><label for="quick-account">${L('Akun untuk pencatatan','Recording account')}</label><select id="quick-account" name="accountId"><option value="">${L('Pilih akun','Choose account')}</option>${viewState().accounts.map(a=>`<option value="${a.id}" ${a.id===quickAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></div><div class="quick-popover-account"><label for="quick-source-kind">${L('Jenis dokumen','Document type')}</label><select id="quick-source-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk','Receipt')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank historis','Historical bank statement')}</option></select></div><button type="button" class="quick-list-btn" data-page="copilot" style="margin-top:4px">${icon('copilot')}<span>${L('Buka chatbot lengkap','Open full chatbot')}</span></button></div></details><label class="screen-reader" for="quick-text">${L('Perintah atau pertanyaan','Command or question')}</label><textarea id="quick-text" name="text" rows="1" maxlength="6000" placeholder="${L('Tanya INVEYS atau ketik instruksi keuangan…','Ask INVEYS or enter a financial instruction…')}">${escape(quickText)}</textarea><button class="quick-icon-button quick-microphone ${recorder?'recording':''}" type="button" data-action="quick-record-audio" aria-label="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}" title="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3m-3 0h6"/></svg></button><button class="quick-icon-button quick-send" type="submit" aria-label="${L('Kirim','Send')}" title="${L('Kirim','Send')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></form></div></section>`;
   }
   function quickChooseFile(file){
     if(!file)return;
@@ -1762,8 +1762,99 @@
   const CHAT=window.InveysAssistant;
   let aiBusy=false,aiGeneration=0;
   const aiProviderName=id=>({local:L('Lokal (Kalkulator)','Local (Calculator)'),openai:'OpenAI (ChatGPT / GPT-4o)',gemini:'Google Gemini',muse:'Meta AI (Muse Spark)','9router':'9Router (Claude / OpenRouter)'})[id]||id;
-  function aiRichText(value){return escape(value).replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/^#{1,3} (.+)$/gm,'<strong>$1</strong>').replace(/^[-*] /gm,'• ');}
-  function aiThread(){const rows=CHAT.history(state).slice(-8);return rows.length?`<div class="ai-thread" role="log" aria-live="polite">${rows.map(m=>`<div class="ai-message ${m.role}"><small>${m.role==='user'?L('Anda','You'):aiProviderName(m.provider)}</small><div>${m.role==='assistant'?aiRichText(m.text):user(m.text)}</div></div>`).join('')}</div>`:'';}
+  const aiProviderBadge=id=>({gemini:'✨ Google Gemini',openai:'⚡ GPT-4o Mini','9router':'🚀 9Router',muse:'✧ Meta AI',local:'🔢 Local'})[id]||id;
+  function aiRichText(value){
+    let s=escape(value);
+    s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
+    s=s.replace(/^#{1,3} (.+)$/gm,'<strong class="ai-head">$1</strong>');
+    s=s.replace(/^[-*] /gm,'<span class="ai-bullet">•</span> ');
+    s=s.replace(/`([^`\n]+)`/g,'<code class="ai-inline-code">$1</code>');
+    s=s.replace(/\b(Rp\s*[\d.,]+|IDR\s*[\d.,]+)\b/g,'<span class="ai-money-chip">$1</span>');
+    return s;
+  }
+  const timerSet=typeof window!=='undefined'&&typeof window.setInterval==='function'?window.setInterval.bind(window):(typeof setInterval==='function'?setInterval:null);
+  const timerClear=typeof window!=='undefined'&&typeof window.clearInterval==='function'?window.clearInterval.bind(window):(typeof clearInterval==='function'?clearInterval:null);
+  let streamState={active:false,fullText:'',displayedText:'',timer:null};
+  function startStreamingReply(text,cb){
+    if(streamState.timer&&timerClear)timerClear(streamState.timer);
+    streamState.fullText=text;
+    if(typeof window==='undefined'||!window.requestAnimationFrame||!timerSet){
+      streamState.active=false;
+      streamState.displayedText=text;
+      if(cb)cb();
+      return;
+    }
+    streamState.active=true;
+    streamState.displayedText='';
+    let charIndex=0;
+    const len=text.length;
+    const step=Math.max(2, Math.floor(len / 80));
+    streamState.timer=timerSet(()=>{
+      charIndex+=step;
+      if(charIndex>=len){
+        charIndex=len;
+        streamState.displayedText=text;
+        if(timerClear)timerClear(streamState.timer);
+        streamState.timer=null;
+        streamState.active=false;
+        updateStreamingUI();
+        if(cb)cb();
+      }else{
+        streamState.displayedText=text.slice(0,charIndex);
+        updateStreamingUI();
+      }
+    },16);
+    updateStreamingUI();
+  }
+  function updateStreamingUI(){
+    const els=document.querySelectorAll?.('.typing-streaming .ai-content');
+    if(els&&els.length){
+      els.forEach(el=>{el.innerHTML=aiRichText(streamState.displayedText)+'<span class="ai-typing-cursor"></span>';});
+      const container=$('.quick-chat-output')||$('#chat-messages');
+      if(container)container.scrollTop=container.scrollHeight;
+    }
+  }
+  function skipStreaming(){
+    if(streamState.active){
+      if(streamState.timer&&timerClear)timerClear(streamState.timer);
+      streamState.active=false;
+      streamState.timer=null;
+      streamState.displayedText=streamState.fullText;
+      updateStreamingUI();
+      document.querySelectorAll?.('.typing-streaming').forEach(el=>el.classList.remove('typing-streaming'));
+      document.querySelectorAll?.('.ai-typing-cursor').forEach(el=>el.remove());
+    }
+  }
+  let aiThinkingInterval=null,aiThinkingStageIndex=0;
+  const aiThinkingStages=[
+    L('⚡ Menghubungkan ke Gemini AI…','⚡ Connecting to Gemini AI…'),
+    L('🔍 Menganalisis konteks portofolio & transaksi…','🔍 Analyzing portfolio & financial records…'),
+    L('💡 Merumuskan kalkulasi & rekomendasi…','💡 Computing metrics & recommendations…'),
+    L('✨ Menyiapkan jawaban finansial…','✨ Preparing financial insights…')
+  ];
+  function startAiThinking(){
+    aiThinkingStageIndex=0;
+    if(aiThinkingInterval&&timerClear)timerClear(aiThinkingInterval);
+    if(timerSet){
+      aiThinkingInterval=timerSet(()=>{
+        aiThinkingStageIndex=(aiThinkingStageIndex+1)%aiThinkingStages.length;
+        const el=$('#ai-dynamic-status');
+        if(el){el.style.opacity='0';setTimeout(()=>{if(el){el.textContent=aiThinkingStages[aiThinkingStageIndex];el.style.opacity='1';}},150);}
+      },2200);
+    }
+  }
+  function stopAiThinking(){if(aiThinkingInterval&&timerClear){timerClear(aiThinkingInterval);aiThinkingInterval=null;}}
+  function aiThinkingStatusText(){return aiThinkingStages[aiThinkingStageIndex]||aiThinkingStages[0];}
+  function aiThread(){
+    const rows=CHAT.history(state).slice(-8);
+    if(!rows.length)return '';
+    return `<div class="ai-thread" role="log" aria-live="polite">${rows.map((m,idx)=>{
+      const isLatestAssistant=m.role==='assistant'&&idx===rows.length-1&&streamState.active;
+      const textToShow=isLatestAssistant?streamState.displayedText:m.text;
+      const badge=m.role==='assistant'?`<span class="ai-provider-badge">${aiProviderBadge(m.provider)}</span>`:'';
+      return `<div class="ai-message ${m.role} ${isLatestAssistant?'typing-streaming':''}" onclick="skipStreaming()"><div class="ai-message-head"><small>${m.role==='user'?L('Anda','You'):aiProviderName(m.provider)}</small>${badge}</div><div class="ai-content">${m.role==='assistant'?aiRichText(textToShow)+(isLatestAssistant?'<span class="ai-typing-cursor"></span>':''):user(m.text)}</div></div>`;
+    }).join('')}</div>`;
+  }
   function aiSettings(){openModal(L('Asisten INVEYS','INVEYS assistant'),form(`<p class="note">${L('API key disimpan di server lokal. Pilih penyedia, lalu izinkan pengiriman pesan dan lampiran.','API keys stay on the local server. Select a provider and allow messages and attachments to be sent.')}</p>${field(L('Penyedia','Provider'),'provider','','select',CHAT.providers.map(id=>`<option value="${id}" ${state.assistant.provider===id?'selected':''}>${aiProviderName(id)}</option>`).join(''))}<label><input name="consent" type="checkbox" ${state.assistant.consent?'checked':''}> ${L('Izinkan pesan, riwayat percakapan tampilan ini dan lampiran dikirim ke penyedia yang saya pilih','Allow messages, conversation history for this view and attachments to my selected provider')}</label><label><input name="shareFinancial" type="checkbox" ${state.assistant.shareFinancial?'checked':''}> ${L('Sertakan ringkasan keuangan tampilan aktif','Include the active view’s financial summary')}</label><label><input name="useMemory" type="checkbox" ${state.assistant.useMemory?'checked':''}> ${L('Gunakan preferensi tersimpan sebagai konteks','Use saved preferences as context')}</label><label>${L('Memori preferensi · satu per baris','Preference memory · one per line')}<textarea name="memory" rows="5" maxlength="15500">${escape(state.assistant.memory.join('\n'))}</textarea></label><p class="note">${L('Memori dapat diedit/dihapus di sini. Tidak melatih ulang model atau menyimpan isi dokumen otomatis.','Edit/delete memory here. It does not retrain a model or automatically retain document contents.')}</p><p class="note">${Object.entries(service.ai||{}).map(([id,c])=>`${aiProviderName(id)}: ${c.enabled?L('key tersedia','key configured'):L('belum dikonfigurasi','not configured')}`).join(' · ')||L('Periksa koneksi server untuk melihat konfigurasi API.','Check server connection to see API configuration.')}</p><div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);display:flex;justify-content:flex-end">${button(L('🔑 Atur Kunci API AI & Bot Telegram','🔑 Configure AI API Keys & Telegram Bot'),'api-keys:gemini')}</div>`),d=>{const next={...state.assistant,provider:d.provider,consent:!!d.consent,shareFinancial:!!d.shareFinancial,useMemory:!!d.useMemory,memory:CHAT.memory(d.memory),mode:'auto'};CHAT.validate(next);state.assistant=next;});}
   async function aiSend(text,accountId){
     if(aiBusy){toast(L('Tunggu jawaban selesai.','Wait for the reply.'));return;}
@@ -1775,7 +1866,7 @@
     const recordingAccount=getAccount(quickAccount)?structuredClone(getAccount(quickAccount)):null,recordingKind=captureKind;
     const prompt=quickText,history=CHAT.history(state).slice(-20).map(({role,text})=>({role,text}));
     const p=E.position(viewState()),summary=cfg.shareFinancial?JSON.stringify({currency:state.currency,owner:ownerName(state.activeView.owner),netWorth:p.netWorth/100,assets:p.assets/100,liabilities:p.liabilities/100,income:p.income/100,expenses:p.expenses/100,available:p.available/100,fxDate:state.fx.date}):'';
-    aiBusy=true;quickReply='';render();
+    aiBusy=true;quickReply='';startAiThinking();render();
     try{const attachment=file?{...await fileData(file),name:file.name.slice(0,200)}:null;const r=await api('chat',{provider:cfg.provider,prompt,history,memory:cfg.useMemory?cfg.memory:[],summary,file:attachment,consent:true,unified:true,recordContext:{date:date(),currency:recordingAccount?.currency||null,sourceKind:recordingKind}});if(generation!==aiGeneration||scope!==CHAT.scope(state))return;
       if(r.intent==='record'&&Array.isArray(r.drafts)&&r.drafts.length){
         if(drafts.length)throw Error(L('Simpan atau buang draft yang ada dahulu.','Save or discard existing drafts first.'));
@@ -1783,9 +1874,20 @@
         const prepared=r.drafts.map(d=>{if(!['income','expense'].includes(d.kind)||!E.validDate(d.date)||d.currency!==account.currency)throw Error('Invalid AI draft currency, date or type');return {name:requireText(d.name),date:d.date,kind:d.kind,amount:positive(d.amount),currency:account.currency,accountId:account.id,category:requireText(d.category||'Imported'),source:'ai-chat',affectBalance:file?recordingKind!=='statement':true,selected:false,duplicateReason:''};});
         drafts=prepared.map(d=>({...d,selected:!R.duplicates(state,d).length}));
       }
-      CHAT.append(state,'user',prompt||(file?L('Lampiran: ','Attachment: ')+file.name:''),cfg.provider,date());CHAT.append(state,'assistant',r.text,cfg.provider,date());messages.push({role:'user',text:prompt},{role:'assistant',text:escape(r.text)});quickText='';if(quickAttachment===file){quickAttachment=null;quickAttachmentGeneration++;}quickReply='';
-    }catch(error){if(generation===aiGeneration&&scope===CHAT.scope(state))quickReply=escape(error.message);}
-    finally{if(generation===aiGeneration){aiBusy=false;render();}}
+      CHAT.append(state,'user',prompt||(file?L('Lampiran: ','Attachment: ')+file.name:''),cfg.provider,date());
+      CHAT.append(state,'assistant',r.text,cfg.provider,date());
+      messages.push({role:'user',text:prompt},{role:'assistant',text:escape(r.text)});
+      quickText='';if(quickAttachment===file){quickAttachment=null;quickAttachmentGeneration++;}quickReply='';
+      stopAiThinking();
+      startStreamingReply(r.text);
+    }catch(error){
+      stopAiThinking();
+      if(generation===aiGeneration&&scope===CHAT.scope(state))quickReply=escape(error.message);
+    }
+    finally{
+      stopAiThinking();
+      if(generation===aiGeneration){aiBusy=false;render();}
+    }
   }
   function quickSend(text,accountId,source='quick-text'){
     if(aiBusy){toast(L('Tunggu jawaban selesai.','Wait for the reply.'));return;}
@@ -2846,9 +2948,11 @@
           <div class="key-field-group">
             <label for="key-model-gemini"><span>${L('Pilihan Model Gemini:','Gemini Model:')}</span></label>
             <select class="key-select" id="key-model-gemini">
-              <option value="gemini-3.8-flash" ${gemini.model==='gemini-3.8-flash'?'selected':''}>gemini-3.8-flash (${L('Tercepat, Multimodal & Rekomendasi Utama','Fastest, Multimodal & Primary')})</option>
-              <option value="gemini-2.5-flash" ${gemini.model==='gemini-2.5-flash'?'selected':''}>gemini-2.5-flash</option>
-              <option value="gemini-2.5-pro" ${gemini.model==='gemini-2.5-pro'?'selected':''}>gemini-2.5-pro (${L('Penalaran Keuangan Kompleks','Complex Financial Reasoning')})</option>
+              <option value="gemini-2.5-flash" ${gemini.model==='gemini-2.5-flash'?'selected':''}>gemini-2.5-flash (${L('Ultra Cepat, Stabil & Efisien (Rekomendasi Utama)','Ultra Fast, Stable & Efficient (Recommended)')})</option>
+              <option value="gemini-3.8-flash" ${gemini.model==='gemini-3.8-flash'?'selected':''}>gemini-3.8-flash (${L('Agentic Flash Terbaru','Next-Gen Agentic Flash')})</option>
+              <option value="gemini-2.5-pro" ${gemini.model==='gemini-2.5-pro'?'selected':''}>gemini-2.5-pro (${L('Penalaran Finansial Kompleks','Complex Financial Reasoning')})</option>
+              <option value="gemini-2.0-flash" ${gemini.model==='gemini-2.0-flash'?'selected':''}>gemini-2.0-flash (${L('Latensi Rendah','Low Latency')})</option>
+              <option value="gemini-1.5-flash" ${gemini.model==='gemini-1.5-flash'?'selected':''}>gemini-1.5-flash (${L('Kompatibilitas Maksimal','Maximum Compatibility')})</option>
             </select>
           </div>
 

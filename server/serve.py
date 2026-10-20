@@ -242,12 +242,32 @@ def test_api_key_connection(provider_name: str, payload: dict) -> dict:
             if not key:
                 return {'ok': False, 'error': 'Kunci API Gemini belum diisi'}
             model = payload.get('model') or os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model)}?key={urllib.parse.quote(key)}"
-            req = urllib.request.Request(url, headers={'User-Agent': f'INVEYS/{VERSION}'})
-            with urllib.request.urlopen(req, timeout=10) as r:
-                res = json.loads(r.read(MAX))
-                disp = res.get('displayName') or model
-                return {'ok': True, 'message': f'✅ Koneksi Gemini Berhasil! Model aktif: {disp}'}
+            models_to_test = [model]
+            for m_alt in ('gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'):
+                if m_alt not in models_to_test:
+                    models_to_test.append(m_alt)
+            last_err = None
+            for m_candidate in models_to_test:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(m_candidate)}?key={urllib.parse.quote(key)}"
+                    req = urllib.request.Request(url, headers={'User-Agent': f'INVEYS/{VERSION}'})
+                    with urllib.request.urlopen(req, timeout=12) as r:
+                        res = json.loads(r.read(MAX))
+                        disp = res.get('displayName') or m_candidate
+                        return {'ok': True, 'message': f'✅ Koneksi Gemini Berhasil! Model aktif: {disp} ({m_candidate})'}
+                except urllib.error.HTTPError as he:
+                    last_err = he
+                    try:
+                        err_data = json.loads(he.read().decode('utf-8', errors='replace'))
+                        msg = err_data.get('error', {}).get('message') or str(he)
+                    except Exception:
+                        msg = str(he)
+                    if he.code == 404 and m_candidate != models_to_test[-1]:
+                        continue
+                    return {'ok': False, 'error': f'Google API ({he.code}): {msg}'}
+                except Exception as ex:
+                    last_err = ex
+            return {'ok': False, 'error': f'Koneksi Gemini gagal: {last_err}'}
 
         elif prov == 'openai':
             key = payload.get('apiKey') or os.environ.get('OPENAI_API_KEY', '')

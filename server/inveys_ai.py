@@ -20,15 +20,37 @@ def valid_date(value):
  except (ValueError,TypeError):return False
 def configuration():
  return {k:{'enabled':bool(os.environ.get(key)) and (k!='9router' or bool(os.environ.get(model,default))), 'model':os.environ.get(model,default)} for k,key,model,default in [('openai','OPENAI_API_KEY','OPENAI_MODEL','gpt-4.1-mini'),('gemini','GEMINI_API_KEY','GEMINI_MODEL','gemini-3.8-flash'),('muse','MODEL_API_KEY','MUSE_MODEL','muse-spark-1.3'),('9router','NINEROUTER_API_KEY','NINEROUTER_MODEL','claude-3-5-sonnet')]}
-def transport(url,payload,key,google=False):
- headers={'Content-Type':'application/json',('x-goog-api-key' if google else 'Authorization'):key if google else 'Bearer '+key}
- try:
-  with urllib.request.urlopen(urllib.request.Request(url,data=json.dumps(payload).encode(),headers=headers),timeout=90) as response:
-   raw=response.read(MAX+1)
-   if len(raw)>MAX:raise ValueError('AI response exceeds limit')
-   return json.loads(raw)
- except urllib.error.HTTPError as error:raise ValueError('AI provider rejected the request; check key, model access, quota and attachment support.') from None
- except (urllib.error.URLError,TimeoutError,json.JSONDecodeError):raise ValueError('AI provider is unavailable; check network and configuration.') from None
+def transport(url,payload,key,google=False,retries=2):
+ headers={'Content-Type':'application/json',('x-goog-api-key' if google else 'Authorization'):key if google else 'Bearer '+key,'User-Agent':'INVEYS-AI/2.0'}
+ last_err=None
+ for attempt in range(retries+1):
+  try:
+   req=urllib.request.Request(url,data=json.dumps(payload).encode(),headers=headers)
+   with urllib.request.urlopen(req,timeout=45) as response:
+    raw=response.read(MAX+1)
+    if len(raw)>MAX:raise ValueError('AI response exceeds limit')
+    return json.loads(raw)
+  except urllib.error.HTTPError as error:
+   last_err=error
+   if error.code in (429, 500, 502, 503, 504) and attempt < retries:
+    import time
+    time.sleep(0.5*(attempt+1))
+    continue
+   try:
+    detail=json.loads(error.read().decode('utf-8',errors='replace'))
+    msg=detail.get('error',{}).get('message') or error.reason
+    raise ValueError(f'AI provider rejected the request ({error.code}): {msg}') from None
+   except (ValueError,KeyError,AttributeError):
+    raise ValueError(f'AI provider rejected the request ({error.code}); check key, model access, quota and attachment support.') from None
+  except (urllib.error.URLError,TimeoutError,json.JSONDecodeError) as err:
+   last_err=err
+   if attempt < retries:
+    import time
+    time.sleep(0.4*(attempt+1))
+    continue
+   reason=getattr(err,'reason',str(err))
+   raise ValueError(f'AI provider is unavailable ({reason}); check network and configuration.') from None
+ if last_err:raise ValueError('AI provider is unavailable; check network and configuration.')
 
 def router_base():
  url=os.environ.get('NINEROUTER_BASE_URL','http://127.0.0.1:20128/v1').rstrip('/')
@@ -103,7 +125,34 @@ def chat(data,extract,transcribe):
   parts=[{'text':text}]
   if file:parts.append({'inlineData':{'mimeType':file['type'],'data':file['data']}})
   contents=[{'role':'user' if m['role']=='user' else 'model','parts':[{'text':m['text']}]} for m in history]+[{'role':'user','parts':parts}]
-  result=transport('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{'systemInstruction':{'parts':[{'text':instructions}]},'contents':contents,'generationConfig':{'maxOutputTokens':3000}},key,google=True)
+  gen_config={'maxOutputTokens':3000,'temperature':0.4}
+  if 'flash' in model.lower():
+   gen_config['thinkingConfig']={'thinkingBudget':0}
+  payload={'systemInstruction':{'parts':[{'text':instructions}]},'contents':contents,'generationConfig':gen_config}
+  models_to_try=[model]
+  for m_alt in ('gemini-2.5-flash','gemini-2.0-flash','gemini-1.5-flash'):
+   if m_alt not in models_to_try:models_to_try.append(m_alt)
+  result=None;last_err=None
+  for target_model in models_to_try:
+   try:
+    result=transport('https://generativelanguage.googleapis.com/v1beta/models/'+target_model+':generateContent',payload,key,google=True)
+    model=target_model
+    break
+   except ValueError as ex:
+    last_err=ex
+    if 'thinking' in str(ex).lower() and 'thinkingConfig' in payload.get('generationConfig',{}):
+     try:
+      p_clean=dict(payload);p_clean['generationConfig']={'maxOutputTokens':3000,'temperature':0.4}
+      result=transport('https://generativelanguage.googleapis.com/v1beta/models/'+target_model+':generateContent',p_clean,key,google=True)
+      model=target_model
+      break
+     except Exception as ex2:last_err=ex2
+    if any(k in str(ex).lower() for k in ('not found','404','unsupported','overloaded','503')) and target_model!=models_to_try[-1]:
+     continue
+    raise ex
+  if not result:
+   if last_err:raise last_err
+   raise ValueError('AI provider is unavailable; check network and configuration.')
   answer='\n'.join(p.get('text','') for c in result.get('candidates',[])[:1] for p in c.get('content',{}).get('parts',[]) if not p.get('thought'))
  elif name=='openai':
   content=[{'type':'input_text','text':text}]
