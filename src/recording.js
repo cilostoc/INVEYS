@@ -19,8 +19,10 @@ function cleanMerchant(desc,kind){
   if(/Transfer/i.test(s))return 'ShopeePay Transfer';
   return 'ShopeePay';
  }
- if(/Ptshopbackmitrasejahtera|CITIBANK.*Shopback/i.test(s))return 'ShopBack Indonesia';
- if(/PAPER\.ID\s*:\s*1\/18/i.test(s))return 'Cicilan Paper.id (1/18)';
+ if(/Ptshopbackmitrasejahtera|CITIBANK.*Shopback|CITIBANK.*0109163007/i.test(s))return 'ShopBack Indonesia';
+ if(/Rickiherdianasurya/i.test(s))return 'Transfer dari Rickiherdianasurya (BSI)';
+ if(/Transfer.*(Muhamad Hendra Febriansyah|Hendra)/i.test(s))return 'Transfer Masuk Rekening Pribadi';
+ if(/PAPER\.ID\s*:\s*1\/18/i.test(s))return 'Cicilan Paper.id (Bulan 1/18)';
  if(/PAPER\.ID\s*:\s*0\/18/i.test(s))return 'Pembalikan Transaksi Cicilan Paper.id';
  if(/BIAYA ADMIN BRING PAPER\.ID/i.test(s))return 'Biaya Admin Cicilan Paper.id';
  if(/BIAYA NOTIFIKASI/i.test(s))return 'Biaya Notifikasi SMS';
@@ -31,7 +33,23 @@ function cleanMerchant(desc,kind){
  if(/MONTHLY CARD CHARGE/i.test(s))return 'Biaya Kartu Debit Mandiri';
  if(/Admin Fee|Biaya Adm/i.test(s))return 'Biaya Administrasi Bank';
  if(/QRIS/i.test(s))return 'Pembayaran QRIS';
- if(/Rickiherdianasurya/i.test(s))return 'Transfer dari Rickiherdianasurya';
+ if(/INDOMARET/i.test(s))return 'Indomaret';
+ if(/ALFAMART/i.test(s))return 'Alfamart';
+ if(/ALFAMIDI/i.test(s))return 'Alfamidi';
+ if(/SUPERINDO|SUPER INDO/i.test(s))return 'Super Indo';
+ if(/PERTAMINA|SPBU/i.test(s))return 'SPBU Pertamina';
+ if(/SHELL/i.test(s))return 'SPBU Shell';
+ if(/MIE GACOAN/i.test(s))return 'Mie Gacoan';
+ if(/STARBUCKS/i.test(s))return 'Starbucks Coffee';
+ if(/KOPI KENANGAN/i.test(s))return 'Kopi Kenangan';
+ if(/KFC/i.test(s))return 'KFC';
+ if(/MCDONALD|MCD/i.test(s))return 'McDonald\'s';
+ if(/HOKBEN/i.test(s))return 'HokBen';
+ if(/PIZZA HUT/i.test(s))return 'Pizza Hut';
+ if(/SOLARIA/i.test(s))return 'Solaria';
+ if(/KIMIA FARMA/i.test(s))return 'Apotek Kimia Farma';
+ if(/WATSON/i.test(s))return 'Watsons';
+ if(/GUARDIAN/i.test(s))return 'Guardian';
  if(/Bunga Tabungan/i.test(s))return 'Bunga Tabungan';
  if(/Pajak Bunga/i.test(s))return 'Pajak Bunga Tabungan';
  if(/Midtrans/i.test(s))return 'Transfer Masuk Midtrans';
@@ -58,19 +76,25 @@ function cleanMerchant(desc,kind){
 function suggestCategory(name,kind){
  const s=(name||'').toLowerCase();
  if(kind==='income'){
-  if(/bunga/i.test(s))return 'Investasi & Bunga';
-  if(/gaji|span|salary/i.test(s))return 'Gaji & Pendapatan';
-  if(/shopback|cashback/i.test(s))return 'Hadiah & Cashback';
-  if(/pembalikan|refund/i.test(s))return 'Pengembalian Dana';
+  if(/bunga|dividen|investasi/i.test(s))return 'Investasi & Bunga';
+  if(/gaji|span|salary|upah|honor|tukin/i.test(s))return 'Gaji & Pendapatan';
+  if(/shopback|cashback|hadiah|bonus|reward/i.test(s))return 'Hadiah & Cashback';
+  if(/pembalikan|refund|retur/i.test(s))return 'Pengembalian Dana';
+  if(/rekening pribadi|transfer antar/i.test(s))return 'Transfer Antar Akun';
   return 'Pemasukan Lainnya';
  }
- if(/makan|coffee|kopi|cafe|tianlala|food|resto/i.test(s))return 'Makanan & Minuman';
- if(/shopee|tokopedia|belanja|diskon/i.test(s))return 'Belanja & E-Commerce';
- if(/google play|netflix|spotify|langganan/i.test(s))return 'Langganan Digital';
- if(/biaya|fee|charge|admin|pajak|notifikasi|e-statement/i.test(s))return 'Biaya Finansial & Pajak';
- if(/kartu kredit|cicilan|paper\.id|tagihan/i.test(s))return 'Hutang & Kartu Kredit';
- if(/dansos|sosial|donasi|zakat/i.test(s))return 'Sosial & Donasi';
- if(/transfer|smbc|superbank|krom|boby|isa|adinda|zenzen|cimb|mandiri/i.test(s))return 'Transfer Antar Akun';
+ if(/makan|coffee|kopi|cafe|tianlala|food|resto|gacoan|kfc|mcd|starbucks|hokben|pizza|solaria/i.test(s))return 'Makanan & Minuman';
+ if(/indomaret|alfamart|alfamidi|superindo|super indo|hypermart|transmart|sembako|pasar|groceries/i.test(s))return 'Belanja & Kebutuhan Rumah';
+ if(/shopee|tokopedia|belanja|diskon|lazada|blibli|tiktok shop/i.test(s))return 'Belanja & E-Commerce';
+ if(/pertamina|shell|bp akr|vivo|spbu|bensin|pertamax|pertalite|solar|dexlite|tol|parkir|gojek|grab|maxim/i.test(s))return 'Transportasi & Bahan Bakar';
+ if(/kimia farma|watson|guardian|apotek|obat|dokter|klinik|rumah sakit|medis/i.test(s))return 'Kesehatan & Medis';
+ if(/google play|netflix|spotify|youtube|icloud|langganan|subscription/i.test(s))return 'Langganan Digital';
+ if(/biaya|fee|charge|admin|pajak|notifikasi|e-statement|atm|kartu debit/i.test(s))return 'Biaya Finansial & Pajak';
+ if(/kartu kredit|cicilan|paper\.id|tagihan|paylater/i.test(s))return 'Hutang & Kartu Kredit';
+ if(/dansos|sosial|donasi|zakat|infaq|sedekah/i.test(s))return 'Sosial & Donasi';
+ if(/listrik|pln|pdam|air|wifi|indihome|telkom|pulsa|paket data/i.test(s))return 'Utilitas & Tagihan';
+ if(/qris/i.test(s))return 'Belanja & Kebutuhan Rumah';
+ if(/transfer|smbc|superbank|krom|boby|isa|adinda|zenzen|cimb|mandiri|rekening pribadi/i.test(s))return 'Transfer Antar Akun';
  return 'Pengeluaran Umum';
 }
 function detectBankStatement(text){
@@ -99,45 +123,73 @@ function parseMandiriStatement(lines,year,currency){
  return rows;
 }
 function parseBriStatement(lines,currency){
- const rows=[];let currentTx=null;
- function pushBriTx(tx){
-  const m=tx.raw.match(/^(.*?)(?:\s+([A-Za-z0-9_#]+))?\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)$/);
-  if(!m)return false;
-  const [_,desc,teller,debetStr,kreditStr]=m;
-  const debetVal=debetStr.replace(/[^\d.,]/g,''),kreditVal=kreditStr.replace(/[^\d.,]/g,'');
+ const rows=[];let pendingTx=null;
+ function commitPending(){
+  if(!pendingTx||!pendingTx.debet||!pendingTx.kredit){pendingTx=null;return;}
+  const debetVal=pendingTx.debet.replace(/[^\d.,]/g,''),kreditVal=pendingTx.kredit.replace(/[^\d.,]/g,'');
   const isDebetZero=/^0([.,]00?)?$/.test(debetVal),isKreditZero=/^0([.,]00?)?$/.test(kreditVal);
   let amount=0,kind='expense';
   try{
    if(!isDebetZero){amount=number(debetVal,currency);kind='expense';}
    else if(!isKreditZero){amount=number(kreditVal,currency);kind='income';}
-   else return false;
-  }catch{return false;}
-  const name=cleanMerchant(desc,kind),category=suggestCategory(name,kind);
-  rows.push({name,date:tx.date,amount,kind,currency,category});
-  return true;
+   else{pendingTx=null;return;}
+  }catch{pendingTx=null;return;}
+  const name=cleanMerchant(pendingTx.desc,kind),category=suggestCategory(name,kind);
+  rows.push({name,date:pendingTx.date,amount,kind,currency,category});
+  pendingTx=null;
+ }
+ function extractNumbers(str){
+  const m=str.match(/^(.*?)(?:\s+([A-Za-z0-9_#]{5,}))?\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)$/);
+  if(m)return {desc:m[1].trim(),debet:m[3],kredit:m[4],saldo:m[5]};
+  const m2=str.match(/^(.*?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)$/);
+  if(m2)return {desc:m2[1].trim(),debet:m2[2],kredit:m2[3],saldo:m2[4]};
+  return null;
  }
  for(const line of lines){
-  if(/Tanggal Transaksi|Uraian Transaksi|Saldo Awal|Total Transaksi|Saldo Akhir|Laporan Transaksi|Kepada Yth|Unit Kerja|Valuta|Alamat/i.test(line))continue;
-  const dateMatch=line.match(/^(\d{1,2}\/\d{1,2}\/(\d{2,4}))(?:\s+(\d{2}:\d{2}:\d{2}))?\s*(.*)$/);
+  const trimmed=line.trim();
+  if(!trimmed)continue;
+  if(/Tanggal Transaksi|Uraian Transaksi|Saldo Awal|Total Transaksi|Saldo Akhir|Laporan Transaksi|Kepada Yth|Unit Kerja|Valuta|Alamat|Halaman|Page|Terbilang|Created By/i.test(trimmed)){
+   commitPending();continue;
+  }
+  const dateMatch=trimmed.match(/^(\d{1,2}\/\d{1,2}\/(\d{2,4}))(?:\s+(\d{2}:\d{2}:\d{2}))?\s*(.*)$/);
   if(dateMatch){
-   if(currentTx)pushBriTx(currentTx);
-   const [_,dStr,yPart,tStr,rest]=dateMatch;let [d,m,y]=dStr.split('/');if(y.length===2)y='20'+y;
-   currentTx={date:`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`,raw:rest||''};
-   if(pushBriTx(currentTx))currentTx=null;
+   commitPending();
+   let [d,m,y]=dateMatch[1].split('/');if(y.length===2)y='20'+y;
+   const date=`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`,rest=dateMatch[4]||'';
+   const nums=extractNumbers(rest);
+   if(nums){
+    pendingTx={date,desc:nums.desc,debet:nums.debet,kredit:nums.kredit,saldo:nums.saldo};
+   }else{
+    pendingTx={date,desc:rest.trim(),debet:null,kredit:null,saldo:null};
+   }
    continue;
   }
-  if(currentTx){currentTx.raw+=' '+line;if(pushBriTx(currentTx))currentTx=null;}
+  if(pendingTx&&!/^\d{1,2}\/\d{1,2}/.test(trimmed)&&!/MCDO\d+|Created By/i.test(trimmed)){
+   if(!pendingTx.debet){
+    const nums=extractNumbers(trimmed);
+    if(nums){
+     pendingTx.desc=(pendingTx.desc+' '+nums.desc).trim();
+     pendingTx.debet=nums.debet;pendingTx.kredit=nums.kredit;pendingTx.saldo=nums.saldo;
+    }else{
+     pendingTx.desc+=' '+trimmed;
+    }
+   }else{
+    pendingTx.desc+=' '+trimmed;
+   }
+  }
  }
- if(currentTx)pushBriTx(currentTx);
+ commitPending();
  return rows;
 }
 function parseBriCreditCardStatement(lines,currency){
  const rows=[];
  for(const line of lines){
-  if(/Tagihan Bulan|Informasi Kredit|Kolektibilitas|Bunga Pembelanjaan|Lembar Penagihan|Billing Statement|Nomor Kartu/i.test(line))continue;
-  const m=line.match(/^(\d{2}-\d{2}-\d{4})(?:\s+\d{2}-\d{2}-\d{4})?\s+(.+?)(?:\s+IDR\s+[\d.,]+\s+[\d.,]+)?\s+([\d.,]+)\s*(CR)?$/i);
+  const trimmed=line.trim();
+  if(!trimmed)continue;
+  if(/Tagihan Bulan|Informasi Kredit|Kolektibilitas|Bunga Pembelanjaan|Lembar Penagihan|Billing Statement|Nomor Kartu|Kredit Limit|Halaman|Page/i.test(trimmed))continue;
+  const m=trimmed.match(/^(\d{2}-\d{2}-\d{4})\s+(\d{2}-\d{2}-\d{4})\s+(.+?)(?:\s+IDR\s+[\d.,]+\s+[\d.,]+)?\s+([\d.,]+)\s*(CR)?$/i);
   if(!m)continue;
-  const [_,dStr,desc,amtStr,crFlag]=m;const [day,month,year]=dStr.split('-');
+  const [_,txDate,postDate,desc,amtStr,crFlag]=m;const [day,month,year]=txDate.split('-');
   const date=`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
   try{
    const amount=number(amtStr,currency),kind=crFlag?'income':'expense';
@@ -216,6 +268,68 @@ function parseBcaStatement(lines,year,currency){
  }
  return rows;
 }
+function parseReceipt(lines,today,currency){
+ if(!lines||!lines.length)return null;
+ let merchant='';
+ for(let i=0;i<Math.min(lines.length,10);i++){
+  const l=lines[i];
+  if(/INDOMARET/i.test(l)){merchant='Indomaret';break;}
+  if(/ALFAMART/i.test(l)){merchant='Alfamart';break;}
+  if(/ALFAMIDI/i.test(l)){merchant='Alfamidi';break;}
+  if(/SUPERINDO|SUPER INDO/i.test(l)){merchant='Super Indo';break;}
+  if(/PERTAMINA|SPBU/i.test(l)){merchant='SPBU Pertamina';break;}
+  if(/SHELL/i.test(l)){merchant='SPBU Shell';break;}
+  if(/MIE GACOAN/i.test(l)){merchant='Mie Gacoan';break;}
+  if(/STARBUCKS/i.test(l)){merchant='Starbucks Coffee';break;}
+  if(/KOPI KENANGAN/i.test(l)){merchant='Kopi Kenangan';break;}
+  if(/KFC/i.test(l)){merchant='KFC';break;}
+  if(/MCDONALD|MCD/i.test(l)){merchant='McDonald\'s';break;}
+  if(/HOKBEN/i.test(l)){merchant='HokBen';break;}
+  if(/PIZZA HUT/i.test(l)){merchant='Pizza Hut';break;}
+  if(/SOLARIA/i.test(l)){merchant='Solaria';break;}
+  if(/KIMIA FARMA/i.test(l)){merchant='Apotek Kimia Farma';break;}
+  if(/WATSON/i.test(l)){merchant='Watsons';break;}
+  if(/GUARDIAN/i.test(l)){merchant='Guardian';break;}
+ }
+ if(!merchant){
+  for(const l of lines.slice(0,5)){
+   if(!/^(PT\b|CV\b|NPWP|JL\b|JALAN|TELP|STRUK|KASIR|NO\b|NOTA|ORDER)/i.test(l)&&l.length>3){
+    merchant=l.replace(/[^\w\s&.-]/g,'').trim().slice(0,80);
+    break;
+   }
+  }
+ }
+ if(!merchant)return null;
+
+ let date=today;
+ for(const l of lines){
+  const dm=l.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b/);
+  if(dm){
+   let [_,d,m,y]=dm;if(y.length===2)y='20'+y;
+   if(Number(m)<=12&&Number(d)<=31){
+    date=`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    break;
+   }
+  }
+ }
+
+ let totalAmount=null;
+ for(let i=lines.length-1;i>=0;i--){
+  const l=lines[i];
+  if(/(subtotal|sub total|kembali|kembalian|change|diskon|potongan|tunai|cash)/i.test(l))continue;
+  if(/\b(grand total|total belanja|total akhir|total bayar|total|jumlah|harga jual)\b/i.test(l)){
+   const nums=[...l.matchAll(/([\d.,]+)/g)].map(x=>x[1]).filter(x=>/\d{3}/.test(x)||/^[1-9]\d*$/.test(x));
+   if(nums.length){
+    try{totalAmount=number(nums.at(-1),currency);break;}catch{}
+   }
+  }
+ }
+
+ if(!totalAmount)return null;
+ const kind='expense';
+ const name=cleanMerchant(merchant,kind),category=suggestCategory(name,kind);
+ return [{name,date,amount:totalAmount,kind,currency,category}];
+}
 function parse(text,currency='IDR',today=new Date().toISOString().slice(0,10)) {
  currency=/\bRp\b|\bIDR\b/i.test(text)?'IDR':(/\b(USD|EUR|GBP|SGD|AUD|JPY)\b/i.exec(text)?.[1]?.toUpperCase()||currency);
  const lines=String(text).split(/\n/).map(x=>x.trim()).filter(Boolean);
@@ -241,6 +355,9 @@ function parse(text,currency='IDR',today=new Date().toISOString().slice(0,10)) {
  if(seaBankCandidate.length>=2)return seaBankCandidate;
  const bcaCandidate=parseBcaStatement(lines,year,currency);
  if(bcaCandidate.length>=2)return bcaCandidate;
+
+ const receiptCandidate=parseReceipt(lines,today,currency);
+ if(receiptCandidate)return receiptCandidate;
 
  const rows=[];
  for(const line of lines){
@@ -284,5 +401,5 @@ function quickRecord(text,account,today){
  if(currency!==account.currency)throw Error('Mata uang pesan harus sama dengan akun / Message currency must match the account');
  return {name:String(text).trim().slice(0,120),date:today,amount,currency,accountId:account.id,kind:/\b(gajian|gaji|terima|pemasukan|pendapatan|salary|income|received)\b/i.test(text)?'income':'expense'};
 }
-const api={number,parse,duplicates,rates,quickIntent,quickRecord,cleanMerchant,suggestCategory,detectBankStatement};if(typeof module!=='undefined')module.exports=api;else root.InveysRecording=api;
+const api={number,parse,parseReceipt,duplicates,rates,quickIntent,quickRecord,cleanMerchant,suggestCategory,detectBankStatement};if(typeof module!=='undefined')module.exports=api;else root.InveysRecording=api;
 })(typeof window!=='undefined'?window:globalThis);
