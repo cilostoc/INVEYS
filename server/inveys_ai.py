@@ -200,9 +200,24 @@ STATEMENT_SYSTEM = (
  'You are INVEYS Financial Statement & Receipt Extraction AI. '
  'Analyze the provided financial document (PDF e-statement, CSV, bank transaction export, or purchase receipt) '
  'and extract ALL individual transactions with 100% precision into a structured JSON response. '
+ 'Also detect account details or credit card metadata if present in the header/statement. '
  'Respond ONLY with valid JSON in this exact structure:\n'
  '{\n'
- '  "bank": "Bank / Store Name",\n'
+ '  "bank": "Bank / Store / Institution Name (e.g. Bank Mandiri, Bank BCA, Bank BRI, Bank Jago, SeaBank, etc.)",\n'
+ '  "documentType": "bank_statement" or "credit_card_statement" or "receipt",\n'
+ '  "accountInfo": {\n'
+ '    "name": "Standard Account Name (e.g. Bank Mandiri, Bank BCA, Bank BRI)",\n'
+ '    "type": "Checking" or "Savings",\n'
+ '    "currency": "IDR"\n'
+ '  },\n'
+ '  "cardInfo": {\n'
+ '    "name": "Card Name (e.g. Kartu Kredit BRI Touch, BCA Everyday Card)",\n'
+ '    "last4": "Last 4 digits of card if visible (e.g. 1234)",\n'
+ '    "limit": "Total credit limit if stated (e.g. 15000000)",\n'
+ '    "statementAmount": "Total statement balance / Tagihan Baru (e.g. 2480000)",\n'
+ '    "dueDate": "YYYY-MM-DD",\n'
+ '    "minimumPayment": "Minimum payment if stated (e.g. 124000)"\n'
+ '  },\n'
  '  "period": "Statement period or transaction date",\n'
  '  "summary": "Short 1-2 sentence summary of extracted transactions in the user language",\n'
  '  "drafts": [\n'
@@ -221,11 +236,12 @@ STATEMENT_SYSTEM = (
  '1. Debit / Outflow / Keluar / Belanja / Pembelian / Tarik Saldo = "expense".\n'
  '2. Credit / Inflow / Masuk / Gaji / Bunga / Top Up Masuk / Reversal = "income".\n'
  '3. Pocket transfer (Pindah uang antar Kantong, inter-account transfer) = "transfer".\n'
- '4. Clean raw cryptic terminal codes (e.g. "MCM InhouseTrf-makan" -> "Makan", "QRISRNS123... KOPI KENANGAN" -> "Kopi Kenangan", "SPAN:..." -> "Gaji / Tukin").\n'
- '5. Receipts: Extract the net grand total or individual purchased line items. Do NOT mistake cash given ("TUNAI") or change returned ("KEMBALI") as the expense amount.\n'
- '6. Standard Categories: "Makanan & Minuman", "Belanja & Kebutuhan Rumah", "Transportasi & Bahan Bakar", "Gaji & Pendapatan", "Investasi & Bunga", "Biaya Finansial & Pajak", "Hutang & Kartu Kredit", "Hiburan & Rekreasi", "Kesehatan & Medis", "Langganan Digital", "Transfer".\n'
- '7. Dates: Format as YYYY-MM-DD. If year is missing in row, use the statement period year or reference date.\n'
- '8. Extract up to 100 transactions. Never invent transactions not present in the document.'
+ '4. If document is a Credit Card billing statement (Lembar Penagihan / Billing Statement Kartu Kredit): set documentType to "credit_card_statement", populate cardInfo with card name, last 4 digits, total statement tagihan, and due date. Purchases/installments are "expense", payments are "income" (or card payments).\n'
+ '5. Clean raw cryptic terminal codes (e.g. "MCM InhouseTrf-makan" -> "Makan", "QRISRNS123... KOPI KENANGAN" -> "Kopi Kenangan", "SPAN:..." -> "Gaji / Tukin").\n'
+ '6. Receipts: Extract the net grand total or individual purchased line items. Do NOT mistake cash given ("TUNAI") or change returned ("KEMBALI") as the expense amount.\n'
+ '7. Standard Categories: "Makanan & Minuman", "Belanja & Kebutuhan Rumah", "Transportasi & Bahan Bakar", "Gaji & Pendapatan", "Investasi & Bunga", "Biaya Finansial & Pajak", "Hutang & Kartu Kredit", "Hiburan & Rekreasi", "Kesehatan & Medis", "Langganan Digital", "Transfer".\n'
+ '8. Dates: Format as YYYY-MM-DD. If year is missing in row, use the statement period year or reference date.\n'
+ '9. Extract up to 100 transactions. Never invent transactions not present in the document.'
 )
 
 def extract_statement(data, extract):
@@ -420,9 +436,16 @@ def extract_statement(data, extract):
    'targetAccount': d_target
   })
 
+ account_info = parsed.get('accountInfo') if isinstance(parsed.get('accountInfo'), dict) else None
+ card_info = parsed.get('cardInfo') if isinstance(parsed.get('cardInfo'), dict) else None
+ doc_type = str(parsed.get('documentType') or ('credit_card_statement' if card_info or 'kartu kredit' in bank.lower() or 'credit card' in bank.lower() else 'bank_statement'))
+
  return {
   'ok': True,
   'bank': bank,
+  'documentType': doc_type,
+  'accountInfo': account_info,
+  'cardInfo': card_info,
   'period': period,
   'summary': summary,
   'drafts': validated,

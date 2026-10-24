@@ -1692,15 +1692,76 @@
           render();
           break;
         }
+
+        // Auto-create or match bank account
+        let targetAcc=state.accounts.find(acc=>{
+          const bName=(result.accountInfo?.name||result.bank||'').toLowerCase();
+          return bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase()));
+        });
+        let createdAccountNotice='';
+        if(!targetAcc){
+          const accName=result.accountInfo?.name||result.bank||'Bank Account';
+          targetAcc={
+            id:uid(),
+            name:accName,
+            type:result.accountInfo?.type||'Checking',
+            balance:0,
+            currency:result.accountInfo?.currency||a.currency||state.currency,
+            owner:state.members[0]?.id||'shared',
+            updated:date(),
+            balancePolicy:'ledger'
+          };
+          state.accounts.push(targetAcc);
+          captureAccount=targetAcc.id;
+          createdAccountNotice=L(` · Akun baru "${accName}" dibuat otomatis`,` · New account "${accName}" created automatically`);
+        }
+
+        // Auto-create or match credit card if statement is credit card
+        let createdCardNotice='';
+        if(result.cardInfo||result.documentType==='credit_card_statement'){
+          const cardName=result.cardInfo?.name||result.bank||'Kartu Kredit';
+          const last4=String(result.cardInfo?.last4||'1234').padStart(4,'0').slice(-4);
+          let card=state.cards.find(c=>c.last4===last4||c.name.toLowerCase()===cardName.toLowerCase());
+          if(!card){
+            const debtId=uid();
+            const stmtAmt=result.cardInfo?.statementAmount?Math.round(parseFloat(result.cardInfo.statementAmount)*100):0;
+            const minAmt=result.cardInfo?.minimumPayment?Math.round(parseFloat(result.cardInfo.minimumPayment)*100):Math.max(5000000,Math.round(stmtAmt*0.05));
+            const debt={
+              id:debtId,
+              name:'Tagihan '+cardName,
+              balance:stmtAmt,
+              minimum:minAmt>0?minAmt:5000000,
+              apr:21.0,
+              currency:targetAcc.currency
+            };
+            state.debts.push(debt);
+            card={
+              id:uid(),
+              debtId:debtId,
+              name:cardName,
+              owner:state.members[0]?.id||'shared',
+              last4:last4,
+              limit:result.cardInfo?.limit?Math.round(parseFloat(result.cardInfo.limit)*100):Math.max(1000000000,stmtAmt*2),
+              statementAmount:stmtAmt,
+              paid:0,
+              dueDate:result.cardInfo?.dueDate&&E.validDate(result.cardInfo.dueDate)?result.cardInfo.dueDate:date(),
+              reminderDays:7
+            };
+            state.cards.push(card);
+            createdCardNotice=L(` · Kartu Kredit "${cardName}" dibuat otomatis`,` · Credit Card "${cardName}" created automatically`);
+          }
+        }
+        save();
+
         let parsed=result.drafts.map((d,i)=>({
           id:uid(),
           name:d.name,
           date:d.date||date(),
           amount:Math.round(parseFloat(d.amount)*100),
           kind:d.kind||'expense',
-          currency:d.currency||a.currency,
+          currency:d.currency||targetAcc.currency,
           category:d.category||'Imported',
-          accountId:a.id,
+          accountId:targetAcc.id,
           source:'ai-statement',
           sourceKey:'ai-'+Date.now()+'-'+i,
           affectBalance:!historical,
@@ -1708,7 +1769,7 @@
         }));
         if(R.pairTransferDrafts&&parsed.length>1)parsed=R.pairTransferDrafts(parsed,state.accounts);
         drafts=parsed.map(d=>({...d,selected:!R.duplicates(state,d).length}));
-        captureStatus=L(`⚡ AI (${result.provider}) berhasil mengekstrak ${drafts.length} transaksi dari ${result.bank||'dokumen'}.`,`⚡ AI (${result.provider}) extracted ${drafts.length} transactions from ${result.bank||'document'}.`);
+        captureStatus=L(`⚡ AI (${result.provider}) berhasil mengekstrak ${drafts.length} transaksi dari ${result.bank||'dokumen'}${createdAccountNotice}${createdCardNotice}.`,`⚡ AI (${result.provider}) extracted ${drafts.length} transactions from ${result.bank||'document'}${createdAccountNotice}${createdCardNotice}.`);
         toast(captureStatus);
         render();
       }catch(err){
