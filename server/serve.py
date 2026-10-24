@@ -543,6 +543,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('X-Frame-Options', 'SAMEORIGIN')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        self.send_header('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()')
         super().end_headers()
 
     def send_json(self, value, status=200, headers=None):
@@ -667,9 +668,12 @@ class Handler(SimpleHTTPRequestHandler):
             parsed = urllib.parse.urlsplit(self.path)
             qs = urllib.parse.parse_qs(parsed.query)
             symbol = qs.get('symbol', [''])[0].strip()
-            range_val = qs.get('range', ['1y'])[0].strip()
-            if not symbol:
-                return self.send_json({'error': 'Symbol required'}, 400)
+            range_val = qs.get('range', ['1y'])[0].strip().lower()
+            allowed_ranges = {'1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'}
+            if range_val not in allowed_ranges:
+                range_val = '1y'
+            if not symbol or len(symbol) > 20 or not re.fullmatch(r'[A-Za-z0-9^.-]+', symbol):
+                return self.send_json({'error': 'Valid symbol required'}, 400)
             try:
                 clean_sym = symbol.upper()
                 if len(clean_sym) == 4 and clean_sym.isalpha() and '.' not in clean_sym and clean_sym in ('BBCA', 'BBRI', 'BMRI', 'BBNI', 'TLKM', 'ASII', 'GOTO', 'UNVR', 'ICBP', 'INDF'):
@@ -678,7 +682,10 @@ class Handler(SimpleHTTPRequestHandler):
                 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; InveysApp/1.0)'})
                 with urllib.request.urlopen(req, timeout=10) as r:
                     d = json.loads(r.read().decode('utf-8'))
-                res = d['chart']['result'][0]
+                results = d.get('chart', {}).get('result')
+                if not results or not isinstance(results, list):
+                    return self.send_json({'error': 'Symbol not found or data unavailable'}, 404)
+                res = results[0]
                 timestamps = res.get('timestamp', [])
                 closes = res.get('indicators', {}).get('quote', [{}])[0].get('close', [])
                 history = []
@@ -687,8 +694,8 @@ class Handler(SimpleHTTPRequestHandler):
                         dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime('%Y-%m-%d')
                         history.append({'date': dt, 'price': round(float(close), 4)})
                 return self.send_json({'ok': True, 'symbol': clean_sym, 'history': history})
-            except Exception as e:
-                return self.send_json({'error': f'Failed to fetch market history: {str(e)}'}, 502)
+            except Exception:
+                return self.send_json({'error': 'Failed to fetch market history. Please try again later.'}, 502)
 
         if self.path == '/api/updates':
             rel_file = SRC_DIR / 'releases.json'

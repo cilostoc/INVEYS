@@ -285,7 +285,16 @@ class Backend(unittest.TestCase):
             self.assertEqual(resp.headers.get('X-Content-Type-Options'), 'nosniff')
             self.assertEqual(resp.headers.get('X-Frame-Options'), 'SAMEORIGIN')
             self.assertEqual(resp.headers.get('Referrer-Policy'), 'strict-origin-when-cross-origin')
+            self.assertEqual(resp.headers.get('Permissions-Policy'), 'camera=(self), microphone=(self), geolocation=()')
             resp.read()
+
+    def test_market_history_validation(self):
+        # Empty symbol rejected with 400
+        status, res = self.request('/api/market-history?symbol=')
+        self.assertEqual(status, 400)
+        # Invalid characters in symbol rejected with 400
+        status, res = self.request('/api/market-history?symbol=bad%20symbol;DROP')
+        self.assertEqual(status, 400)
 
     def test_9router_ssrf_validation(self):
         self.assertRaises(ValueError, s.validate_router_base, 'http://169.254.169.254/latest/meta-data/v1')

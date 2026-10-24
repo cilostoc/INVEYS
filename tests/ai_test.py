@@ -69,8 +69,11 @@ class AI(unittest.TestCase):
   with patch.dict(os.environ,{'OPENAI_API_KEY':'secret'},clear=True),patch.object(a,'transport') as t:
    t.return_value={'output':[{'type':'message','content':[{'type':'output_text','text':json.dumps(response)}]}]}
    result=a.chat(request,None,None);self.assertEqual(result['intent'],'record');self.assertEqual(result['drafts'][0]['amount'],'25.00');self.assertIn('Classify intent yourself',t.call_args.args[1]['instructions'])
-   for field,value in [('amount','-10'),('date','2026-02-30'),('currency','USD'),('kind','transfer')]:
+   for field,value in [('amount','-10'),('date','2026-02-30'),('currency','USD'),('kind','invalid')]:
     bad={**response,'drafts':[{**draft,field:value}]};t.return_value={'output':[{'type':'message','content':[{'type':'output_text','text':json.dumps(bad)}]}]}
     with self.assertRaises(ValueError):a.chat(request,None,None)
+   transfer_draft={**draft,'kind':'transfer','targetAccount':'Savings'}
+   t.return_value={'output':[{'type':'message','content':[{'type':'output_text','text':json.dumps({**response,'drafts':[transfer_draft]})}]}]}
+   self.assertEqual(a.chat(request,None,None)['drafts'][0]['kind'],'transfer')
    t.return_value={'output':[{'type':'message','content':[{'type':'output_text','text':'Plain answer'}]}]};self.assertEqual(a.chat(request,None,None)['intent'],'question')
    t.return_value={'output':[{'type':'message','content':[{'type':'output_text','text':json.dumps({'intent':'question','text':'Do you mean an expense?','drafts':[draft]})}]}]};self.assertEqual(a.chat(request,None,None)['drafts'],[])
