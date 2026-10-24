@@ -25,6 +25,10 @@ def build():
     destination = project_root / "inveys-app.html"
     destination.write_text(html)
 
+    landing_src = src_dir / "landing.html"
+    if landing_src.exists():
+        (project_root / "landing.html").write_text(landing_src.read_text())
+
     # Recalculate checksum & update manifest
     new_hash = hashlib.sha256(destination.read_bytes()).hexdigest()
     manifest_files = [

@@ -1,0 +1,1393 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#061210">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="INVEYS — Sistem Operasi Finansial & Pengelolaan Kekayaan Pribadi dengan dukungan 14 Bank Indonesia, diagram arus kas Sankey, AI e-statement extractor, dan privasi 100% lokal.">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>INVEYS — Financial OS & Wealth Management untuk Indonesia | Monarch Money Alternative</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #061210;
+      --bg-card: rgba(13, 34, 30, 0.75);
+      --bg-card-hover: rgba(20, 50, 44, 0.85);
+      --border: rgba(46, 92, 80, 0.35);
+      --border-focus: #34d399;
+      --accent: #34d399;
+      --accent-glow: rgba(52, 211, 153, 0.25);
+      --accent-hover: #10b981;
+      --gold: #fbbf24;
+      --gold-glow: rgba(251, 191, 36, 0.25);
+      --cyan: #38bdf8;
+      --ink: #f9fafb;
+      --ink-muted: #94a3b8;
+      --ink-subtle: #64748b;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 22px;
+      --radius-full: 9999px;
+      --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+      --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 35px rgba(52, 211, 153, 0.2);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      background-color: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(52, 211, 153, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 25%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 70%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    /* Container & Typography */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+    a { color: inherit; text-decoration: none; transition: all 0.2s ease; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 13px 26px;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+      color: #04241d;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #6ee7b7 0%, #10b981 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(52, 211, 153, 0.4);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink);
+      border-color: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+      color: #381a03;
+      box-shadow: 0 4px 20px var(--gold-glow);
+    }
+    .btn-gold:hover {
+      background: linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(251, 191, 36, 0.4);
+    }
+
+    /* Badges */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: #6ee7b7;
+      margin-bottom: 20px;
+    }
+    .pill-gold {
+      background: rgba(251, 191, 36, 0.1);
+      border-color: rgba(251, 191, 36, 0.3);
+      color: #fcd34d;
+    }
+
+    /* Navbar */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(6, 18, 16, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+    .navbar .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.35rem;
+      font-weight: 800;
+      font-family: var(--font-display);
+      letter-spacing: -0.03em;
+    }
+    .nav-brand-symbol {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+      color: #061210;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 1.05rem;
+      box-shadow: 0 0 16px rgba(52, 211, 153, 0.3);
+    }
+    .nav-tagline {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--ink-muted);
+      margin-left: 6px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .nav-menu {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-link {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--ink-muted);
+    }
+    .nav-link:hover { color: var(--accent); }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 90px 0 70px;
+      text-align: center;
+      position: relative;
+    }
+    .hero h1 {
+      font-size: clamp(2.4rem, 5.2vw, 4rem);
+      max-width: 900px;
+      margin: 0 auto 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(180deg, #ffffff 30%, #a7f3d0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p.lead {
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      color: var(--ink-muted);
+      max-width: 760px;
+      margin: 0 auto 38px;
+      font-weight: 400;
+      line-height: 1.7;
+    }
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    .trust-checks {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      color: var(--ink-subtle);
+      font-size: 0.85rem;
+      margin-bottom: 55px;
+    }
+    .trust-checks span { display: flex; align-items: center; gap: 6px; }
+    .trust-checks svg { width: 15px; height: 15px; color: var(--accent); }
+
+    /* Interactive Hero Mockup Card */
+    .hero-preview {
+      max-width: 1040px;
+      margin: 0 auto;
+      background: rgba(13, 34, 30, 0.7);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6), var(--shadow-glow);
+      padding: 24px;
+      backdrop-filter: blur(24px);
+      position: relative;
+      overflow: hidden;
+    }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 18px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .preview-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+    }
+    .preview-dots { display: flex; gap: 6px; }
+    .preview-dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .preview-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .preview-stat-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      text-align: left;
+      position: relative;
+    }
+    .preview-stat-label {
+      font-size: 0.8rem;
+      color: var(--ink-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .preview-stat-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+      color: var(--ink);
+    }
+    .preview-stat-val.blur {
+      filter: blur(6px);
+      user-select: none;
+      transition: filter 0.25s ease;
+    }
+    .preview-stat-growth {
+      font-size: 0.8rem;
+      color: #34d399;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* Mini Sankey Bar Preview */
+    .preview-sankey {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      text-align: left;
+    }
+    .sankey-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .sankey-bars {
+      display: flex;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .sankey-segment {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #041f18;
+      transition: all 0.2s ease;
+    }
+    .seg-income { background: #34d399; width: 45%; }
+    .seg-fixed { background: #38bdf8; width: 25%; }
+    .seg-flexible { background: #fbbf24; width: 18%; }
+    .seg-invest { background: #a78bfa; width: 12%; }
+    .sankey-legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      color: var(--ink-muted);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-box { width: 10px; height: 10px; border-radius: 3px; }
+
+    /* Ecosystem / Logo Marquee */
+    .ecosystem-section {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.25);
+      text-align: center;
+    }
+    .ecosystem-title {
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--ink-subtle);
+      margin-bottom: 28px;
+      font-weight: 600;
+    }
+    .bank-chips {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .bank-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-full);
+      padding: 9px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .bank-chip:hover {
+      background: rgba(52, 211, 153, 0.1);
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    /* Bento Grid Feature Showcase */
+    .features-section {
+      padding: 100px 0;
+    }
+    .section-head {
+      text-align: center;
+      max-width: 720px;
+      margin: 0 auto 60px;
+    }
+    .section-head h2 {
+      font-size: clamp(2rem, 3.8vw, 2.9rem);
+      margin-bottom: 16px;
+      color: var(--ink);
+    }
+    .section-head p {
+      font-size: 1.05rem;
+      color: var(--ink-muted);
+    }
+
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 24px;
+    }
+    .bento-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 34px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .bento-card:hover {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: var(--bg-card-hover);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      transform: translateY(-3px);
+    }
+    .col-8 { grid-column: span 8; }
+    .col-4 { grid-column: span 4; }
+    .col-6 { grid-column: span 6; }
+    .col-12 { grid-column: span 12; }
+
+    .bento-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: rgba(52, 211, 153, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+    }
+    .bento-card h3 {
+      font-size: 1.4rem;
+      margin-bottom: 12px;
+      color: var(--ink);
+    }
+    .bento-card p {
+      color: var(--ink-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .bento-visual {
+      margin-top: 24px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      font-size: 0.85rem;
+      font-family: monospace;
+      color: #94a3b8;
+    }
+
+    /* Live Statement Simulator */
+    .sim-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .sim-tag {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .sim-income { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+    .sim-expense { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+    /* Comparison Table */
+    .comparison-section {
+      padding: 80px 0;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .comp-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+    }
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+    .comp-table th, .comp-table td {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+    .comp-table th {
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--ink-muted);
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .comp-highlight {
+      background: rgba(52, 211, 153, 0.06);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .check { color: #34d399; font-weight: 900; }
+    .cross { color: #ef4444; font-weight: 700; opacity: 0.6; }
+
+    /* Pricing Section */
+    .pricing-section {
+      padding: 100px 0;
+      position: relative;
+    }
+    .pricing-switcher {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      padding: 4px;
+      margin-bottom: 45px;
+    }
+    .pricing-btn {
+      padding: 10px 22px;
+      border-radius: var(--radius-full);
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .pricing-btn.active {
+      background: var(--accent);
+      color: #04241d;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px 28px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    .pricing-card.popular {
+      border-color: var(--accent);
+      box-shadow: 0 10px 40px rgba(52, 211, 153, 0.18);
+      transform: scale(1.03);
+      z-index: 2;
+    }
+    .pricing-card.lifetime {
+      border-color: var(--gold);
+      box-shadow: 0 10px 40px rgba(251, 191, 36, 0.15);
+    }
+    .pricing-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: #04241d;
+      padding: 4px 14px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .pricing-badge.gold {
+      background: var(--gold);
+      color: #381a03;
+    }
+    .plan-name { font-size: 1.35rem; font-weight: 700; margin-bottom: 8px; }
+    .plan-desc { font-size: 0.85rem; color: var(--ink-muted); min-height: 40px; margin-bottom: 22px; }
+    .plan-price-wrap { margin-bottom: 26px; }
+    .plan-price { font-size: 2.3rem; font-weight: 800; font-family: var(--font-display); }
+    .plan-cycle { font-size: 0.85rem; color: var(--ink-subtle); }
+    .plan-features {
+      list-style: none;
+      margin-bottom: 30px;
+      flex-grow: 1;
+    }
+    .plan-features li {
+      font-size: 0.9rem;
+      color: var(--ink-muted);
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .plan-features li svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
+
+    /* FAQ Accordion */
+    .faq-section {
+      padding: 80px 0;
+    }
+    .faq-list {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .faq-question {
+      padding: 22px 24px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: var(--ink);
+    }
+    .faq-question:hover { color: var(--accent); }
+    .faq-answer {
+      padding: 0 24px 22px;
+      color: var(--ink-muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    /* Modal / Lead Capture */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-card {
+      background: #0d221e;
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-lg);
+      max-width: 500px;
+      width: 100%;
+      padding: 34px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), var(--shadow-glow);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      background: transparent;
+      border: none;
+      color: var(--ink-subtle);
+      font-size: 1.3rem;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: var(--ink); }
+    .form-group { margin-bottom: 16px; text-align: left; }
+    .form-label { display: block; font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 6px; font-weight: 500; }
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+
+    /* Footer */
+    footer.landing-footer {
+      border-top: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.4);
+      padding: 60px 0 35px;
+      text-align: center;
+      color: var(--ink-subtle);
+      font-size: 0.9rem;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 868px) {
+      .bento-grid { grid-template-columns: 1fr; }
+      .col-8, .col-4, .col-6, .col-12 { grid-column: span 1; }
+      .pricing-card.popular { transform: none; }
+      .nav-menu { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="container">
+      <a href="#" class="nav-brand" aria-label="INVEYS Home">
+        <span class="nav-brand-symbol">ıv</span>
+        <span>INVEYS</span>
+        <span class="nav-tagline">Financial OS</span>
+      </a>
+
+      <ul class="nav-menu">
+        <li><a href="#fitur" class="nav-link">Fitur Unggulan</a></li>
+        <li><a href="#ekosistem" class="nav-link">Bank & Ekosistem</a></li>
+        <li><a href="#privasi" class="nav-link">Privasi & Keamanan</a></li>
+        <li><a href="#pricing" class="nav-link">Pilihan Paket</a></li>
+        <li><a href="#faq" class="nav-link">FAQ</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a href="inveys-app.html#home" class="btn btn-secondary" id="nav-demo-btn">
+          <span>Buka Demo</span>
+        </a>
+        <a href="#pricing" class="btn btn-primary" id="nav-buy-btn">
+          <span>Beli Lisensi</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="pill">
+          <span>⚡ Versi 0.23.0 Dirilis</span>
+          <span>·</span>
+          <span>Dukungan Penuh 14 Bank & Kartu Kredit Indonesia</span>
+        </div>
+
+        <h1>Kendalikan Seluruh Kekayaan & Investasi Keluarga dalam Satu Vault Finansial Pribadi</h1>
+
+        <p class="lead">
+          Alternatif lokal untuk Monarch Money & Copilot. Sinkronkan mutasi e-statement BCA, Mandiri, BRI, BNI, tagihan kartu kredit, hingga tabungan emas Pegadaian secara otomatis dengan kecerdasan buatan, privasi 100% lokal, dan tanpa pernah menyerahkan password m-Banking Anda.
+        </p>
+
+        <div class="hero-actions">
+          <a href="inveys-app.html#home" class="btn btn-primary" id="hero-demo-btn" style="padding: 16px 36px; font-size: 1.05rem;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Coba Demo Interaktif Sekarang</span>
+          </a>
+          <a href="#pricing" class="btn btn-secondary" id="hero-pricing-btn" style="padding: 16px 32px; font-size: 1.05rem;">
+            <span>Pilih Paket & Lisensi</span>
+          </a>
+        </div>
+
+        <div class="trust-checks">
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Tanpa perlu kredensial m-Banking
+          </span>
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            100% Data tersimpan di perangkat Anda
+          </span>
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Berjalan offline & self-hosted di VPS
+          </span>
+        </div>
+
+        <!-- Interactive Hero Product Mockup -->
+        <div class="hero-preview" id="hero-mockup">
+          <div class="preview-header">
+            <div class="preview-title">
+              <div class="preview-dots">
+                <span class="preview-dot dot-red"></span>
+                <span class="preview-dot dot-yellow"></span>
+                <span class="preview-dot dot-green"></span>
+              </div>
+              <strong style="font-size: 0.95rem; font-family: var(--font-display);">INVEYS Production Vault · Hostinger KVM Node · v0.23.0</strong>
+            </div>
+            <div>
+              <button class="btn btn-secondary" id="ghost-demo-toggle" style="padding: 6px 14px; font-size: 0.8rem;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span id="ghost-btn-text">Ghost Mode (Klik untuk sensor saldo)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="preview-stats-grid">
+            <div class="preview-stat-card">
+              <div class="preview-stat-label">
+                <span>Total Kekayaan Bersih (Net Worth)</span>
+                <span>IDR</span>
+              </div>
+              <div class="preview-stat-val" id="stat-networth">Rp 45.080.755</div>
+              <div class="preview-stat-growth">▲ +14.2% YoY (2021–2026)</div>
+            </div>
+            <div class="preview-stat-card">
+              <div class="preview-stat-label">
+                <span>Dana Likuid / Rekening Kas</span>
+                <span>11 Bank</span>
+              </div>
+              <div class="preview-stat-val" id="stat-liquid">Rp 34.010.091</div>
+              <div class="preview-stat-growth" style="color: #38bdf8;">✓ 6.8 Bulan Cadangan Kas</div>
+            </div>
+            <div class="preview-stat-card">
+              <div class="preview-stat-label">
+                <span>Kewajiban Kartu Kredit Terbuka</span>
+                <span>3 Kartu</span>
+              </div>
+              <div class="preview-stat-val" id="stat-debt" style="color: #f87171;">Rp 12.681.740</div>
+              <div class="preview-stat-growth" style="color: var(--ink-muted);">Jatuh tempo: Nov 2026</div>
+            </div>
+            <div class="preview-stat-card">
+              <div class="preview-stat-label">
+                <span>Total Transaksi Terserap</span>
+                <span>AI Ingested</span>
+              </div>
+              <div class="preview-stat-val">5.284 <span style="font-size: 1rem; font-weight: normal; color: var(--ink-muted);">txs</span></div>
+              <div class="preview-stat-growth" style="color: #a78bfa;">100% Parsed & Reconciled</div>
+            </div>
+          </div>
+
+          <!-- Interactive Sankey Flow Bar Mockup -->
+          <div class="preview-sankey">
+            <div class="sankey-head">
+              <span>Alur Arus Kas Monarch-Style Bulanan (Cash Flow Sankey)</span>
+              <span style="color: var(--accent);">Surplus Kas: +Rp 8.450.000 / bln</span>
+            </div>
+            <div class="sankey-bars">
+              <div class="sankey-segment seg-income" title="Gaji & Pemasukan: Rp 28.500.000">Pemasukan (45%)</div>
+              <div class="sankey-segment seg-fixed" title="Kebutuhan Rutin & Cicilan: Rp 15.800.000">Fixed Cost (25%)</div>
+              <div class="sankey-segment seg-flexible" title="Belanja Fleksibel: Rp 7.400.000">Gaya Hidup (18%)</div>
+              <div class="sankey-segment seg-invest" title="Investasi & Tabungan Emas: Rp 5.300.000">Investasi (12%)</div>
+            </div>
+            <div class="sankey-legend">
+              <div class="legend-item"><span class="legend-box" style="background:#34d399"></span>Pemasukan Bersih</div>
+              <div class="legend-item"><span class="legend-box" style="background:#38bdf8"></span>Kebutuhan Wajib & Utang</div>
+              <div class="legend-item"><span class="legend-box" style="background:#fbbf24"></span>Belanja Fleksibel & Lifestyle</div>
+              <div class="legend-item"><span class="legend-box" style="background:#a78bfa"></span>Alokasi Portofolio & Emas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bank & Fintech Ecosystem -->
+    <section class="ecosystem-section" id="ekosistem">
+      <div class="container">
+        <h2 class="ecosystem-title">Dirancang Khusus untuk Ekosistem Perbankan & Investasi Indonesia</h2>
+        <div class="bank-chips">
+          <div class="bank-chip"><span>🏦</span> BCA Tahapan (0562)</div>
+          <div class="bank-chip"><span>🏦</span> Mandiri Tabungan Now (1610)</div>
+          <div class="bank-chip"><span>🏦</span> BRI BritAma (1256)</div>
+          <div class="bank-chip"><span>🏦</span> wondr by BNI (2037)</div>
+          <div class="bank-chip"><span>📱</span> Bank Jago Kantong (1024)</div>
+          <div class="bank-chip"><span>📱</span> SeaBank Indonesia (9018)</div>
+          <div class="bank-chip"><span>📱</span> Superbank (0000)</div>
+          <div class="bank-chip"><span>📱</span> blu by BCA Digital (0011)</div>
+          <div class="bank-chip"><span>📱</span> Krom Bank Digital (7700)</div>
+          <div class="bank-chip"><span>📱</span> Jenius BTPN (9001)</div>
+          <div class="bank-chip"><span>🏦</span> CIMB Niaga OCTO Savers (7643)</div>
+          <div class="bank-chip"><span>💳</span> BRI Tokopedia Card (6907)</div>
+          <div class="bank-chip"><span>💳</span> BNI World Mastercard (3869)</div>
+          <div class="bank-chip"><span>✨</span> Pegadaian Tabungan Emas & Galeri 24</div>
+          <div class="bank-chip"><span>🪙</span> Indodax, Tokocrypto & Binance</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature Bento Grid -->
+    <section class="features-section" id="fitur">
+      <div class="container">
+        <div class="section-head">
+          <div class="pill">Kemampuan Super</div>
+          <h2>Bukan Sekadar Pencatat Keuangan Biasa</h2>
+          <p>Semua alat yang dibutuhkan oleh keluarga modern, profesional, dan investor untuk mengoptimalkan kekayaan dalam satu platform yang estetik dan presisi.</p>
+        </div>
+
+        <div class="bento-grid">
+          <!-- Bento 1: Multimodal AI Extractor -->
+          <div class="bento-card col-8">
+            <div class="bento-icon">⚡</div>
+            <h3>Ekstraksi Multimodal AI untuk PDF e-Statement & Struk</h3>
+            <p>Tinggalkan input transaksi manual yang melelahkan. Cukup unggah berkas PDF e-statement rekening koran atau foto struk belanja, AI INVEYS (bertenaga Google Gemini / OpenAI) langsung membuka password enkripsi tanggal lahir, membaca setiap baris debit/kredit, merapikan nama merchant, dan mengklasifikasikan kategori secara instan.</p>
+            
+            <div class="bento-visual">
+              <div class="sim-row">
+                <span>[BCA 2026-10-14] TRSF E-BANKING CR 15.000.000 DARI PT TECH INTI</span>
+                <span class="sim-tag sim-income">+Rp 15.000.000 · Gaji & Pendapatan</span>
+              </div>
+              <div class="sim-row">
+                <span>[BRI 2026-10-15] QRIS INDOMARET PLAZA DB 84.500</span>
+                <span class="sim-tag sim-expense">-Rp 84.500 · Belanja & Konsumsi</span>
+              </div>
+              <div class="sim-row">
+                <span>[MANDIRI 2026-10-18] OVERBOOKING TRSF TO JENIUS 2.000.000</span>
+                <span class="sim-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">Transfer Antar Akun (Netral)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bento 2: Monarch Cash Flow Sankey -->
+          <div class="bento-card col-4">
+            <div class="bento-icon">🌊</div>
+            <h3>Diagram Alir Arus Kas Sankey Multi-Tier</h3>
+            <p>Pahami ke mana setiap rupiah gaji mengalir. Analisis visual bergaya Monarch Money membagi kas ke pos Wajib (Fixed), Fleksibel, Pembayaran Kartu Kredit, hingga Alokasi Investasi.</p>
+          </div>
+
+          <!-- Bento 3: Monte Carlo Retirement Simulation -->
+          <div class="bento-card col-4">
+            <div class="bento-icon">📊</div>
+            <h3>Simulasi Pensiun Monte Carlo Terpadu</h3>
+            <p>Uji ketahanan finansial masa depan Anda dengan 1.000 skenario ekonomi acak. Menghitung inflasi riil, volatilitas pasar modal, dan kemungkinan shortfall pensiun.</p>
+          </div>
+
+          <!-- Bento 4: Portfolio Drift Rebalancing -->
+          <div class="bento-card col-4">
+            <div class="bento-icon">⚖️</div>
+            <h3>Rebalancing Portofolio & Tabungan Emas</h3>
+            <p>Tetapkan target alokasi aset (Saham, Obligasi, Kas, Emas Antam). Algoritma menghitung deviasi (*drift*) dan memberikan rekomendasi nominal pembelian tunai tanpa perlu menjual aset.</p>
+          </div>
+
+          <!-- Bento 5: Telegram Bot Co-Pilot -->
+          <div class="bento-card col-4">
+            <div class="bento-icon">🤖</div>
+            <h3>Asisten Finansial Bot Telegram</h3>
+            <p>Catat pengeluaran saat di jalan cukup dengan chat ke bot Telegram pribadi Anda: *"Beli bensin 100rb pakai BCA"*. AI langsung mencatatnya ke buku kas tanpa buka aplikasi.</p>
+          </div>
+
+          <!-- Bento 6: Privacy & Ghost Mode -->
+          <div class="bento-card col-12" id="privasi">
+            <div class="bento-icon">🛡️</div>
+            <h3>Privasi Tingkat Militer & Ghost Mode Sekali Klik</h3>
+            <p>Data keuangan adalah hal paling sensitif. INVEYS tidak meminta login m-Banking (tanpa kredensial aggregator), tidak menjual data Anda ke perusahaan pinjaman online atau asuransi, dan seluruh rekaman buku kas tersimpan di dalam perangkat Anda. Saat membuka aplikasi di cafe atau ruang publik, aktifkan Ghost Mode untuk mengaburkan saldo secara instan.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comparison Table -->
+    <section class="comparison-section">
+      <div class="container">
+        <div class="section-head">
+          <div class="pill">Komparasi Produk</div>
+          <h2>Mengapa INVEYS Berbeda?</h2>
+          <p>Lihat bagaimana INVEYS mengungguli aplikasi luar negeri dan spreadsheet konvensional.</p>
+        </div>
+
+        <div class="comp-table-wrap">
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>Fitur & Kapabilitas</th>
+                <th class="comp-highlight">INVEYS Financial OS</th>
+                <th>Monarch Money / YNAB</th>
+                <th>Aplikasi Keuangan Gratisan</th>
+                <th>Excel / Spreadsheet</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Dukungan Bank Indonesia Penuh (14+ Bank)</strong></td>
+                <td class="comp-highlight"><span class="check">✓</span> BCA, Mandiri, BRI, BNI, Jago, dll.</td>
+                <td><span class="cross">✕</span> Hanya Bank AS & Eropa</td>
+                <td><span class="cross">✕</span> Input manual ketik sendiri</td>
+                <td><span class="cross">✕</span> Copy-paste manual</td>
+              </tr>
+              <tr>
+                <td><strong>AI Auto-Parse PDF e-Statement Bank</strong></td>
+                <td class="comp-highlight"><span class="check">✓</span> Deteksi password & kategori otomatis</td>
+                <td><span class="cross">✕</span> Tidak ada</td>
+                <td><span class="cross">✕</span> Tidak ada</td>
+                <td><span class="cross">✕</span> Rumus macro rumit</td>
+              </tr>
+              <tr>
+                <td><strong>Privasi Tanpa Serahkan Username m-Banking</strong></td>
+                <td class="comp-highlight"><span class="check">✓</span> 100% Aman & Zero Knowledge</td>
+                <td><span class="cross">✕</span> Wajib koneksi open-banking Plaid</td>
+                <td><span class="check">✓</span> Manual</td>
+                <td><span class="check">✓</span> Manual</td>
+              </tr>
+              <tr>
+                <td><strong>Diagram Arus Kas Sankey Multi-Tier</strong></td>
+                <td class="comp-highlight"><span class="check">✓</span> Bawaan & Ekspor SVG</td>
+                <td><span class="check">✓</span> Ada di Monarch</td>
+                <td><span class="cross">✕</span> Tidak ada</td>
+                <td><span class="cross">✕</span> Butuh plugin luar</td>
+              </tr>
+              <tr>
+                <td><strong>Rebalance Portofolio & Tabungan Emas Pegadaian</strong></td>
+                <td class="comp-highlight"><span class="check">✓</span> Termasuk harga Antam & Galeri 24</td>
+                <td><span class="cross">✕</span> Tidak mendukung</td>
+                <td><span class="cross">✕</span> Tidak ada</td>
+                <td><span class="cross">✕</span> Butuh update API manual</td>
+              </tr>
+              <tr>
+                <td><strong>Opsi Beli Sekali Seumur Hidup (Self-Hosted)</strong></td>
+                <td class="comp-highlight"><span class="check">✓</span> Tersedia Lisensi Lifetime</td>
+                <td><span class="cross">✕</span> Langganan $15/bulan (~Rp 2,8 Jt/thn)</td>
+                <td><span class="check">✓</span> Gratis tapi penuh iklan</td>
+                <td><span class="check">✓</span> Gratis</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section" id="pricing">
+      <div class="container" style="text-align: center;">
+        <div class="pill">Harga Terjangkau & Transparan</div>
+        <h2>Investasi Terbaik untuk Masa Depan Finansial Anda</h2>
+        <p class="lead" style="margin-bottom: 25px;">Pilih model langganan cloud otomatis di VPS atau miliki lisensi seumur hidup (Self-Hosted).</p>
+
+        <div class="pricing-switcher">
+          <button class="pricing-btn active" id="cycle-monthly" onclick="switchBilling('monthly')">Langganan Bulanan</button>
+          <button class="pricing-btn" id="cycle-annual" onclick="switchBilling('annual')">Tahunan (Hemat 20%)</button>
+          <button class="pricing-btn" id="cycle-lifetime" onclick="switchBilling('lifetime')">💎 Lisensi Seumur Hidup</button>
+        </div>
+
+        <div class="pricing-grid">
+          <!-- Plus Tier -->
+          <div class="pricing-card" id="card-plus">
+            <h3 class="plan-name">Plus</h3>
+            <p class="plan-desc">Untuk individu yang ingin merapikan seluruh rekening kas, utang, dan kartu kredit.</p>
+            <div class="plan-price-wrap">
+              <span class="plan-price" id="price-plus">Rp 49.000</span>
+              <span class="plan-cycle" id="cycle-plus">/ bulan</span>
+            </div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Sinkronisasi 14 Rekening Bank & Kartu Kredit</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Laporan Keuangan Lengkap & Arus Kas</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Auto-Rules & Kategori Otomatis</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Perencanaan Forecast Pensiun Dasar</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Mode Privasi Global (Ghost Mode)</li>
+            </ul>
+            <button class="btn btn-secondary" onclick="openCheckout('Plus', 'Rp 49.000 / bln')">Pilih Paket Plus</button>
+          </div>
+
+          <!-- Pro Tier (Popular) -->
+          <div class="pricing-card popular" id="card-pro">
+            <span class="pricing-badge">Paling Populer</span>
+            <h3 class="plan-name">Pro</h3>
+            <p class="plan-desc">Pilihan terbaik untuk keluarga mapan dan investor yang mengelola portofolio majemuk.</p>
+            <div class="plan-price-wrap">
+              <span class="plan-price" id="price-pro">Rp 129.000</span>
+              <span class="plan-cycle" id="cycle-pro">/ bulan</span>
+            </div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua fitur paket Plus</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>⚡ AI Bank Statement & Receipt Extractor</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Diagram Alir Kas Sankey Multi-Tier</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Portfolio Rebalancer & Drift Alokasi</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Simulasi Pensiun Monte Carlo (1000 iterasi)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Hingga 5 Skenario Finansial Paralel</li>
+            </ul>
+            <button class="btn btn-primary" onclick="openCheckout('Pro', 'Rp 129.000 / bln')">Mulai Berlangganan Pro</button>
+          </div>
+
+          <!-- Ultra Tier -->
+          <div class="pricing-card" id="card-ultra">
+            <h3 class="plan-name">Ultra</h3>
+            <p class="plan-desc">Kendali penuh bagi power user, pengusaha, dan trader multi-aset.</p>
+            <div class="plan-price-wrap">
+              <span class="plan-price" id="price-ultra">Rp 299.000</span>
+              <span class="plan-cycle" id="cycle-ultra">/ bulan</span>
+            </div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua fitur paket Pro</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>🤖 Integrasi Bot Telegram Finansial Co-Pilot</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Sinkronisasi Bursa Kripto (Indodax, Tokocrypto, Binance)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 20 Skenario Finansial & 100 Rencana Kejadian Hidup</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Akses Multimodal AI Tanpa Batas Kuota</li>
+            </ul>
+            <button class="btn btn-secondary" onclick="openCheckout('Ultra', 'Rp 299.000 / bln')">Pilih Paket Ultra</button>
+          </div>
+
+          <!-- Special: Self-Hosted Lifetime License -->
+          <div class="pricing-card lifetime" id="card-lifetime">
+            <span class="pricing-badge gold">Miliki Selamanya</span>
+            <h3 class="plan-name">Self-Hosted Lifetime</h3>
+            <p class="plan-desc">Beli sekali, jalankan di VPS atau komputer Anda sendiri seumur hidup. Tanpa langganan bulanan.</p>
+            <div class="plan-price-wrap">
+              <span class="plan-price" style="color: var(--gold);">Rp 499.000</span>
+              <span class="plan-cycle">/ sekali bayar</span>
+            </div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Akses 100% Seluruh Fitur Ultra</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> File Standalone Single HTML + Docker Container</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bebas host di VPS / Docker / Synology NAS Anda</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Gunakan API Key Gemini gratis Anda sendiri (BYOK)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Termasuk 1 Tahun Pembaruan Fitur & Kode Sumber</li>
+            </ul>
+            <button class="btn btn-gold" onclick="openCheckout('Self-Hosted Lifetime', 'Rp 499.000 Sekali Bayar')">Beli Lisensi Lifetime</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" id="faq">
+      <div class="container">
+        <div class="section-head">
+          <div class="pill">Pertanyaan Populer</div>
+          <h2>Ada Pertanyaan? Kami Punya Jawabannya</h2>
+        </div>
+
+        <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Apakah data perbankan saya benar-benar aman di INVEYS?</span>
+              <span>+</span>
+            </div>
+            <div class="faq-answer">
+              Sangat aman. INVEYS tidak pernah meminta username, PIN, atau password mobile banking Anda. Ekstraksi mutasi dilakukan secara offline-first melalui berkas e-statement PDF resmi yang Anda unduh dari bank Anda. Data tersebut disimpan terenkripsi di perangkat lokal Anda atau VPS pribadi Anda, bukan di database pihak ketiga.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Format dokumen bank apa saja yang didukung oleh AI INVEYS?</span>
+              <span>+</span>
+            </div>
+            <div class="faq-answer">
+              AI INVEYS telah dioptimalkan khusus untuk membaca format e-statement PDF dan ekspor CSV dari Bank BCA, Bank Mandiri, Bank BRI (BritAma & Kartu Kredit), Bank BNI, Bank Jago, SeaBank, Superbank, blu BCA Digital, Jenius BTPN, Krom Bank, CIMB Niaga OCTO, Pegadaian Emas, serta struk belanja ritel seperti Indomaret dan Alfamart.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Apa perbedaan versi Cloud SaaS dengan Lisensi Lifetime Self-Hosted?</span>
+              <span>+</span>
+            </div>
+            <div class="faq-answer">
+              Versi Cloud SaaS berjalan di cloud inveys.io kami sehingga Anda bisa langsung login tanpa perlu pusing urusan server. Sedangkan Lisensi Lifetime memberikan Anda kode dan paket Docker lengkap untuk Anda pasang di server VPS sendiri (Hostinger, DigitalOcean) atau komputer Anda seumur hidup dengan sekali pembayaran.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Apakah aplikasi ini bisa dijalankan tanpa koneksi internet?</span>
+              <span>+</span>
+            </div>
+            <div class="faq-answer">
+              Ya! INVEYS dirancang dengan arsitektur Local-First. File aplikasi standalone <code>inveys-app.html</code> dapat Anda buka langsung di browser Chrome, Safari, atau Firefox di laptop Anda bahkan saat mode pesawat (offline) tanpa internet.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final Call to Action -->
+    <section style="padding: 90px 0; background: linear-gradient(180deg, transparent 0%, rgba(52, 211, 153, 0.08) 100%); text-align: center;">
+      <div class="container">
+        <div class="pill pill-gold">Mulai Hari Ini</div>
+        <h2 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem); margin-bottom: 20px;">Siap Mengambil Kendali Penuh atas Keuangan Anda?</h2>
+        <p class="lead" style="margin-bottom: 35px;">Bergabunglah dengan ratusan pengguna pintar yang telah meninggalkan spreadsheet manual.</p>
+        <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+          <a href="inveys-app.html#home" class="btn btn-primary" style="padding: 16px 36px;">Buka Demo Aplikasi Gratis</a>
+          <a href="#pricing" class="btn btn-gold" style="padding: 16px 36px;">Beli Lisensi Sekarang</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Interactive Checkout / Lead Capture Modal -->
+  <div class="modal-overlay" id="checkout-modal">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeCheckout()">✕</button>
+      <div style="text-align: left; margin-bottom: 20px;">
+        <span class="pill pill-gold" id="checkout-badge">Konfirmasi Pemesanan</span>
+        <h3 id="checkout-plan-title" style="font-size: 1.5rem; margin-bottom: 6px;">Paket Pro</h3>
+        <p style="color: var(--accent); font-size: 1.25rem; font-weight: 700;" id="checkout-plan-price">Rp 129.000 / bln</p>
+      </div>
+
+      <form id="checkout-form" onsubmit="handleCheckoutSubmit(event)">
+        <div class="form-group">
+          <label class="form-label" for="cust-name">Nama Lengkap</label>
+          <input type="text" id="cust-name" class="form-input" placeholder="contoh: Hendra Febriansyah" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cust-email">Alamat Email (Akses Lisensi / Akun)</label>
+          <input type="email" id="cust-email" class="form-input" placeholder="nama@domain.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cust-payment">Metode Pembayaran</label>
+          <select id="cust-payment" class="form-input" style="background:#061210;">
+            <option value="qris">QRIS (Gopay, OVO, Dana, ShopeePay, BCA)</option>
+            <option value="va_bca">Virtual Account BCA</option>
+            <option value="va_mandiri">Virtual Account Mandiri</option>
+            <option value="va_bri">Virtual Account BRI</option>
+            <option value="cc">Kartu Kredit / Debit Visa & Mastercard</option>
+            <option value="lemonsqueezy">Kartu Internasional (Stripe / LemonSqueezy)</option>
+          </select>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--ink-subtle); margin-bottom: 20px; line-height: 1.5;">
+          🔒 Pembayaran diproses dengan enkripsi 256-bit. Kunci lisensi dan tautan aktivasi akan dikirimkan otomatis ke email Anda setelah pembayaran berhasil diverifikasi.
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;" id="checkout-submit-btn">
+          Lanjutkan ke Pembayaran
+        </button>
+      </form>
+
+      <div id="checkout-success" style="display: none; text-align: center; padding: 20px 0;">
+        <div style="font-size: 3rem; margin-bottom: 12px;">🎉</div>
+        <h3 style="color: var(--accent); margin-bottom: 10px;">Pemesanan Berhasil Disiapkan!</h3>
+        <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 20px;">
+          Permintaan aktivasi untuk paket <strong id="success-plan-name" style="color:var(--ink);"></strong> telah dicatat. Kami akan segera menghubungkan gateway pembayaran otomatis pada tahap rilis berikutnya.
+        </p>
+        <a href="inveys-app.html#home" class="btn btn-primary" style="width: 100%;">
+          Lanjut Coba Demo Sekarang
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div class="container">
+      <div class="footer-links">
+        <a href="inveys-app.html#home">Buka Demo Aplikasi</a>
+        <a href="#fitur">Fitur Lengkap</a>
+        <a href="#pricing">Paket Harga</a>
+        <a href="https://github.com/cilostoc/INVYES" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="#faq">Bantuan & FAQ</a>
+      </div>
+      <p style="margin-bottom: 8px;">© 2026 INVEYS. All rights reserved. Your financial life, connected.</p>
+      <p style="font-size: 0.8rem; opacity: 0.7;">Dirancang khusus untuk profesional dan keluarga di Indonesia dengan standar privasi global.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Ghost Mode Interactive Toggle in Hero
+    let isGhost = false;
+    const ghostBtn = document.getElementById('ghost-demo-toggle');
+    const ghostBtnText = document.getElementById('ghost-btn-text');
+    const networthEl = document.getElementById('stat-networth');
+    const liquidEl = document.getElementById('stat-liquid');
+    const debtEl = document.getElementById('stat-debt');
+
+    ghostBtn.addEventListener('click', () => {
+      isGhost = !isGhost;
+      if (isGhost) {
+        networthEl.classList.add('blur');
+        liquidEl.classList.add('blur');
+        debtEl.classList.add('blur');
+        ghostBtnText.textContent = 'Ghost Mode: AKTIF (Saldo Disensor)';
+        ghostBtn.style.borderColor = 'var(--accent)';
+        ghostBtn.style.color = 'var(--accent)';
+      } else {
+        networthEl.classList.remove('blur');
+        liquidEl.classList.remove('blur');
+        debtEl.classList.remove('blur');
+        ghostBtnText.textContent = 'Ghost Mode (Klik untuk sensor saldo)';
+        ghostBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+        ghostBtn.style.color = 'var(--ink)';
+      }
+    });
+
+    // Pricing Billing Switcher
+    function switchBilling(cycle) {
+      document.querySelectorAll('.pricing-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('cycle-' + cycle).classList.add('active');
+
+      const cardPlus = document.getElementById('card-plus');
+      const cardPro = document.getElementById('card-pro');
+      const cardUltra = document.getElementById('card-ultra');
+      const cardLifetime = document.getElementById('card-lifetime');
+
+      if (cycle === 'lifetime') {
+        cardPlus.style.display = 'none';
+        cardPro.style.display = 'none';
+        cardUltra.style.display = 'none';
+        cardLifetime.style.display = 'flex';
+        cardLifetime.style.gridColumn = '1 / -1';
+        cardLifetime.style.maxWidth = '600px';
+        cardLifetime.style.margin = '0 auto';
+      } else {
+        cardPlus.style.display = 'flex';
+        cardPro.style.display = 'flex';
+        cardUltra.style.display = 'flex';
+        cardLifetime.style.display = 'flex';
+        cardLifetime.style.gridColumn = 'auto';
+        cardLifetime.style.maxWidth = 'none';
+        cardLifetime.style.margin = '0';
+
+        if (cycle === 'annual') {
+          document.getElementById('price-plus').textContent = 'Rp 39.200';
+          document.getElementById('cycle-plus').textContent = '/ bln (Rp 470rb/thn)';
+          document.getElementById('price-pro').textContent = 'Rp 103.200';
+          document.getElementById('cycle-pro').textContent = '/ bln (Rp 1.238rb/thn)';
+          document.getElementById('price-ultra').textContent = 'Rp 239.200';
+          document.getElementById('cycle-ultra').textContent = '/ bln (Rp 2.870rb/thn)';
+        } else {
+          document.getElementById('price-plus').textContent = 'Rp 49.000';
+          document.getElementById('cycle-plus').textContent = '/ bulan';
+          document.getElementById('price-pro').textContent = 'Rp 129.000';
+          document.getElementById('cycle-pro').textContent = '/ bulan';
+          document.getElementById('price-ultra').textContent = 'Rp 299.000';
+          document.getElementById('cycle-ultra').textContent = '/ bulan';
+        }
+      }
+    }
+
+    // FAQ Toggle Accordion
+    function toggleFaq(el) {
+      const answer = el.nextElementSibling;
+      const isVisible = answer.style.display === 'block';
+      document.querySelectorAll('.faq-answer').forEach(a => a.style.display = 'none');
+      document.querySelectorAll('.faq-question span:last-child').forEach(s => s.textContent = '+');
+      if (!isVisible) {
+        answer.style.display = 'block';
+        el.querySelector('span:last-child').textContent = '−';
+      }
+    }
+
+    // Checkout Modal
+    const modal = document.getElementById('checkout-modal');
+    function openCheckout(planName, planPrice) {
+      document.getElementById('checkout-plan-title').textContent = 'Paket ' + planName;
+      document.getElementById('checkout-plan-price').textContent = planPrice;
+      document.getElementById('checkout-form').style.display = 'block';
+      document.getElementById('checkout-success').style.display = 'none';
+      modal.style.display = 'flex';
+    }
+    function closeCheckout() {
+      modal.style.display = 'none';
+    }
+    function handleCheckoutSubmit(e) {
+      e.preventDefault();
+      const planName = document.getElementById('checkout-plan-title').textContent;
+      document.getElementById('success-plan-name').textContent = planName;
+      document.getElementById('checkout-form').style.display = 'none';
+      document.getElementById('checkout-success').style.display = 'block';
+    }
+    window.onclick = function(event) {
+      if (event.target === modal) {
+        closeCheckout();
+      }
+    };
+  </script>
+</body>
+</html>
