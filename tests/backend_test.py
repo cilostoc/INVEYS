@@ -404,4 +404,107 @@ class Backend(unittest.TestCase):
             self.assertEqual(st_me, 200)
             self.assertEqual(res_me['user']['email'], 'hendra@inveys.io')
 
+    def test_payment_order_create_simulate_and_license_status(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'payment_test.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+
+            # 1. Register a user
+            _, res_user = self.request('/api/auth/register', {'email': 'buyer@inveys.io', 'password': 'PasswordBuyer123', 'name': 'Buyer'}, headers_csrf)
+            token = res_user['token']
+            user_headers = {**headers_csrf, 'Authorization': f'Bearer {token}'}
+
+            # 2. Create payment order for Pro Monthly (Rp 99.000)
+            st_ord, res_ord = self.request('/api/payment/create', {'plan': 'pro', 'cycle': 'monthly'}, user_headers)
+            self.assertEqual(st_ord, 200)
+            self.assertTrue(res_ord['ok'])
+            self.assertEqual(res_ord['amount'], 99000)
+            self.assertEqual(res_ord['status'], 'pending')
+            self.assertTrue(res_ord['orderId'].startswith('INV-'))
+            self.assertTrue(res_ord['qris'].startswith('00020101'))
+            order_id = res_ord['orderId']
+
+            # 3. Query order status via GET /api/payment/order/<order_id>
+            st_check, res_check = self.request(f'/api/payment/order/{order_id}', headers=user_headers)
+            self.assertEqual(st_check, 200)
+            self.assertEqual(res_check['order']['status'], 'pending')
+            self.assertEqual(res_check['order']['amount'], 99000)
+
+            # 4. Simulate payment settlement
+            st_sim, res_sim = self.request('/api/payment/simulate', {'order_id': order_id}, user_headers)
+            self.assertEqual(st_sim, 200)
+            self.assertTrue(res_sim['ok'])
+            self.assertEqual(res_sim['status'], 'paid')
+            self.assertEqual(res_sim['plan'], 'pro')
+            self.assertTrue(res_sim['licenseKey'].startswith('IV-PRO-'))
+
+            # 5. Query order status after payment -> status paid & licenseKey attached
+            st_check2, res_check2 = self.request(f'/api/payment/order/{order_id}', headers=user_headers)
+            self.assertEqual(st_check2, 200)
+            self.assertEqual(res_check2['order']['status'], 'paid')
+            self.assertTrue(res_check2['order']['licenseKey'].startswith('IV-PRO-'))
+
+            # 6. Verify /api/license/status reports active Pro plan
+            st_lic, res_lic = self.request('/api/license/status', headers=user_headers)
+            self.assertEqual(st_lic, 200)
+            self.assertEqual(res_lic['plan'], 'pro')
+            self.assertTrue(res_lic['hasActiveLicense'])
+            self.assertIsNotNone(res_lic['license'])
+
+    def test_license_key_activation_flow(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'lic_test.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+
+            # 1. Register a user on default Plus plan
+            _, res_user = self.request('/api/auth/register', {'email': 'subscriber@inveys.io', 'password': 'PasswordSub123', 'name': 'Sub'}, headers_csrf)
+            token = res_user['token']
+            user_headers = {**headers_csrf, 'Authorization': f'Bearer {token}'}
+
+            # 2. Generate a valid Lifetime Ultra license key for this user
+            valid_lic, _ = s.generate_license_key('usr_test', 'subscriber@inveys.io', 'ultra', expires_at=None)
+
+            # 3. Activate valid license
+            st_act, res_act = self.request('/api/license/activate', {'license_key': valid_lic}, user_headers)
+            self.assertEqual(st_act, 200)
+            self.assertTrue(res_act['ok'])
+            self.assertEqual(res_act['plan'], 'ultra')
+            self.assertTrue(res_act['isLifetime'])
+
+            # 4. Reject invalid license key
+            st_inv, res_inv = self.request('/api/license/activate', {'license_key': 'IV-INVALID-KEY'}, user_headers)
+            self.assertEqual(st_inv, 400)
+
+            # 5. Reject license issued for a different email
+            foreign_lic, _ = s.generate_license_key('usr_other', 'other@inveys.io', 'ultra', expires_at=None)
+            st_for, res_for = self.request('/api/license/activate', {'license_key': foreign_lic}, user_headers)
+            self.assertEqual(st_for, 400)
+
+    def test_midtrans_webhook_processing(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'webhook_test.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+
+            # 1. Create order
+            st_ord, res_ord = self.request('/api/payment/create', {'email': 'webhook@inveys.io', 'name': 'Webhook User', 'plan': 'lifetime', 'cycle': 'lifetime'}, headers_csrf)
+            self.assertEqual(st_ord, 200)
+            order_id = res_ord['orderId']
+
+            # 2. Trigger Midtrans webhook (settlement)
+            webhook_payload = {
+                'order_id': order_id,
+                'status_code': '200',
+                'gross_amount': str(res_ord['amount']),
+                'transaction_status': 'settlement',
+                'fraud_status': 'accept',
+                'payment_type': 'qris'
+            }
+            st_wh, res_wh = self.request('/api/payment/webhook/midtrans', webhook_payload, headers_csrf)
+            self.assertEqual(st_wh, 200)
+            self.assertTrue(res_wh['ok'])
+
+            # 3. Check order is paid
+            st_check, res_check = self.request(f'/api/payment/order/{order_id}', headers=headers_csrf)
+            self.assertEqual(st_check, 200)
+            self.assertEqual(res_check['order']['status'], 'paid')
+            self.assertEqual(res_check['order']['plan'], 'lifetime')
+            self.assertTrue(res_check['order']['licenseKey'].startswith('IV-ULTRA-'))
+
 if __name__=='__main__':unittest.main()

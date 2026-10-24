@@ -4854,7 +4854,21 @@
   let planCycle='monthly';
   const planMoney=n=>new Intl.NumberFormat(locale(),{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
   const planFeatureLabel=id=>({core:L('Rekening, transaksi, kartu kredit & laporan','Accounts, transactions, credit cards & reports'),autorules:L('Aturan otomatis & pembersihan transaksi','Auto-rules & transaction cleanup'),forecast:L('Forecast & perencanaan pensiun','Forecast & retirement planning'),investment:L('Perbandingan benchmark investasi','Investment benchmark comparison'),rebalance:L('Rebalancing portofolio & analisis drift','Portfolio rebalancing & drift analysis'),montecarlo:L('Monte Carlo terpadu','Integrated Monte Carlo'),scenarios:L('Beberapa skenario forecast','Multiple forecast scenarios'),integrations:L('Telegram & akses AI eksternal','Telegram & external AI access'),crypto:L('Konektor API exchange crypto (Bybit/Binance/OKX)','Crypto exchange API connectors (Bybit/Binance/OKX)')})[id]||id;
-  function plans(){const tier=state.commercial.previewTier;return header(L('Satu sistem, tiga tingkat kebutuhan.','One system, three levels of ambition.'),L('Plus, Pro dan Ultra. Harga draft dan akses pratinjau; checkout berbayar belum terhubung.','Plus, Pro and Ultra. Draft prices and preview access; paid checkout is not connected.'),button(L('Atur harga draft','Configure draft pricing'),'plan-pricing')+button(L('🌐 Halaman Penjualan & Promosi','🌐 Public Sales Landing Page'),'landing-open','primary'),'INVEYS MEMBERSHIP')+`<section class="panel panel-pad plan-status"><div><b>${L('Mode pratinjau paket','Plan preview mode')}: ${tier.toUpperCase()}</b><p class="note">${L('Mengganti pratinjau tidak memungut biaya, mengaktifkan langganan, atau menghapus data.','Changing preview does not charge, activate a subscription or delete records.')}</p></div><div class="segmented"><button data-action="plan-cycle:monthly" class="${planCycle==='monthly'?'active':''}" aria-pressed="${planCycle==='monthly'}">${L('Bulanan','Monthly')}</button><button data-action="plan-cycle:annual" class="${planCycle==='annual'?'active':''}" aria-pressed="${planCycle==='annual'}">${L('Tahunan','Annual')}</button></div></section><div class="plan-grid">${P.catalog.map(p=>{const q=P.quote(state.commercial,p.id,planCycle);return `<section class="panel panel-pad plan-card ${p.id===tier?'selected':''}"><span class="badge">${p.id==='pro'?L('Pilihan seimbang','Balanced choice'):p.id==='plus'?L('Keuangan sehari-hari','Everyday finances'):L('Kendali menyeluruh','Complete control')}</span><h2>INVEYS ${p.name}</h2><div class="plan-price">${planMoney(q.amount)}<small>/${planCycle==='monthly'?L('bulan','month'):L('tahun','year')}</small></div><p class="note">${planCycle==='annual'&&q.saving>0?L('Lebih rendah ','Lower by ')+(q.saving*100).toFixed(0)+'% '+L('dibanding 12 pembayaran bulanan','than 12 monthly payments'):L('Harga draft · belum ditagihkan','Draft price · not billed')}</p><ul>${P.features.filter(f=>P.allowed(p.id,f.id)).map(f=>`<li>${escape(planFeatureLabel(f.id))}</li>`).join('')}<li>${p.scenarios} ${L('skenario tersimpan','saved scenarios')} · ${p.events} ${L('kejadian per rencana','events per plan')}</li></ul>${button(p.id===tier?L('Pratinjau aktif','Preview active'):L('Pratinjau paket','Preview plan'),'plan-preview:'+p.id,p.id===tier?'':'primary')}<p class="note">${L('Data lokal; layanan eksternal tetap memerlukan konfigurasi.','Local data; external services still require configuration.')}</p></section>`;}).join('')}</div><section class="panel panel-pad" style="margin-top:24px"><h2>${L('Perbandingan paket','Compare plans')}</h2><div class="table-wrap"><table><thead><tr><th>${L('Fitur','Feature')}</th>${P.catalog.map(p=>`<th>${p.name}</th>`).join('')}</tr></thead><tbody>${P.features.map(f=>`<tr><td>${escape(planFeatureLabel(f.id))}</td>${P.catalog.map(p=>`<td>${P.allowed(p.id,f.id)?'✓':'—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="note">${L('Pratinjau ini mengatur pengalaman UI, bukan verifikasi hak akses berbayar. Login, tenant, checkout, webhook pembayaran, pajak dan pengelolaan langganan server belum diaktifkan.','This preview controls the UI experience, not paid authorization. Login, tenants, checkout, payment webhooks, taxes and server subscription management are not activated.')}</p></section>`;}
+  function plans(){
+    const tier=state.commercial.previewTier;
+    const activePlan=currentUser?.plan||'plus';
+    const statusBanner=`<div class="panel panel-pad" style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <span style="font-size:11px;font-weight:700;color:var(--accent,#34d399);text-transform:uppercase;letter-spacing:1px;">${L('Status Akun & Brankas','Account & Vault Status')}</span>
+        <h3 style="margin:4px 0 0 0;font-size:18px;">INVEYS ${activePlan.toUpperCase()} · ${currentUser?currentUser.email:(isServerMode?'Cloud Node':'Local Vault')}</h3>
+        <p class="note" style="margin:4px 0 0 0;">${L('Fitur sinkronisasi multi-device & brankas multi-tenant aktif.','Multi-device synchronization & tenant vault active.')}</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        ${button(L('🔑 Aktivasi Kunci Lisensi','🔑 Activate License Key'),'license-activate','primary')}
+      </div>
+    </div>`;
+    return header(L('Satu sistem, tiga tingkat kebutuhan.','One system, three levels of ambition.'),L('Plus, Pro dan Ultra. Harga draft dan akses pratinjau; checkout berbayar belum terhubung.','Plus, Pro and Ultra. Draft prices and preview access; paid checkout is not connected.'),button(L('Atur harga draft','Configure draft pricing'),'plan-pricing')+button(L('🔑 Aktivasi Lisensi','🔑 Activate License'),'license-activate')+button(L('🌐 Halaman Penjualan & Promosi','🌐 Public Sales Landing Page'),'landing-open','primary'),'INVEYS MEMBERSHIP')+statusBanner+`<section class="panel panel-pad plan-status"><div><b>${L('Mode pratinjau paket','Plan preview mode')}: ${tier.toUpperCase()}</b><p class="note">${L('Mengganti pratinjau tidak memungut biaya, mengaktifkan langganan, atau menghapus data.','Changing preview does not charge, activate a subscription or delete records.')}</p></div><div class="segmented"><button data-action="plan-cycle:monthly" class="${planCycle==='monthly'?'active':''}" aria-pressed="${planCycle==='monthly'}">${L('Bulanan','Monthly')}</button><button data-action="plan-cycle:annual" class="${planCycle==='annual'?'active':''}" aria-pressed="${planCycle==='annual'}">${L('Tahunan','Annual')}</button></div></section><div class="plan-grid">${P.catalog.map(p=>{const q=P.quote(state.commercial,p.id,planCycle);return `<section class="panel panel-pad plan-card ${p.id===tier?'selected':''}"><span class="badge">${p.id==='pro'?L('Pilihan seimbang','Balanced choice'):p.id==='plus'?L('Keuangan sehari-hari','Everyday finances'):L('Kendali menyeluruh','Complete control')}</span><h2>INVEYS ${p.name}</h2><div class="plan-price">${planMoney(q.amount)}<small>/${planCycle==='monthly'?L('bulan','month'):L('tahun','year')}</small></div><p class="note">${planCycle==='annual'&&q.saving>0?L('Lebih rendah ','Lower by ')+(q.saving*100).toFixed(0)+'% '+L('dibanding 12 pembayaran bulanan','than 12 monthly payments'):L('Harga draft · belum ditagihkan','Draft price · not billed')}</p><ul>${P.features.filter(f=>P.allowed(p.id,f.id)).map(f=>`<li>${escape(planFeatureLabel(f.id))}</li>`).join('')}<li>${p.scenarios} ${L('skenario tersimpan','saved scenarios')} · ${p.events} ${L('kejadian per rencana','events per plan')}</li></ul><div style="display:flex;flex-direction:column;gap:8px;">${button(L('Beli / Langganan Sekarang','Subscribe / Purchase Now'),'plan-checkout:'+p.id,'primary')}${button(p.id===tier?L('Pratinjau aktif','Preview active'):L('Pratinjau paket','Preview plan'),'plan-preview:'+p.id,p.id===tier?'':'')}<p class="note">${L('Data lokal; layanan eksternal tetap memerlukan konfigurasi.','Local data; external services still require configuration.')}</p></div></section>`;}).join('')}</div><section class="panel panel-pad" style="margin-top:24px"><h2>${L('Perbandingan paket','Compare plans')}</h2><div class="table-wrap"><table><thead><tr><th>${L('Fitur','Feature')}</th>${P.catalog.map(p=>`<th>${p.name}</th>`).join('')}</tr></thead><tbody>${P.features.map(f=>`<tr><td>${escape(planFeatureLabel(f.id))}</td>${P.catalog.map(p=>`<td>${P.allowed(p.id,f.id)?'✓':'—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="note">${L('Pratinjau ini mengatur pengalaman UI, bukan verifikasi hak akses berbayar. Login, tenant, checkout, webhook pembayaran, pajak dan pengelolaan langganan server belum diaktifkan.','This preview controls the UI experience, not paid authorization. Login, tenants, checkout, payment webhooks, taxes and server subscription management are not activated.')}</p></section>`;
+  }
   function planGate(feature){if(P.allowed(state.commercial.previewTier,feature))return false;openModal(L('Fitur pada paket lebih tinggi','Feature on a higher plan'),`<p class="note">${L('Fitur ini berada pada paket Pro atau Ultra dalam pratinjau. Data yang sudah ada tetap tersedia. Tidak ada pembayaran otomatis.','This feature belongs to Pro or Ultra in preview. Existing records remain available. No automatic payment occurs.')}</p><div class="button-group">${button(L('Bandingkan paket','Compare plans'),'plan-open','primary')}${button(t('Close'),'modal-close')}</div>`);return true;}
   function planAction(name,id){
     if(name==='landing-open'){window.open('landing.html', '_blank');return;}
@@ -4862,6 +4876,161 @@
     if(name==='plan-cycle'&&['monthly','annual'].includes(id)){planCycle=id;render();}
     if(name==='plan-preview'&&P.catalog.some(p=>p.id===id))confirmAction(L('Ganti pratinjau ke ','Switch preview to ')+id.toUpperCase(),L('Ini bukan pembelian. Catatan dan skenario lama tidak dihapus; batas diterapkan saat membuat fitur baru.','This is not a purchase. Existing records/scenarios remain; limits apply when creating new items.'),()=>{state.commercial.previewTier=id;toast(L('Pratinjau paket diperbarui','Plan preview updated'));},L('Ganti pratinjau','Switch preview'));
     if(name==='plan-pricing')openModal(L('Harga draft dalam IDR','Draft prices in IDR'),form(P.catalog.map(p=>`<h3>${p.name}</h3>`+field(L('Bulanan','Monthly'),'monthly_'+p.id,state.commercial.prices[p.id].monthly,'number','required min="1" max="1000000000" step="1"')+field(L('Tahunan','Annual'),'annual_'+p.id,state.commercial.prices[p.id].annual,'number','required min="1" max="1000000000" step="1"')).join(''),'Save',L('Nominal rupiah utuh. Belum termasuk keputusan pajak, trial, atau pembatalan; harga ini tidak terhubung ke tagihan.','Whole rupiah amounts. Taxes, trial and cancellation terms are not decided; these prices do not create invoices.')),d=>{const prices=Object.fromEntries(P.catalog.map(p=>[p.id,{monthly:Number(d['monthly_'+p.id]),annual:Number(d['annual_'+p.id])}]));P.validate({...state.commercial,prices});state.commercial.prices=prices;});
+    if(name==='license-activate'){
+      openModal(L('Aktivasi Kunci Lisensi INVEYS','Activate INVEYS License Key'),`
+        <form id="license-form" style="display:flex;flex-direction:column;gap:14px;">
+          <p class="note" style="margin:0;">${L('Masukkan kunci lisensi Anda (Format: IV-PLAN-HASH-EXPIRY-SIG). Sistem memverifikasi tanda tangan kriptografi secara aman.','Enter your license key. The system verifies the cryptographic signature securely.')}</p>
+          <input type="text" id="license-key-input" name="license_key" placeholder="Contoh: IV-ULTRA-A1B2C3-LIFETIME-D4E5F6G7" required style="font-family:monospace;letter-spacing:1px;font-weight:600;text-transform:uppercase;padding:12px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(0,0,0,0.2);color:inherit;">
+          <div id="license-error" class="form-error" style="display:none;color:#ef4444;font-size:12px;"></div>
+          <div class="button-group" style="margin-top:8px;">
+            <button type="submit" class="btn primary" id="license-submit-btn">${L('Aktivasi Sekarang','Activate Now')}</button>
+            <button type="button" class="btn" data-action="modal-close">${t('Cancel')}</button>
+          </div>
+        </form>
+      `);
+      setTimeout(()=>{
+        $('#license-form')?.addEventListener('submit', async e=>{
+          e.preventDefault();
+          const keyVal=($('#license-key-input')?.value||'').trim().toUpperCase();
+          const errEl=$('#license-error');
+          const submitBtn=$('#license-submit-btn');
+          if(!keyVal)return;
+          if(errEl)errEl.style.display='none';
+          if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Memverifikasi...';}
+          try{
+            const token=localStorage.getItem('inveys_token');
+            const res=await fetch('/api/license/activate',{
+              method:'POST',
+              headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},
+              body:JSON.stringify({license_key:keyVal})
+            });
+            const data=await res.json();
+            if(!res.ok)throw new Error(data.error||'Aktivasi lisensi gagal');
+            if(currentUser)currentUser.plan=data.plan;
+            state.commercial.previewTier=data.plan;
+            save();
+            $('#modal').close();
+            toast(data.message||'Lisensi berhasil diaktivasi!');
+            render();
+          }catch(err){
+            if(errEl){errEl.textContent=err.message;errEl.style.display='block';}
+          }finally{
+            if(submitBtn){submitBtn.disabled=false;submitBtn.textContent=L('Aktivasi Sekarang','Activate Now');}
+          }
+        });
+      },50);
+      return;
+    }
+    if(name==='plan-checkout'){
+      const p=P.catalog.find(x=>x.id===id)||{id,name:id.toUpperCase()};
+      const q=P.quote(state.commercial,id,planCycle);
+      const amountFmt=planMoney(q.amount);
+      openModal(L('Checkout INVEYS ','Checkout INVEYS ')+p.name,`
+        <div class="checkout-box" style="display:flex;flex-direction:column;gap:16px;">
+          <div style="background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.25);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <b style="font-size:16px;color:var(--accent,#34d399);">INVEYS ${p.name} (${planCycle==='monthly'?L('Bulanan','Monthly'):L('Tahunan','Annual')})</b>
+              <p class="note" style="margin:2px 0 0 0;">${L('Akses penuh brankas finansial & sinkronisasi multi-perangkat.','Full access to financial vault & multi-device sync.')}</p>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:18px;font-weight:700;">${amountFmt}</span>
+              <small style="display:block;color:var(--text-muted,#94a3b8);">/${planCycle==='monthly'?L('bln','mo'):L('thn','yr')}</small>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <label style="font-size:12px;font-weight:600;">${L('Email Akun Penerima Lisensi','License Recipient Email')}</label>
+            <input type="email" id="checkout-email" value="${currentUser?.email||''}" placeholder="nama@domain.com" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.15);color:inherit;">
+          </div>
+          <div id="checkout-active-area"></div>
+          <div id="checkout-action-row" class="button-group" style="margin-top:6px;">
+            <button type="button" class="btn primary" id="btn-proceed-pay">${L('Buat Kode Pembayaran QRIS / VA','Generate QRIS / VA Payment')}</button>
+            <button type="button" class="btn" data-action="modal-close">${t('Cancel')}</button>
+          </div>
+        </div>
+      `);
+      setTimeout(()=>{
+        $('#btn-proceed-pay')?.addEventListener('click',async ()=>{
+          const email=($('#checkout-email')?.value||'').trim();
+          if(!email){toast(L('Email wajib diisi','Email is required'));return;}
+          const btn=$('#btn-proceed-pay');
+          btn.disabled=true;
+          btn.textContent=L('Membuat pesanan…','Creating order…');
+          try{
+            const token=localStorage.getItem('inveys_token');
+            const res=await fetch('/api/payment/create',{
+              method:'POST',
+              headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},
+              body:JSON.stringify({plan:id,cycle:planCycle,email})
+            });
+            const data=await res.json();
+            if(!res.ok)throw new Error(data.error||'Gagal membuat order');
+            const area=$('#checkout-active-area');
+            if(area){
+              area.innerHTML=`
+                <div style="background:rgba(0,0,0,0.25);border:1px dashed var(--accent,#34d399);border-radius:10px;padding:16px;text-align:center;display:flex;flex-direction:column;gap:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:8px;">
+                    <span style="font-size:12px;color:var(--text-muted,#94a3b8);">${L('ID Transaksi:','Order ID:')} <b>${data.orderId}</b></span>
+                    <b style="color:var(--accent,#34d399);font-size:16px;">${planMoney(data.amount)}</b>
+                  </div>
+                  <div style="padding:12px;background:#fff;border-radius:8px;max-width:200px;margin:0 auto;display:flex;flex-direction:column;align-items:center;">
+                    <div style="font-size:10px;font-weight:900;color:#000;letter-spacing:1px;margin-bottom:4px;">QRIS NASIONAL</div>
+                    <div style="width:160px;height:160px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#0f172a;border:2px solid #000;border-radius:4px;font-size:11px;padding:8px;word-break:break-all;font-family:monospace;">
+                      [QR CODE: ${data.orderId}]
+                    </div>
+                    <small style="color:#64748b;font-size:9px;margin-top:4px;">BCA · Mandiri · GoPay · ShopeePay · OVO</small>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted,#94a3b8);">
+                    ${L('Virtual Account:','Virtual Account:')} <b style="color:#fff;letter-spacing:1px;font-family:monospace;">${data.vaNumber}</b>
+                  </div>
+                  <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">
+                    <button type="button" class="btn primary" id="btn-simulate-pay" style="width:100%;background:linear-gradient(135deg,#34d399,#059669);">${L('⚡ Konfirmasi / Simulasikan Pembayaran Lunas','⚡ Confirm / Simulate Paid Order')}</button>
+                  </div>
+                </div>
+              `;
+              $('#checkout-action-row').style.display='none';
+              $('#btn-simulate-pay')?.addEventListener('click',async ()=>{
+                const simBtn=$('#btn-simulate-pay');
+                simBtn.disabled=true;
+                simBtn.textContent=L('Memverifikasi pelunasan…','Confirming payment…');
+                try{
+                  const sRes=await fetch('/api/payment/simulate',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},
+                    body:JSON.stringify({order_id:data.orderId})
+                  });
+                  const sData=await sRes.json();
+                  if(!sRes.ok)throw new Error(sData.error||'Simulasi pembayaran gagal');
+                  area.innerHTML=`
+                    <div style="background:rgba(52,211,153,0.1);border:1px solid var(--accent,#34d399);border-radius:10px;padding:16px;text-align:center;">
+                      <div style="font-size:24px;margin-bottom:6px;">🎉</div>
+                      <b style="font-size:16px;color:var(--accent,#34d399);">${L('Pembayaran Berhasil! Lisensi Aktif','Payment Successful! License Active')}</b>
+                      <p style="font-size:12px;margin:8px 0;color:var(--text-muted,#94a3b8);">${L('Akun Anda telah di-upgrade ke paket','Your account is upgraded to')} <b>INVEYS ${sData.plan.toUpperCase()}</b>.</p>
+                      <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-family:monospace;font-size:13px;letter-spacing:1px;margin:12px 0;word-break:break-all;color:#34d399;">
+                        ${sData.licenseKey}
+                      </div>
+                      <button type="button" class="btn primary" data-action="modal-close" style="width:100%;margin-top:8px;">${L('Tutup & Nikmati Fitur','Close & Enjoy')}</button>
+                    </div>
+                  `;
+                  if(currentUser)currentUser.plan=sData.plan;
+                  state.commercial.previewTier=sData.plan;
+                  save();
+                  toast(L('Lisensi aktif! Selamat menikmati paket ','License activated for ')+sData.plan.toUpperCase());
+                }catch(e){
+                  toast(e.message);
+                  simBtn.disabled=false;
+                  simBtn.textContent=L('Coba lagi','Retry');
+                }
+              });
+            }
+          }catch(err){
+            toast(err.message);
+            btn.disabled=false;
+            btn.textContent=L('Buat Kode Pembayaran QRIS / VA','Generate QRIS / VA Payment');
+          }
+        });
+      },50);
+      return;
+    }
   }
 
   function budgetMonthNav(delta){
@@ -5723,7 +5892,7 @@
   function exportCSV(){const sanitize=v=>{let str=String(v??'');if(/^[=+@-]/.test(str))str="'"+str;return '"'+str.replaceAll('"','""')+'"';};const rows=[['Date','Description','Type','Amount','Currency','Account','Destination','Category'],...state.transactions.map(t=>[t.date,t.name,t.kind,(t.amount/100).toFixed(2),t.currency,getAccount(t.accountId)?.name||'',getAccount(t.targetId)?.name||'',t.category])];download('inveys-transactions.csv',rows.map(r=>r.map(sanitize).join(',')).join('\r\n'),'text/csv');toast('Transaction CSV exported.');}
   function importFile(file){if(!file)return;if(file.size>5000000){toast('Choose a JSON file smaller than 5 MB.');return;}file.text().then(text=>{const candidate=E.validate(JSON.parse(text));const p=E.position(candidate);confirmAction('Restore this workspace?',`${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, ${candidate.goals.length} goals. Reporting currency: ${escape(candidate.currency)}. This replaces all current local records. Export your current workspace first if needed.`,()=>{state=candidate;resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;save();toast('Workspace restored.');},'Replace workspace');}).catch(error=>toast('Import failed: '+error.message));}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
-  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'budget-setup':openBudgetSetupModal();break;
     case 'budget-edit':openBudgetSetupModal(id);break;
     case 'budget-remove':removeBudgetCategory(id);break;

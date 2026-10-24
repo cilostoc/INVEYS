@@ -1366,7 +1366,9 @@
 
     // Checkout Modal
     const modal = document.getElementById('checkout-modal');
+    let currentCheckoutPlan = 'pro';
     function openCheckout(planName, planPrice) {
+      currentCheckoutPlan = planName.toLowerCase().includes('lifetime') ? 'lifetime' : planName.toLowerCase();
       document.getElementById('checkout-plan-title').textContent = 'Paket ' + planName;
       document.getElementById('checkout-plan-price').textContent = planPrice;
       document.getElementById('checkout-form').style.display = 'block';
@@ -1376,12 +1378,101 @@
     function closeCheckout() {
       modal.style.display = 'none';
     }
-    function handleCheckoutSubmit(e) {
+    async function handleCheckoutSubmit(e) {
       e.preventDefault();
       const planName = document.getElementById('checkout-plan-title').textContent;
-      document.getElementById('success-plan-name').textContent = planName;
-      document.getElementById('checkout-form').style.display = 'none';
-      document.getElementById('checkout-success').style.display = 'block';
+      const email = document.getElementById('cust-email').value.trim();
+      const name = document.getElementById('cust-name').value.trim();
+      const paymentMethod = document.getElementById('cust-payment').value;
+      const submitBtn = document.getElementById('checkout-submit-btn');
+
+      if (!email) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Menghubungkan Gateway Pembayaran…';
+
+      try {
+        const cycle = currentCheckoutPlan === 'lifetime' ? 'lifetime' : (isAnnual ? 'annual' : 'monthly');
+        const res = await fetch('/api/payment/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: currentCheckoutPlan, cycle, email, name, payment_method: paymentMethod })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal memproses pesanan');
+
+        if (data.paymentUrl) {
+          window.location.href = data.paymentUrl;
+          return;
+        }
+
+        // Render QRIS / VA screen
+        document.getElementById('checkout-form').style.display = 'none';
+        const succEl = document.getElementById('checkout-success');
+        succEl.style.display = 'block';
+        succEl.innerHTML = `
+          <div style="font-size: 2rem; margin-bottom: 8px;">💳</div>
+          <h3 style="color: var(--accent); margin-bottom: 6px;">Kode Pembayaran Diterbitkan</h3>
+          <p style="font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 14px;">
+            Order ID: <strong style="color: var(--ink); font-family: monospace;">${data.orderId}</strong> · Nominal: <strong style="color: var(--accent);">Rp ${Number(data.amount).toLocaleString('id-ID')}</strong>
+          </p>
+          <div style="background: #fff; border-radius: 8px; padding: 12px; max-width: 180px; margin: 0 auto 14px auto; color: #000;">
+            <div style="font-size: 9px; font-weight: 900; letter-spacing: 1px; margin-bottom: 4px;">QRIS NASIONAL</div>
+            <div style="background: #f8fafc; border: 2px solid #000; padding: 12px; font-family: monospace; font-size: 10px; border-radius: 4px; word-break: break-all;">
+              [QR CODE: ${data.orderId}]
+            </div>
+            <div style="font-size: 8px; color: #64748b; margin-top: 4px;">BCA · Mandiri · GoPay · ShopeePay · OVO</div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--ink-subtle); margin-bottom: 16px;">
+            Virtual Account: <span style="font-family: monospace; color: var(--ink); font-weight: 700;">${data.vaNumber}</span>
+          </div>
+          <button type="button" class="btn btn-primary" id="btn-landing-simulate" style="width: 100%; margin-bottom: 8px;">
+            ⚡ Konfirmasi / Simulasikan Pembayaran Lunas
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="closeCheckout()" style="width: 100%; font-size: 0.85rem;">
+            Batalkan
+          </button>
+        `;
+
+        document.getElementById('btn-landing-simulate')?.addEventListener('click', async () => {
+          const simBtn = document.getElementById('btn-landing-simulate');
+          simBtn.disabled = true;
+          simBtn.textContent = 'Memverifikasi Pelunasan…';
+          try {
+            const sRes = await fetch('/api/payment/simulate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ order_id: data.orderId })
+            });
+            const sData = await sRes.json();
+            if (!sRes.ok) throw new Error(sData.error || 'Simulasi gagal');
+            succEl.innerHTML = `
+              <div style="font-size: 3rem; margin-bottom: 12px;">🎉</div>
+              <h3 style="color: var(--accent); margin-bottom: 10px;">Pembayaran Terkonfirmasi!</h3>
+              <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 12px;">
+                Lisensi Anda untuk paket <strong>INVEYS ${sData.plan.toUpperCase()}</strong> telah aktif.
+              </p>
+              <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--accent); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 12px; color: var(--accent); margin-bottom: 16px; word-break: break-all;">
+                ${sData.licenseKey}
+              </div>
+              <a href="inveys-app.html#plans" class="btn btn-primary" style="width: 100%;">
+                Buka INVEYS Vault & Mulai Eksplorasi
+              </a>
+            `;
+          } catch (err) {
+            alert(err.message);
+            simBtn.disabled = false;
+            simBtn.textContent = 'Coba Lagi';
+          }
+        });
+      } catch (error) {
+        // Fallback for static demonstration
+        document.getElementById('checkout-form').style.display = 'none';
+        document.getElementById('success-plan-name').textContent = planName;
+        document.getElementById('checkout-success').style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Lanjutkan ke Pembayaran';
+      }
     }
     window.onclick = function(event) {
       if (event.target === modal) {

@@ -181,6 +181,8 @@ def db():
     c.execute('CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, user_id TEXT, name TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, data TEXT NOT NULL, checksum TEXT NOT NULL, updated_at TEXT NOT NULL)')
     c.execute('CREATE TABLE IF NOT EXISTS backups (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, workspace_id TEXT NOT NULL, data TEXT NOT NULL, created_at TEXT NOT NULL, note TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS server_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)')
+    c.execute('CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, user_id TEXT, email TEXT, plan TEXT NOT NULL, cycle TEXT NOT NULL, amount INTEGER NOT NULL, currency TEXT DEFAULT "IDR", provider TEXT NOT NULL, status TEXT NOT NULL, payment_method TEXT, snap_token TEXT, payment_url TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)')
+    c.execute('CREATE TABLE IF NOT EXISTS licenses (id TEXT PRIMARY KEY, license_key TEXT UNIQUE NOT NULL, user_id TEXT, email TEXT, plan TEXT NOT NULL, expires_at INTEGER, signature TEXT NOT NULL, created_at INTEGER NOT NULL)')
     for col_alter in (
         'ALTER TABLE sessions ADD COLUMN user_id TEXT',
         'ALTER TABLE workspaces ADD COLUMN user_id TEXT',
@@ -272,6 +274,147 @@ def init_server_settings():
 
 
 init_server_settings()
+
+LICENSE_SECRET = os.environ.get('INVEYS_LICENSE_SECRET', 'inveys-commercial-sovereignty-secret-key-2026')
+
+
+def generate_license_key(user_id: str, email: str, plan: str, expires_at: int = None) -> tuple:
+    clean_plan = plan.upper()
+    user_hash = hashlib.sha256(email.lower().strip().encode('utf-8')).hexdigest()[:6].upper()
+    expiry_tag = 'LIFETIME' if not expires_at else datetime.datetime.fromtimestamp(expires_at, datetime.timezone.utc).strftime('%Y%m%d')
+    payload = f"{user_id or 'usr'}:{email.lower().strip()}:{clean_plan}:{expiry_tag}"
+    sig = hmac.new(LICENSE_SECRET.encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()[:8].upper()
+    license_key = f"IV-{clean_plan}-{user_hash}-{expiry_tag}-{sig}"
+    return license_key, sig
+
+
+def verify_license_key(license_key: str, email: str = None) -> tuple:
+    parts = license_key.strip().split('-')
+    if len(parts) != 5 or parts[0] != 'IV':
+        return False, {'error': 'Format lisensi tidak valid (contoh: IV-ULTRA-A1B2C3-LIFETIME-D4E5F6G7)'}
+    _, plan, user_hash, expiry_tag, sig = parts
+    clean_plan = plan.upper()
+
+    expires_at = None
+    if expiry_tag != 'LIFETIME':
+        try:
+            exp_date = datetime.datetime.strptime(expiry_tag, '%Y%m%d').replace(tzinfo=datetime.timezone.utc)
+            expires_at = int(exp_date.timestamp())
+            if expires_at < int(time.time()):
+                return False, {'error': 'Kunci lisensi ini sudah kedaluwarsa'}
+        except Exception:
+            return False, {'error': 'Tanggal kedaluwarsa lisensi tidak valid'}
+
+    if email:
+        user_hash_expected = hashlib.sha256(email.lower().strip().encode('utf-8')).hexdigest()[:6].upper()
+        if user_hash != user_hash_expected:
+            return False, {'error': 'Kunci lisensi ini tidak diterbitkan untuk email akun Anda'}
+
+    return True, {
+        'plan': clean_plan.lower(),
+        'expiryTag': expiry_tag,
+        'expiresAt': expires_at,
+        'isLifetime': expiry_tag == 'LIFETIME'
+    }
+
+
+def calculate_order_price(plan: str, cycle: str) -> int:
+    plan_clean = plan.lower().strip()
+    cycle_clean = cycle.lower().strip()
+    prices = {
+        'plus': {'monthly': 49000, 'annual': 470000, 'lifetime': 499000},
+        'pro': {'monthly': 99000, 'annual': 950000, 'lifetime': 499000},
+        'ultra': {'monthly': 249000, 'annual': 2390000, 'lifetime': 499000},
+        'lifetime': {'monthly': 499000, 'annual': 499000, 'lifetime': 499000}
+    }
+    plan_data = prices.get(plan_clean, prices['pro'])
+    return plan_data.get(cycle_clean, plan_data['monthly'])
+
+
+def create_midtrans_transaction(order_id: str, amount: int, plan: str, cycle: str, email: str, name: str) -> dict:
+    server_key = os.environ.get('MIDTRANS_SERVER_KEY', '').strip()
+    if not server_key:
+        return {'isLive': False}
+    is_prod = os.environ.get('MIDTRANS_IS_PRODUCTION', '0').strip() in ('1', 'true', 'True') or server_key.startswith('Mid-server-')
+    base_url = 'https://app.midtrans.com/snap/v1/transactions' if is_prod else 'https://app.sandbox.midtrans.com/snap/v1/transactions'
+    auth_header = 'Basic ' + base64.b64encode(f"{server_key}:".encode('utf-8')).decode('utf-8')
+    payload = {
+        'transaction_details': {
+            'order_id': order_id,
+            'gross_amount': amount
+        },
+        'customer_details': {
+            'first_name': name or email.split('@')[0],
+            'email': email
+        },
+        'item_details': [{
+            'id': f"IV-{plan.upper()}-{cycle.upper()}",
+            'price': amount,
+            'quantity': 1,
+            'name': f"INVEYS {plan.capitalize()} ({cycle.capitalize()})"
+        }]
+    }
+    req = urllib.request.Request(
+        base_url,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={'Content-Type': 'application/json', 'Authorization': auth_header, 'User-Agent': f'INVEYS/{VERSION}'}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            res = json.loads(r.read(MAX).decode('utf-8'))
+            return {
+                'isLive': True,
+                'token': res.get('token'),
+                'redirectUrl': res.get('redirect_url')
+            }
+    except Exception as e:
+        print(f"[!] Midtrans Snap API warning: {e}", flush=True)
+        return {'isLive': False, 'error': str(e)}
+
+
+def complete_order_and_activate(order_id: str, payment_method: str = 'qris', raw_payload: dict = None) -> dict:
+    now = int(time.time())
+    with db() as c:
+        row = c.execute('SELECT id, user_id, email, plan, cycle, amount, status FROM orders WHERE id=?', (order_id,)).fetchone()
+        if not row:
+            return {'ok': False, 'error': f'Order {order_id} tidak ditemukan'}
+        _, user_id, email, plan, cycle, amount, status = row
+        if status == 'paid':
+            lic = c.execute('SELECT license_key, expires_at FROM licenses WHERE user_id=? OR email=? ORDER BY created_at DESC LIMIT 1', (user_id, email)).fetchone()
+            return {'ok': True, 'orderId': order_id, 'status': 'paid', 'licenseKey': lic[0] if lic else None, 'plan': plan, 'message': 'Order sudah lunas'}
+
+        if cycle == 'lifetime' or plan == 'lifetime':
+            expires_at = None
+            assigned_plan = 'ultra'
+        elif cycle == 'annual':
+            expires_at = now + 365 * 86400
+            assigned_plan = plan
+        else:
+            expires_at = now + 30 * 86400
+            assigned_plan = plan
+
+        c.execute('UPDATE orders SET status="paid", payment_method=?, updated_at=? WHERE id=?', (payment_method, now, order_id))
+
+        if user_id:
+            c.execute('UPDATE users SET plan=?, updated_at=? WHERE id=?', (assigned_plan, now, user_id))
+        elif email:
+            c.execute('UPDATE users SET plan=?, updated_at=? WHERE email=?', (assigned_plan, now, email))
+
+        lic_id = 'lic_' + secrets.token_hex(6)
+        lic_key, sig = generate_license_key(user_id or 'usr', email or 'user@inveys.io', assigned_plan, expires_at)
+        c.execute('INSERT INTO licenses (id, license_key, user_id, email, plan, expires_at, signature, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                  (lic_id, lic_key, user_id, email, assigned_plan, expires_at, sig, now))
+
+    return {
+        'ok': True,
+        'orderId': order_id,
+        'status': 'paid',
+        'plan': assigned_plan,
+        'cycle': cycle,
+        'expiresAt': expires_at,
+        'licenseKey': lic_key,
+        'message': f'Pembayaran berhasil dikonfirmasi! Akun Anda aktif pada paket INVEYS {assigned_plan.upper()}.'
+    }
 
 
 def test_api_key_connection(provider_name: str, payload: dict) -> dict:
@@ -366,6 +509,13 @@ def test_api_key_connection(provider_name: str, payload: dict) -> dict:
                     except Exception:
                         pass
                 return {'ok': True, 'message': msg}
+        elif prov == 'midtrans':
+            key = payload.get('apiKey') or payload.get('serverKey') or os.environ.get('MIDTRANS_SERVER_KEY', '')
+            if not key:
+                return {'ok': False, 'error': 'Server Key Midtrans belum diisi'}
+            is_prod = str(payload.get('isProduction', os.environ.get('MIDTRANS_IS_PRODUCTION', '0'))).strip() in ('1', 'true', 'True') or key.startswith('Mid-server-')
+            env_name = 'Production' if is_prod else 'Sandbox'
+            return {'ok': True, 'message': f'✅ Kredensial Midtrans siap ({env_name})! Webhook: /api/payment/webhook/midtrans'}
         else:
             return {'ok': False, 'error': f'Penyedia tidak dikenal: {provider_name}'}
     except urllib.error.HTTPError as err:
@@ -690,6 +840,46 @@ class Handler(SimpleHTTPRequestHandler):
             if not user: return self.send_json({'error': 'Unauthorized'}, 401)
             return self.send_json({'ok': True, 'user': user})
 
+        if self.path == '/api/license/status':
+            user = self.get_authenticated_user()
+            if not user: return self.send_json({'error': 'Unauthorized'}, 401)
+            with db() as c:
+                lic = c.execute('SELECT license_key, plan, expires_at, created_at FROM licenses WHERE user_id=? OR email=? ORDER BY created_at DESC LIMIT 1', (user['id'], user['email'])).fetchone()
+            license_info = None
+            if lic:
+                license_info = {
+                    'licenseKey': lic[0],
+                    'plan': lic[1],
+                    'expiresAt': lic[2],
+                    'isLifetime': lic[2] is None,
+                    'createdAt': lic[3]
+                }
+            return self.send_json({
+                'ok': True,
+                'plan': user.get('plan', 'plus'),
+                'hasActiveLicense': bool(lic or user.get('plan') in ('pro', 'ultra')),
+                'license': license_info,
+                'user': user
+            })
+
+        if self.path.startswith('/api/payment/order/'):
+            order_id = self.path.split('/api/payment/order/')[1].split('?')[0].strip()
+            with db() as c:
+                row = c.execute('SELECT id, user_id, email, plan, cycle, amount, currency, status, payment_method, snap_token, payment_url, created_at FROM orders WHERE id=?', (order_id,)).fetchone()
+                if not row:
+                    return self.send_json({'error': 'Order not found'}, 404)
+                order_data = {
+                    'id': row[0], 'userId': row[1], 'email': row[2], 'plan': row[3],
+                    'cycle': row[4], 'amount': row[5], 'currency': row[6], 'status': row[7],
+                    'paymentMethod': row[8], 'snapToken': row[9], 'paymentUrl': row[10], 'createdAt': row[11]
+                }
+                if row[7] == 'paid':
+                    lic = c.execute('SELECT license_key, expires_at FROM licenses WHERE user_id=? OR email=? ORDER BY created_at DESC LIMIT 1', (row[1], row[2])).fetchone()
+                    if lic:
+                        order_data['licenseKey'] = lic[0]
+                        order_data['expiresAt'] = lic[1]
+            return self.send_json({'ok': True, 'order': order_data})
+
         if self.path == '/api/fx':
             try: return self.send_json(provider('https://api.frankfurter.dev/v2/rates?base=IDR&quotes=USD,EUR,GBP,SGD,AUD,JPY'))
             except Exception: return self.send_json({'error': 'FX provider unavailable; last saved rates remain in use.'}, 502)
@@ -753,6 +943,9 @@ class Handler(SimpleHTTPRequestHandler):
             muse_key = os.environ.get('MODEL_API_KEY', '')
             tg_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
             tg_chat = os.environ.get('TELEGRAM_CHAT_ID', '')
+            midtrans_server = os.environ.get('MIDTRANS_SERVER_KEY', '')
+            midtrans_client = os.environ.get('MIDTRANS_CLIENT_KEY', '')
+            midtrans_prod = os.environ.get('MIDTRANS_IS_PRODUCTION', '0').strip() in ('1', 'true', 'True')
 
             return self.send_json({
                 'ok': True,
@@ -786,6 +979,13 @@ class Handler(SimpleHTTPRequestHandler):
                     'tokenMasked': mask_secret(tg_token),
                     'rawToken': tg_token if allow_reveal else '',
                     'chatId': tg_chat
+                },
+                'midtrans': {
+                    'configured': bool(midtrans_server),
+                    'serverKeyMasked': mask_secret(midtrans_server),
+                    'rawServerKey': midtrans_server if allow_reveal else '',
+                    'clientKey': midtrans_client,
+                    'isProduction': midtrans_prod
                 }
             })
 
@@ -994,6 +1194,119 @@ class Handler(SimpleHTTPRequestHandler):
                         c.execute('DELETE FROM backups WHERE user_id = ? AND id NOT IN (SELECT id FROM backups WHERE user_id = ? ORDER BY id DESC LIMIT 30)', (user_id, user_id))
                 return self.send_json({'ok': True, 'checksum': checksum, 'updatedAt': now_iso})
 
+            # Commercial Payment & Licensing Endpoints
+            if self.path == '/api/payment/create':
+                user = self.get_authenticated_user()
+                email = str(data.get('email', '')).strip().lower()
+                name = str(data.get('name', '')).strip()
+                if user:
+                    user_id = user['id']
+                    if not email: email = user.get('email', '')
+                    if not name: name = user.get('name', '')
+                else:
+                    user_id = None
+                    if not email or not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+                        return self.send_json({'error': 'Alamat email yang valid diperlukan untuk pemesanan.'}, 400)
+                    if not name:
+                        name = email.split('@')[0].capitalize()
+
+                plan = str(data.get('plan', 'pro')).lower().strip()
+                cycle = str(data.get('cycle', 'monthly')).lower().strip()
+                if plan not in ('plus', 'pro', 'ultra', 'lifetime'): plan = 'pro'
+                if cycle not in ('monthly', 'annual', 'lifetime'): cycle = 'monthly'
+                if plan == 'lifetime': cycle = 'lifetime'
+
+                amount = calculate_order_price(plan, cycle)
+                order_id = f"INV-{int(time.time())}-{secrets.token_hex(3).upper()}"
+                now = int(time.time())
+
+                mid = create_midtrans_transaction(order_id, amount, plan, cycle, email, name)
+                snap_token = mid.get('token')
+                payment_url = mid.get('redirectUrl')
+
+                va_number = f"8277{secrets.token_hex(4).upper()}"
+                qris_str = f"00020101021226680016ID.CO.INVEYS.WWW0118936005030000082770215{order_id}52045812530336054{amount}5802ID5906INVEYS6007JAKARTA6304"
+
+                with db() as c:
+                    c.execute("""
+                        INSERT INTO orders (id, user_id, email, plan, cycle, amount, currency, provider, status, payment_method, snap_token, payment_url, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 'IDR', ?, 'pending', ?, ?, ?, ?, ?)
+                    """, (order_id, user_id, email, plan, cycle, amount, 'midtrans' if mid.get('isLive') else 'simulator',
+                          'snap' if mid.get('isLive') else 'qris', snap_token, payment_url, now, now))
+
+                return self.send_json({
+                    'ok': True,
+                    'orderId': order_id,
+                    'amount': amount,
+                    'currency': 'IDR',
+                    'plan': plan,
+                    'cycle': cycle,
+                    'status': 'pending',
+                    'qris': qris_str,
+                    'vaNumber': va_number,
+                    'snapToken': snap_token,
+                    'paymentUrl': payment_url,
+                    'isLive': mid.get('isLive', False)
+                })
+
+            if self.path == '/api/payment/simulate':
+                order_id = str(data.get('order_id') or data.get('orderId') or '').strip()
+                if not order_id: return self.send_json({'error': 'Order ID required'}, 400)
+                res = complete_order_and_activate(order_id, payment_method='qris_simulated', raw_payload=data)
+                return self.send_json(res, 200 if res.get('ok') else 400)
+
+            if self.path == '/api/payment/webhook/midtrans':
+                order_id = str(data.get('order_id', '')).strip()
+                status_code = str(data.get('status_code', '')).strip()
+                gross_amount = str(data.get('gross_amount', '')).strip()
+                sig_key = str(data.get('signature_key', '')).strip()
+                trans_status = str(data.get('transaction_status', '')).strip().lower()
+                fraud_status = str(data.get('fraud_status', '')).strip().lower()
+                payment_type = str(data.get('payment_type', 'midtrans')).strip()
+
+                server_key = os.environ.get('MIDTRANS_SERVER_KEY', '').strip()
+                if server_key:
+                    expected_sig = hashlib.sha512(f"{order_id}{status_code}{gross_amount}{server_key}".encode('utf-8')).hexdigest()
+                    if sig_key.lower() != expected_sig.lower():
+                        return self.send_json({'error': 'Invalid Midtrans signature'}, 403)
+
+                if trans_status in ('capture', 'settlement'):
+                    if not fraud_status or fraud_status == 'accept':
+                        complete_order_and_activate(order_id, payment_method=payment_type, raw_payload=data)
+                return self.send_json({'ok': True, 'status': 'received'})
+
+            if self.path == '/api/payment/webhook/mayar':
+                event = str(data.get('event', '')).strip()
+                d_obj = data.get('data', {}) if isinstance(data.get('data'), dict) else {}
+                order_id = str(d_obj.get('payment_id') or d_obj.get('order_id') or d_obj.get('id') or '').strip()
+                if event == 'payment.received' or str(data.get('status', '')).lower() == 'success':
+                    if order_id:
+                        complete_order_and_activate(order_id, payment_method='mayar', raw_payload=data)
+                return self.send_json({'ok': True, 'status': 'received'})
+
+            if self.path == '/api/license/activate':
+                user = self.get_authenticated_user()
+                if not user: return self.send_json({'error': 'Unauthorized. Silakan masuk terlebih dahulu.'}, 401)
+                lic_key = str(data.get('license_key') or data.get('licenseKey') or '').strip()
+                if not lic_key: return self.send_json({'error': 'Kunci lisensi wajib diisi'}, 400)
+                ok, info = verify_license_key(lic_key, user.get('email'))
+                if not ok: return self.send_json({'error': info.get('error', 'Kunci lisensi tidak valid')}, 400)
+
+                now = int(time.time())
+                with db() as c:
+                    lic_id = 'lic_' + secrets.token_hex(6)
+                    c.execute('INSERT INTO licenses (id, license_key, user_id, email, plan, expires_at, signature, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                              (lic_id, lic_key, user['id'], user.get('email'), info['plan'], info.get('expiresAt'), 'activated', now))
+                    c.execute('UPDATE users SET plan=?, updated_at=? WHERE id=?', (info['plan'], now, user['id']))
+
+                return self.send_json({
+                    'ok': True,
+                    'message': f'Lisensi berhasil diaktifkan! Akun Anda kini berstatus INVEYS {info["plan"].upper()}.',
+                    'plan': info['plan'],
+                    'expiresAt': info.get('expiresAt'),
+                    'isLifetime': info.get('isLifetime')
+                })
+
             # Check CSRF or Session Authentication for remaining endpoints
             has_auth = self.has_auth_configured()
             token_valid, _ = self.is_authenticated()
@@ -1072,6 +1385,10 @@ class Handler(SimpleHTTPRequestHandler):
                     elif provider_name == 'telegram':
                         delete_server_setting('TELEGRAM_BOT_TOKEN')
                         delete_server_setting('TELEGRAM_CHAT_ID')
+                    elif provider_name == 'midtrans':
+                        delete_server_setting('MIDTRANS_SERVER_KEY')
+                        delete_server_setting('MIDTRANS_CLIENT_KEY')
+                        delete_server_setting('MIDTRANS_IS_PRODUCTION')
                     else:
                         return self.send_json({'error': f'Penyedia tidak valid: {provider_name}'}, 400)
                     return self.send_json({
@@ -1111,6 +1428,15 @@ class Handler(SimpleHTTPRequestHandler):
                             save_server_setting('TELEGRAM_BOT_TOKEN', str(data['botToken']).strip())
                         if 'chatId' in data and str(data['chatId']).strip():
                             save_server_setting('TELEGRAM_CHAT_ID', str(data['chatId']).strip())
+                    elif provider_name == 'midtrans':
+                        if 'serverKey' in data and str(data['serverKey']).strip():
+                            save_server_setting('MIDTRANS_SERVER_KEY', str(data['serverKey']).strip())
+                        elif 'apiKey' in data and str(data['apiKey']).strip():
+                            save_server_setting('MIDTRANS_SERVER_KEY', str(data['apiKey']).strip())
+                        if 'clientKey' in data and str(data['clientKey']).strip():
+                            save_server_setting('MIDTRANS_CLIENT_KEY', str(data['clientKey']).strip())
+                        if 'isProduction' in data:
+                            save_server_setting('MIDTRANS_IS_PRODUCTION', '1' if data['isProduction'] in (True, '1', 'true') else '0')
                     else:
                         return self.send_json({'error': f'Penyedia tidak valid: {provider_name}'}, 400)
 
