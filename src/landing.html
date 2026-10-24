@@ -422,14 +422,55 @@
       background: rgba(255, 255, 255, 0.05);
     }
     .preview-stat-label {
-      font-size: 0.78rem;
-      color: var(--ink-subtle);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       display: flex;
+      align-items: flex-start;
       justify-content: space-between;
+      gap: 8px;
+    }
+    .preview-stat-title {
+      font-size: 0.82rem;
       font-weight: 600;
+      color: var(--ink-subtle);
+      letter-spacing: -0.01em;
+      line-height: 1.35;
+      text-transform: none;
+    }
+    .preview-stat-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2.5px 8px;
+      border-radius: 6px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      flex-shrink: 0;
+      line-height: 1.25;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--ink-muted);
+      text-transform: none;
+    }
+    .preview-stat-badge.badge-green {
+      background: rgba(52, 211, 153, 0.1);
+      border-color: rgba(52, 211, 153, 0.25);
+      color: #34d399;
+    }
+    .preview-stat-badge.badge-blue {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.25);
+      color: #38bdf8;
+    }
+    .preview-stat-badge.badge-rose {
+      background: rgba(248, 113, 113, 0.1);
+      border-color: rgba(248, 113, 113, 0.25);
+      color: #f87171;
+    }
+    .preview-stat-badge.badge-purple {
+      background: rgba(167, 139, 250, 0.1);
+      border-color: rgba(167, 139, 250, 0.25);
+      color: #a78bfa;
     }
     .preview-stat-val {
       font-size: 1.65rem;
@@ -1332,35 +1373,35 @@
           <div class="preview-stats-grid">
             <div class="preview-stat-card" id="card-stat-networth">
               <div class="preview-stat-label">
-                <span>Total Kekayaan Bersih (Net Worth)</span>
-                <span>IDR</span>
+                <span class="preview-stat-title">Total Kekayaan Bersih</span>
+                <span class="preview-stat-badge badge-green">Net Worth · IDR</span>
               </div>
               <div class="preview-stat-val" id="stat-networth">Rp 45.080.755</div>
               <div class="preview-stat-growth">▲ +14.2% YoY (2021–2026)</div>
             </div>
             <div class="preview-stat-card" id="card-stat-liquid">
               <div class="preview-stat-label">
-                <span>Dana Likuid / Rekening Kas</span>
-                <span>11 Bank</span>
+                <span class="preview-stat-title">Saldo Kas & Bank</span>
+                <span class="preview-stat-badge badge-blue">11 Bank</span>
               </div>
               <div class="preview-stat-val" id="stat-liquid">Rp 34.010.091</div>
               <div class="preview-stat-growth" style="color: #38bdf8;">✓ 6.8 Bulan Cadangan Kas</div>
             </div>
             <div class="preview-stat-card" id="card-stat-debt">
               <div class="preview-stat-label">
-                <span>Kewajiban Kartu Kredit Terbuka</span>
-                <span>3 Kartu</span>
+                <span class="preview-stat-title">Tagihan Kartu Kredit</span>
+                <span class="preview-stat-badge badge-rose">3 Kartu</span>
               </div>
               <div class="preview-stat-val" id="stat-debt" style="color: #f87171;">Rp 12.681.740</div>
               <div class="preview-stat-growth" style="color: var(--ink-muted);">Jatuh tempo: Nov 2026</div>
             </div>
             <div class="preview-stat-card" id="card-stat-txs">
               <div class="preview-stat-label">
-                <span>Total Transaksi Terserap</span>
-                <span>AI Ingested</span>
+                <span class="preview-stat-title">Transaksi Diproses AI</span>
+                <span class="preview-stat-badge badge-purple">Auto-Sync</span>
               </div>
-              <div class="preview-stat-val" id="stat-txs">5.284 <span style="font-size: 1rem; font-weight: normal; color: var(--ink-muted);">txs</span></div>
-              <div class="preview-stat-growth" style="color: #a78bfa;">100% Parsed & Reconciled</div>
+              <div class="preview-stat-val" id="stat-txs">5.284 <span style="font-size: 0.95rem; font-weight: normal; color: var(--ink-muted);">transaksi</span></div>
+              <div class="preview-stat-growth" style="color: #a78bfa;">✓ 100% Cocok & Terverifikasi</div>
             </div>
           </div>
 
@@ -2079,7 +2120,7 @@
       animateValue(liquidEl, 0, currentLiquid, 1800, (v) => 'Rp ' + v.toLocaleString('id-ID'));
       animateValue(debtEl, 0, currentDebt, 1800, (v) => 'Rp ' + v.toLocaleString('id-ID'));
       if (txEl) {
-        animateValue(txEl, 0, currentTxs, 1800, (v) => `${v.toLocaleString('id-ID')} <span style="font-size: 1rem; font-weight: normal; color: var(--ink-muted);">txs</span>`);
+        animateValue(txEl, 0, currentTxs, 1800, (v) => `${v.toLocaleString('id-ID')} <span style="font-size: 0.95rem; font-weight: normal; color: var(--ink-muted);">transaksi</span>`);
       }
 
       // Animate Sankey Bars Width
@@ -2114,7 +2155,7 @@
       currentTxs += 1;
       currentNetworth += 15000;
       if (txEl) {
-        txEl.innerHTML = `${currentTxs.toLocaleString('id-ID')} <span style="font-size: 1rem; font-weight: normal; color: var(--ink-muted);">txs</span>`;
+        txEl.innerHTML = `${currentTxs.toLocaleString('id-ID')} <span style="font-size: 0.95rem; font-weight: normal; color: var(--ink-muted);">transaksi</span>`;
         const card = document.getElementById('card-stat-txs');
         if (card) {
           card.classList.add('pulse-update');
