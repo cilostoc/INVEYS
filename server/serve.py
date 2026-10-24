@@ -49,6 +49,10 @@ def verify_password(password: str, pw_hash: str, salt: str) -> bool:
 
 def check_rate_limit(ip: str) -> bool:
     now = time.time()
+    if len(LOGIN_ATTEMPTS) > 1000:
+        stale_ips = [k for k, v in LOGIN_ATTEMPTS.items() if not v or (now - max(v)) > LOCKOUT_TIME]
+        for k in stale_ips:
+            LOGIN_ATTEMPTS.pop(k, None)
     attempts = [t for t in LOGIN_ATTEMPTS.get(ip, []) if now - t < LOCKOUT_TIME]
     LOGIN_ATTEMPTS[ip] = attempts
     return len(attempts) < MAX_FAILED_ATTEMPTS
@@ -62,6 +66,30 @@ def record_failed_login(ip: str):
 
 def clear_failed_login(ip: str):
     LOGIN_ATTEMPTS.pop(ip, None)
+
+
+def validate_router_base(url: str) -> str:
+    if not url or not isinstance(url, str):
+        raise ValueError('9Router base URL must be provided')
+    clean = url.strip().rstrip('/')
+    parsed = urllib.parse.urlsplit(clean)
+    if parsed.username or parsed.password or parsed.query or parsed.fragment or not parsed.hostname:
+        raise ValueError('9Router base URL cannot contain credentials, query, or fragment')
+    if parsed.scheme not in ('http', 'https'):
+        raise ValueError('9Router base URL must use HTTP or HTTPS')
+    hostname = (parsed.hostname or '').lower()
+    blocked_hosts = {'169.254.169.254', 'metadata.google.internal', 'instance-data', '100.100.100.200'}
+    if hostname in blocked_hosts or hostname.endswith('.internal'):
+        raise ValueError('9Router base URL is pointing to a restricted internal address (SSRF guard)')
+    if parsed.scheme == 'http' and hostname not in ('localhost', '127.0.0.1', '::1', 'host.docker.internal', '9router'):
+        raise ValueError('Insecure HTTP is only permitted for localhost or loopback gateways. Use HTTPS for remote 9Router gateways.')
+    if parsed.path != '/v1':
+        raise ValueError('9Router base URL must end in /v1')
+    try:
+        parsed.port
+    except ValueError:
+        raise ValueError('Invalid 9Router port')
+    return clean
 
 
 def provider(url, payload=None, key=None):
@@ -287,7 +315,11 @@ def test_api_key_connection(provider_name: str, payload: dict) -> dict:
             key = payload.get('apiKey') or os.environ.get('NINEROUTER_API_KEY', '')
             if not key:
                 return {'ok': False, 'error': 'Kunci API 9Router belum diisi'}
-            base_url = (payload.get('baseUrl') or os.environ.get('NINEROUTER_BASE_URL', 'http://127.0.0.1:20128/v1')).rstrip('/')
+            raw_base = payload.get('baseUrl') or os.environ.get('NINEROUTER_BASE_URL', 'http://127.0.0.1:20128/v1')
+            try:
+                base_url = validate_router_base(raw_base)
+            except ValueError as ve:
+                return {'ok': False, 'error': str(ve)}
             url = f"{base_url}/models"
             req = urllib.request.Request(url, headers={'Authorization': f'Bearer {key}', 'User-Agent': f'INVEYS/{VERSION}'})
             with urllib.request.urlopen(req, timeout=10) as r:
@@ -507,13 +539,17 @@ class Handler(SimpleHTTPRequestHandler):
             return str(PROJECT_ROOT / 'inveys-app.html')
         return super().translate_path(path)
 
+    def end_headers(self):
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'SAMEORIGIN')
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        super().end_headers()
+
     def send_json(self, value, status=200, headers=None):
         raw = json.dumps(value).encode()
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Cache-Control', 'no-store')
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('X-Frame-Options', 'SAMEORIGIN')
         if headers:
             for k, v in headers.items():
                 self.send_header(k, v)
@@ -579,6 +615,10 @@ class Handler(SimpleHTTPRequestHandler):
             if sess:
                 return True, 'authenticated'
             return False, 'unauthenticated'
+
+    def has_auth_configured(self):
+        with db() as c:
+            return bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
 
     def get_client_ip(self):
         remote = self.client_address[0]
@@ -662,9 +702,13 @@ class Handler(SimpleHTTPRequestHandler):
             parsed = urllib.parse.urlsplit(self.path)
             qs = urllib.parse.parse_qs(parsed.query)
             reveal = qs.get('reveal', ['0'])[0] == '1'
+            has_auth = self.has_auth_configured()
             authed, _ = self.is_authenticated()
             csrf_valid = self.headers.get('X-INVEYS-CSRF') == TOKEN
-            allow_reveal = reveal and (authed or csrf_valid)
+            if has_auth:
+                allow_reveal = reveal and authed
+            else:
+                allow_reveal = reveal and (authed or csrf_valid)
 
             gemini_key = os.environ.get('GEMINI_API_KEY', '')
             openai_key = os.environ.get('OPENAI_API_KEY', '')
@@ -788,9 +832,13 @@ class Handler(SimpleHTTPRequestHandler):
 
             # Protected Workspace Sync
             if self.path == '/api/workspace':
+                has_auth = self.has_auth_configured()
                 authed, _ = self.is_authenticated()
                 csrf_valid = self.headers.get('X-INVEYS-CSRF') == TOKEN
-                if not (authed or csrf_valid): return self.send_json({'error': 'Unauthorized'}, 401)
+                if has_auth:
+                    if not authed: return self.send_json({'error': 'Unauthorized'}, 401)
+                else:
+                    if not (authed or csrf_valid): return self.send_json({'error': 'Unauthorized'}, 401)
                 ws = data.get('workspace')
                 if not isinstance(ws, dict): return self.send_json({'error': 'Invalid workspace'}, 400)
                 raw_json = json.dumps(ws, separators=(',', ':'))
@@ -821,11 +869,16 @@ class Handler(SimpleHTTPRequestHandler):
                         c.execute('DELETE FROM backups WHERE id NOT IN (SELECT id FROM backups ORDER BY id DESC LIMIT 30)')
                 return self.send_json({'ok': True, 'checksum': checksum, 'updatedAt': now_iso})
 
-            # Check CSRF or Bearer Token for remaining endpoints
+            # Check CSRF or Session Authentication for remaining endpoints
+            has_auth = self.has_auth_configured()
             token_valid, _ = self.is_authenticated()
             csrf_valid = self.headers.get('X-INVEYS-CSRF') == TOKEN
-            if not (csrf_valid or token_valid):
-                return self.send_json({'error': 'Invalid session or CSRF token'}, 403)
+            if has_auth:
+                if not token_valid:
+                    return self.send_json({'error': 'Unauthorized. Please login with master password.'}, 401)
+            else:
+                if not (csrf_valid or token_valid):
+                    return self.send_json({'error': 'Invalid session or CSRF token'}, 403)
 
             if self.path == '/api/chat':
                 try: return self.send_json(inveys_ai.chat(data, extract, transcribe))
@@ -921,7 +974,8 @@ class Handler(SimpleHTTPRequestHandler):
                         if 'model' in data and str(data['model']).strip():
                             save_server_setting('NINEROUTER_MODEL', str(data['model']).strip())
                         if 'baseUrl' in data and str(data['baseUrl']).strip():
-                            save_server_setting('NINEROUTER_BASE_URL', str(data['baseUrl']).strip())
+                            safe_base = validate_router_base(str(data['baseUrl']))
+                            save_server_setting('NINEROUTER_BASE_URL', safe_base)
                     elif provider_name == 'muse':
                         if 'apiKey' in data and str(data['apiKey']).strip():
                             save_server_setting('MODEL_API_KEY', str(data['apiKey']).strip())

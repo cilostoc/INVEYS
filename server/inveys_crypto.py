@@ -158,10 +158,17 @@ def _is_safe_proxy(proxy_str):
         hostname = (parsed.hostname or '').lower()
         if not hostname:
             return False
-        # Block cloud metadata endpoints and dangerous link-local addresses
-        blocked = ('169.254.169.254', 'metadata.google.internal', 'instance-data', '100.100.100.200')
-        if hostname in blocked or hostname.endswith('.internal'):
+        # Block cloud metadata endpoints, internal names, and loopback/localhost
+        blocked = ('169.254.169.254', 'metadata.google.internal', 'instance-data', '100.100.100.200', 'localhost')
+        if hostname in blocked or hostname.endswith('.internal') or hostname.endswith('.local'):
             return False
+        import ipaddress
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or str(ip) == '169.254.169.254':
+                return False
+        except ValueError:
+            pass
         return True
     except Exception:
         return False

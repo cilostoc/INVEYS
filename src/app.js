@@ -1280,7 +1280,9 @@
   async function api(path,data){
     if(typeof fetch!=='function'||!/^https?:$/.test(location.protocol||''))throw Error(L('Jalankan server lokal: python3 serve.py','Run the local server: python3 serve.py'));
     if(!service.csrf){const r=await fetch('/api/status');if(!r.ok)throw Error('Local server unavailable');service=await r.json();}
-    const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json','X-INVEYS-CSRF':service.csrf}:{},body:data?JSON.stringify(data):undefined});const result=await r.json();if(!r.ok)throw Error(result.error||'Service unavailable');return result;
+    const token=typeof localStorage!=='undefined'?localStorage.getItem('inveys_token'):null;
+    const authHeaders=token?{'Authorization':'Bearer '+token}:{};
+    const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json','X-INVEYS-CSRF':service.csrf,...authHeaders}:authHeaders,body:data?JSON.stringify(data):undefined});const result=await r.json();if(!r.ok)throw Error(result.error||'Service unavailable');return result;
   }
   async function refreshFX(){if(fxBusy)return;fxBusy=true;state.fx.lastAttempt=new Date().toISOString();try{
     const endpoint=/^https?:$/.test(location.protocol||'')?'/api/fx':'https://api.frankfurter.dev/v2/rates?base=IDR&quotes=USD,EUR,GBP,SGD,AUD,JPY';

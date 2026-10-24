@@ -5,9 +5,19 @@ spec=importlib.util.spec_from_file_location('server',Path(__file__).resolve().pa
 class Backend(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server=s.ThreadingHTTPServer(('127.0.0.1',0),s.Handler);threading.Thread(target=cls.server.serve_forever,daemon=True).start();cls.url='http://127.0.0.1:'+str(cls.server.server_port)
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.orig_db = s.DB
+        s.DB = Path(cls.temp_dir.name) / 'test_inbox.sqlite3'
+        cls.server = s.ThreadingHTTPServer(('127.0.0.1', 0), s.Handler)
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.url = 'http://127.0.0.1:' + str(cls.server.server_port)
+
     @classmethod
-    def tearDownClass(cls):cls.server.shutdown();cls.server.server_close()
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+        s.DB = cls.orig_db
+        cls.temp_dir.cleanup()
     def request(self,path,body=None,headers=None):
         h={'Host':'127.0.0.1:3000',**(headers or {})}
         req=urllib.request.Request(self.url+path,data=json.dumps(body).encode() if body is not None else None,headers=h)
@@ -267,5 +277,61 @@ class Backend(unittest.TestCase):
         status, keys_after = self.request('/api/keys', headers=headers)
         self.assertFalse(keys_after['gemini']['configured'])
         self.assertFalse(keys_after['telegram']['configured'])
+
+    def test_security_headers_on_responses(self):
+        req = urllib.request.Request(self.url + '/index.html', headers={'Host': '127.0.0.1:3000'})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(resp.headers.get('X-Content-Type-Options'), 'nosniff')
+            self.assertEqual(resp.headers.get('X-Frame-Options'), 'SAMEORIGIN')
+            self.assertEqual(resp.headers.get('Referrer-Policy'), 'strict-origin-when-cross-origin')
+            resp.read()
+
+    def test_9router_ssrf_validation(self):
+        self.assertRaises(ValueError, s.validate_router_base, 'http://169.254.169.254/latest/meta-data/v1')
+        self.assertRaises(ValueError, s.validate_router_base, 'http://metadata.google.internal/v1')
+        self.assertRaises(ValueError, s.validate_router_base, 'ftp://127.0.0.1:20128/v1')
+        self.assertRaises(ValueError, s.validate_router_base, 'http://127.0.0.1:20128/api/v2')
+        # Valid loopback and HTTPS should pass
+        self.assertEqual(s.validate_router_base('http://127.0.0.1:20128/v1'), 'http://127.0.0.1:20128/v1')
+        self.assertEqual(s.validate_router_base('https://api.example.com/v1'), 'https://api.example.com/v1')
+
+    def test_master_password_auth_protection_and_unauthorized_rejection(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'auth_test.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+
+            # 1. Setup master password
+            status, setup_res = self.request('/api/auth/setup', {'password': 'TestPassword123'}, headers_csrf)
+            self.assertEqual(status, 200)
+            self.assertTrue(setup_res['ok'])
+            token = setup_res['token']
+            self.assertTrue(token)
+
+            # 2. Configure a test API key with authenticated session
+            headers_authed = {**headers_csrf, 'Authorization': f'Bearer {token}'}
+            status, res = self.request('/api/keys', {'provider': 'gemini', 'action': 'save', 'apiKey': 'SecretKeyAuth123'}, headers_authed)
+            self.assertEqual(status, 200)
+
+            # 3. Unauthenticated request with CSRF only MUST NOT reveal secrets
+            status, unauth_keys = self.request('/api/keys?reveal=1', headers=headers_csrf)
+            self.assertEqual(status, 200)
+            self.assertEqual(unauth_keys['gemini']['rawKey'], '')
+
+            # 4. Authenticated request with token DOES reveal secrets
+            status, authed_keys = self.request('/api/keys?reveal=1', headers=headers_authed)
+            self.assertEqual(status, 200)
+            self.assertEqual(authed_keys['gemini']['rawKey'], 'SecretKeyAuth123')
+
+            # 5. Unauthenticated POST /api/workspace MUST return 401 Unauthorized
+            status, ws_err = self.request('/api/workspace', {'workspace': {'id': 'test'}}, headers_csrf)
+            self.assertEqual(status, 401)
+
+            # 6. Authenticated POST /api/workspace returns 200
+            status, ws_ok = self.request('/api/workspace', {'workspace': {'id': 'test'}}, headers_authed)
+            self.assertEqual(status, 200)
+
+            # 7. Unauthenticated POST /api/keys delete MUST return 401
+            status, del_err = self.request('/api/keys', {'provider': 'gemini', 'action': 'delete'}, headers_csrf)
+            self.assertEqual(status, 401)
 
 if __name__=='__main__':unittest.main()

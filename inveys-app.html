@@ -4362,7 +4362,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     for (const c of currencies) if (!Number.isFinite(s.fx.rates[c]) || s.fx.rates[c]<=0 || s.fx.rates[c]>1e9) throw new Error('Invalid exchange rate.');
     if (s.fx.rates.IDR!==1) throw new Error('IDR exchange-rate anchor must be 1.');
     for (const key of ['accounts', 'debts', 'goals', 'flows', 'transactions', 'tasks', 'members','cards']) {
-      if (!Array.isArray(s[key]) || s[key].length > 10000) throw new Error('Invalid ' + key + ' records.');
+      if (!Array.isArray(s[key]) || (key === 'transactions' ? s[key].length > 100000 : s[key].length > 10000)) throw new Error('Invalid ' + key + ' records.');
       const ids = new Set();
       for (const row of s[key]) {
         if (!row || typeof row.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(row.id) || ids.has(row.id)) throw new Error('Invalid or duplicate record identifier.');
@@ -7951,7 +7951,9 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   async function api(path,data){
     if(typeof fetch!=='function'||!/^https?:$/.test(location.protocol||''))throw Error(L('Jalankan server lokal: python3 serve.py','Run the local server: python3 serve.py'));
     if(!service.csrf){const r=await fetch('/api/status');if(!r.ok)throw Error('Local server unavailable');service=await r.json();}
-    const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json','X-INVEYS-CSRF':service.csrf}:{},body:data?JSON.stringify(data):undefined});const result=await r.json();if(!r.ok)throw Error(result.error||'Service unavailable');return result;
+    const token=typeof localStorage!=='undefined'?localStorage.getItem('inveys_token'):null;
+    const authHeaders=token?{'Authorization':'Bearer '+token}:{};
+    const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json','X-INVEYS-CSRF':service.csrf,...authHeaders}:authHeaders,body:data?JSON.stringify(data):undefined});const result=await r.json();if(!r.ok)throw Error(result.error||'Service unavailable');return result;
   }
   async function refreshFX(){if(fxBusy)return;fxBusy=true;state.fx.lastAttempt=new Date().toISOString();try{
     const endpoint=/^https?:$/.test(location.protocol||'')?'/api/fx':'https://api.frankfurter.dev/v2/rates?base=IDR&quotes=USD,EUR,GBP,SGD,AUD,JPY';

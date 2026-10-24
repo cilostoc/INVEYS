@@ -147,7 +147,7 @@
     for (const c of currencies) if (!Number.isFinite(s.fx.rates[c]) || s.fx.rates[c]<=0 || s.fx.rates[c]>1e9) throw new Error('Invalid exchange rate.');
     if (s.fx.rates.IDR!==1) throw new Error('IDR exchange-rate anchor must be 1.');
     for (const key of ['accounts', 'debts', 'goals', 'flows', 'transactions', 'tasks', 'members','cards']) {
-      if (!Array.isArray(s[key]) || s[key].length > 10000) throw new Error('Invalid ' + key + ' records.');
+      if (!Array.isArray(s[key]) || (key === 'transactions' ? s[key].length > 100000 : s[key].length > 10000)) throw new Error('Invalid ' + key + ' records.');
       const ids = new Set();
       for (const row of s[key]) {
         if (!row || typeof row.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(row.id) || ids.has(row.id)) throw new Error('Invalid or duplicate record identifier.');
