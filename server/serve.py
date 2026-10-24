@@ -176,10 +176,18 @@ def db():
     c.execute('CREATE TABLE IF NOT EXISTS inbox (id INTEGER PRIMARY KEY, text TEXT NOT NULL, date INTEGER, reviewed INTEGER DEFAULT 0)')
     c.execute('CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value INTEGER)')
     c.execute('CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY CHECK (id=1), password_hash TEXT NOT NULL, salt TEXT NOT NULL, created_at INTEGER NOT NULL)')
-    c.execute('CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, ip TEXT)')
-    c.execute('CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, data TEXT NOT NULL, checksum TEXT NOT NULL, updated_at TEXT NOT NULL)')
-    c.execute('CREATE TABLE IF NOT EXISTS backups (id INTEGER PRIMARY KEY AUTOINCREMENT, workspace_id TEXT NOT NULL, data TEXT NOT NULL, created_at TEXT NOT NULL, note TEXT)')
+    c.execute('CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, salt TEXT NOT NULL, name TEXT, plan TEXT DEFAULT "plus", created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)')
+    c.execute('CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id TEXT, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, ip TEXT)')
+    c.execute('CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, user_id TEXT, name TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, data TEXT NOT NULL, checksum TEXT NOT NULL, updated_at TEXT NOT NULL)')
+    c.execute('CREATE TABLE IF NOT EXISTS backups (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, workspace_id TEXT NOT NULL, data TEXT NOT NULL, created_at TEXT NOT NULL, note TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS server_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)')
+    for col_alter in (
+        'ALTER TABLE sessions ADD COLUMN user_id TEXT',
+        'ALTER TABLE workspaces ADD COLUMN user_id TEXT',
+        'ALTER TABLE backups ADD COLUMN user_id TEXT'
+    ):
+        try: c.execute(col_alter)
+        except Exception: pass
     try:
         with c: yield c
     finally: c.close()
@@ -603,23 +611,41 @@ class Handler(SimpleHTTPRequestHandler):
                 return part.split('=', 1)[1].strip()
         return None
 
-    def is_authenticated(self):
+    def get_authenticated_user(self):
+        token = self.get_session_token()
+        if not token:
+            return None
+        now = int(time.time())
         with db() as c:
-            row = c.execute('SELECT id FROM auth WHERE id=1').fetchone()
-            if not row:
+            sess = c.execute('SELECT token, user_id FROM sessions WHERE token=? AND expires_at>?', (token, now)).fetchone()
+            if not sess:
+                return None
+            user_id = sess[1]
+            if user_id and user_id != 'master':
+                user = c.execute('SELECT id, email, name, plan FROM users WHERE id=?', (user_id,)).fetchone()
+                if user:
+                    return {'id': user[0], 'email': user[1], 'name': user[2] or user[1].split('@')[0], 'plan': user[3] or 'plus'}
+            has_auth = bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
+            if has_auth or user_id == 'master':
+                return {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra'}
+            return None
+
+    def is_authenticated(self):
+        user = self.get_authenticated_user()
+        if user:
+            return True, 'authenticated'
+        with db() as c:
+            has_auth = bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
+            has_users = bool(c.execute('SELECT id FROM users LIMIT 1').fetchone())
+            if not has_auth and not has_users:
                 return False, 'setup_required'
-            token = self.get_session_token()
-            if not token:
-                return False, 'unauthenticated'
-            now = int(time.time())
-            sess = c.execute('SELECT token FROM sessions WHERE token=? AND expires_at>?', (token, now)).fetchone()
-            if sess:
-                return True, 'authenticated'
-            return False, 'unauthenticated'
+        return False, 'unauthenticated'
 
     def has_auth_configured(self):
         with db() as c:
-            return bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
+            has_auth = bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
+            has_users = bool(c.execute('SELECT id FROM users LIMIT 1').fetchone())
+            return has_auth or has_users
 
     def get_client_ip(self):
         remote = self.client_address[0]
@@ -639,26 +665,30 @@ class Handler(SimpleHTTPRequestHandler):
 
         if self.path == '/api/status':
             if not self.allowed_origin(): return self.send_json({'error': 'Invalid origin'}, 403)
-            with db() as c:
-                has_auth = bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
-            authed, _ = self.is_authenticated()
+            user = self.get_authenticated_user()
+            setup_required = not self.has_auth_configured()
             return self.send_json({
                 'csrf': TOKEN,
                 'muse': bool(os.environ.get('MODEL_API_KEY')),
                 'telegram': bool(os.environ.get('TELEGRAM_BOT_TOKEN') and os.environ.get('TELEGRAM_CHAT_ID')),
                 'ocr': bool(shutil.which('tesseract')),
                 'version': VERSION,
-                'setupRequired': not has_auth,
-                'authenticated': authed,
+                'setupRequired': setup_required,
+                'authenticated': bool(user),
+                'user': user,
                 'ai': inveys_ai.configuration(),
                 'crypto': inveys_crypto.has_ccxt()
             })
 
         if self.path == '/api/auth/status':
-            with db() as c:
-                has_auth = bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
-            authed, _ = self.is_authenticated()
-            return self.send_json({'ok': True, 'setupRequired': not has_auth, 'authenticated': authed})
+            user = self.get_authenticated_user()
+            setup_required = not self.has_auth_configured()
+            return self.send_json({'ok': True, 'setupRequired': setup_required, 'authenticated': bool(user), 'user': user, 'multiUser': True})
+
+        if self.path == '/api/auth/me':
+            user = self.get_authenticated_user()
+            if not user: return self.send_json({'error': 'Unauthorized'}, 401)
+            return self.send_json({'ok': True, 'user': user})
 
         if self.path == '/api/fx':
             try: return self.send_json(provider('https://api.frankfurter.dev/v2/rates?base=IDR&quotes=USD,EUR,GBP,SGD,AUD,JPY'))
@@ -761,18 +791,26 @@ class Handler(SimpleHTTPRequestHandler):
 
         # Protected workspace sync endpoints
         if self.path == '/api/workspace':
-            authed, reason = self.is_authenticated()
-            if not authed: return self.send_json({'error': 'Unauthorized'}, 401)
+            user = self.get_authenticated_user()
+            if not user: return self.send_json({'error': 'Unauthorized'}, 401)
             with db() as c:
-                ws = c.execute('SELECT data, checksum, updated_at FROM workspaces ORDER BY updated_at DESC LIMIT 1').fetchone()
+                if user['id'] == 'master':
+                    ws = c.execute('SELECT data, checksum, updated_at FROM workspaces WHERE user_id IS NULL OR user_id = ? ORDER BY updated_at DESC LIMIT 1', ('master',)).fetchone()
+                    if not ws:
+                        ws = c.execute('SELECT data, checksum, updated_at FROM workspaces ORDER BY updated_at DESC LIMIT 1').fetchone()
+                else:
+                    ws = c.execute('SELECT data, checksum, updated_at FROM workspaces WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1', (user['id'],)).fetchone()
             if not ws: return self.send_json({'ok': True, 'workspace': None})
             return self.send_json({'ok': True, 'workspace': json.loads(ws[0]), 'checksum': ws[1], 'updatedAt': ws[2]})
 
         if self.path == '/api/backups':
-            authed, reason = self.is_authenticated()
-            if not authed: return self.send_json({'error': 'Unauthorized'}, 401)
+            user = self.get_authenticated_user()
+            if not user: return self.send_json({'error': 'Unauthorized'}, 401)
             with db() as c:
-                rows = c.execute('SELECT id, workspace_id, created_at, note, length(data) FROM backups ORDER BY id DESC LIMIT 30').fetchall()
+                if user['id'] == 'master':
+                    rows = c.execute('SELECT id, workspace_id, created_at, note, length(data) FROM backups WHERE user_id IS NULL OR user_id = ? ORDER BY id DESC LIMIT 30', ('master',)).fetchall()
+                else:
+                    rows = c.execute('SELECT id, workspace_id, created_at, note, length(data) FROM backups WHERE user_id = ? ORDER BY id DESC LIMIT 30', (user['id'],)).fetchall()
             return self.send_json({'ok': True, 'backups': [{'id': r[0], 'workspaceId': r[1], 'createdAt': r[2], 'note': r[3], 'sizeBytes': r[4]} for r in rows]})
 
         allowed_static = ('/', '/index.html', '/inveys-app.html', '/landing.html', '/landing', '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js', '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js', '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest', '/sw.js', '/icon.svg')
@@ -795,27 +833,68 @@ class Handler(SimpleHTTPRequestHandler):
             if size < 1 or size > MAX: return self.send_json({'error': 'Request too large'}, 413)
             data = json.loads(self.rfile.read(size))
 
-            # Master Password Setup
-            if self.path == '/api/auth/setup':
+            # Multi-User Registration
+            if self.path == '/api/auth/register':
+                email = str(data.get('email', '')).strip().lower()
                 pw = str(data.get('password', '')).strip()
-                if len(pw) < 6: return self.send_json({'error': 'Password must be at least 6 characters'}, 400)
-                with db() as c:
-                    if c.execute('SELECT id FROM auth WHERE id=1').fetchone():
-                        return self.send_json({'error': 'Master password already configured'}, 400)
-                    h, salt = hash_password(pw)
-                    c.execute('INSERT INTO auth (id, password_hash, salt, created_at) VALUES (1, ?, ?, ?)', (h, salt, int(time.time())))
-                    token = secrets.token_urlsafe(32)
-                    now = int(time.time())
-                    expires = now + 30 * 86400
-                    c.execute('INSERT INTO sessions (token, created_at, expires_at, ip) VALUES (?, ?, ?, ?)', (token, now, expires, self.get_client_ip()))
-                cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
-                return self.send_json({'ok': True, 'token': token}, headers={'Set-Cookie': cookie})
+                name = str(data.get('name', '')).strip()
+                plan = str(data.get('plan', 'plus')).strip().lower()
+                if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+                    return self.send_json({'error': 'Format email tidak valid'}, 400)
+                if len(pw) < 6:
+                    return self.send_json({'error': 'Password minimal 6 karakter'}, 400)
+                if not name:
+                    name = email.split('@')[0].capitalize()
+                if plan not in ('plus', 'pro', 'ultra', 'lifetime'):
+                    plan = 'plus'
 
-            # Master Password Login
+                with db() as c:
+                    existing = c.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+                    if existing:
+                        return self.send_json({'error': 'Email sudah terdaftar. Silakan masuk.'}, 400)
+                    user_id = 'usr_' + secrets.token_hex(8)
+                    h, salt = hash_password(pw)
+                    now = int(time.time())
+                    c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                              (user_id, email, h, salt, name, plan, now, now))
+                    token = secrets.token_urlsafe(32)
+                    expires = now + 30 * 86400
+                    c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
+                              (token, user_id, now, expires, self.get_client_ip()))
+
+                cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
+                user_data = {'id': user_id, 'email': email, 'name': name, 'plan': plan}
+                return self.send_json({'ok': True, 'token': token, 'user': user_data}, headers={'Set-Cookie': cookie})
+
+            # Multi-User & Master Password Login
             if self.path == '/api/auth/login':
                 ip = self.get_client_ip()
                 if not check_rate_limit(ip): return self.send_json({'error': 'Too many failed attempts. Try again in 15 minutes.'}, 429)
+                email = str(data.get('email', '')).strip().lower()
                 pw = str(data.get('password', ''))
+
+                if email:
+                    with db() as c:
+                        row = c.execute('SELECT id, password_hash, salt, name, plan FROM users WHERE email=?', (email,)).fetchone()
+                    if not row or not verify_password(pw, row[1], row[2]):
+                        record_failed_login(ip)
+                        return self.send_json({'error': 'Email atau password salah'}, 401)
+                    clear_failed_login(ip)
+                    user_id = row[0]
+                    user_name = row[3] or email.split('@')[0]
+                    user_plan = row[4] or 'plus'
+                    token = secrets.token_urlsafe(32)
+                    now = int(time.time())
+                    expires = now + 30 * 86400
+                    with db() as c:
+                        c.execute('DELETE FROM sessions WHERE expires_at < ?', (now,))
+                        c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
+                                  (token, user_id, now, expires, ip))
+                    cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
+                    user_data = {'id': user_id, 'email': email, 'name': user_name, 'plan': user_plan}
+                    return self.send_json({'ok': True, 'token': token, 'user': user_data}, headers={'Set-Cookie': cookie})
+
+                # Fallback to master password
                 with db() as c:
                     row = c.execute('SELECT password_hash, salt FROM auth WHERE id=1').fetchone()
                 if not row or not verify_password(pw, row[0], row[1]):
@@ -827,9 +906,42 @@ class Handler(SimpleHTTPRequestHandler):
                 expires = now + 30 * 86400
                 with db() as c:
                     c.execute('DELETE FROM sessions WHERE expires_at < ?', (now,))
-                    c.execute('INSERT INTO sessions (token, created_at, expires_at, ip) VALUES (?, ?, ?, ?)', (token, now, expires, ip))
+                    c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
+                              (token, 'master', now, expires, ip))
                 cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
-                return self.send_json({'ok': True, 'token': token}, headers={'Set-Cookie': cookie})
+                return self.send_json({'ok': True, 'token': token, 'user': {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra'}}, headers={'Set-Cookie': cookie})
+
+            # Setup initial password / owner
+            if self.path == '/api/auth/setup':
+                email = str(data.get('email', '')).strip().lower()
+                pw = str(data.get('password', '')).strip()
+                if len(pw) < 6: return self.send_json({'error': 'Password must be at least 6 characters'}, 400)
+                now = int(time.time())
+                token = secrets.token_urlsafe(32)
+                expires = now + 30 * 86400
+
+                with db() as c:
+                    if email:
+                        name = str(data.get('name', 'Workspace Owner')).strip()
+                        existing = c.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+                        if existing: return self.send_json({'error': 'Email already registered'}, 400)
+                        user_id = 'usr_' + secrets.token_hex(8)
+                        h, salt = hash_password(pw)
+                        c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                                  (user_id, email, h, salt, name, 'ultra', now, now))
+                        c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
+                                  (token, user_id, now, expires, self.get_client_ip()))
+                        cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
+                        return self.send_json({'ok': True, 'token': token, 'user': {'id': user_id, 'email': email, 'name': name, 'plan': 'ultra'}}, headers={'Set-Cookie': cookie})
+                    else:
+                        if c.execute('SELECT id FROM auth WHERE id=1').fetchone():
+                            return self.send_json({'error': 'Master password already configured'}, 400)
+                        h, salt = hash_password(pw)
+                        c.execute('INSERT INTO auth (id, password_hash, salt, created_at) VALUES (1, ?, ?, ?)', (h, salt, now))
+                        c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
+                                  (token, 'master', now, expires, self.get_client_ip()))
+                        cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
+                        return self.send_json({'ok': True, 'token': token, 'user': {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra'}}, headers={'Set-Cookie': cookie})
 
             # Logout
             if self.path == '/api/auth/logout':
@@ -839,10 +951,11 @@ class Handler(SimpleHTTPRequestHandler):
                 cookie = 'inveys_session=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly'
                 return self.send_json({'ok': True}, headers={'Set-Cookie': cookie})
 
-            # Protected Workspace Sync
+            # Protected Workspace Sync with User Tenant Isolation
             if self.path == '/api/workspace':
                 has_auth = self.has_auth_configured()
-                authed, _ = self.is_authenticated()
+                user = self.get_authenticated_user()
+                authed = bool(user)
                 csrf_valid = self.headers.get('X-INVEYS-CSRF') == TOKEN
                 if has_auth:
                     if not authed: return self.send_json({'error': 'Unauthorized'}, 401)
@@ -853,29 +966,32 @@ class Handler(SimpleHTTPRequestHandler):
                 raw_json = json.dumps(ws, separators=(',', ':'))
                 checksum = hashlib.sha256(raw_json.encode()).hexdigest()
                 now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                ws_id = str(ws.get('id', 'default_workspace'))
+                user_id = user['id'] if user else 'master'
+                ws_id = f"{user_id}_{str(ws.get('id', 'default_workspace'))}" if user_id != 'master' else str(ws.get('id', 'default_workspace'))
                 ws_name = str(ws.get('name', 'Personal Workspace'))
                 with db() as c:
                     c.execute("""
-                        INSERT INTO workspaces (id, name, version, data, checksum, updated_at)
-                        VALUES (?, ?, 1, ?, ?, ?)
+                        INSERT INTO workspaces (id, user_id, name, version, data, checksum, updated_at)
+                        VALUES (?, ?, ?, 1, ?, ?, ?)
                         ON CONFLICT(id) DO UPDATE SET
+                            user_id = excluded.user_id,
                             name = excluded.name,
                             data = excluded.data,
                             checksum = excluded.checksum,
                             updated_at = excluded.updated_at
-                    """, (ws_id, ws_name, raw_json, checksum, now_iso))
+                    """, (ws_id, user_id, ws_name, raw_json, checksum, now_iso))
                     # Auto rolling snapshot backup
-                    last = c.execute('SELECT created_at FROM backups ORDER BY id DESC LIMIT 1').fetchone()
+                    last = c.execute('SELECT created_at FROM backups WHERE user_id = ? ORDER BY id DESC LIMIT 1', (user_id,)).fetchone()
                     do_backup = True
-                    if last:
+                    if last and last[0]:
                         try:
                             if time.time() - datetime.datetime.fromisoformat(last[0]).timestamp() < 86400:
                                 do_backup = False
                         except Exception: pass
                     if do_backup:
-                        c.execute('INSERT INTO backups (workspace_id, data, created_at, note) VALUES (?, ?, ?, "Automated Daily Snapshot")', (ws_id, raw_json, now_iso))
-                        c.execute('DELETE FROM backups WHERE id NOT IN (SELECT id FROM backups ORDER BY id DESC LIMIT 30)')
+                        c.execute('INSERT INTO backups (user_id, workspace_id, data, created_at, note) VALUES (?, ?, ?, ?, "Automated Daily Snapshot")',
+                                  (user_id, ws_id, raw_json, now_iso))
+                        c.execute('DELETE FROM backups WHERE user_id = ? AND id NOT IN (SELECT id FROM backups WHERE user_id = ? ORDER BY id DESC LIMIT 30)', (user_id, user_id))
                 return self.send_json({'ok': True, 'checksum': checksum, 'updatedAt': now_iso})
 
             # Check CSRF or Session Authentication for remaining endpoints

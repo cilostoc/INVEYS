@@ -343,4 +343,65 @@ class Backend(unittest.TestCase):
             status, del_err = self.request('/api/keys', {'provider': 'gemini', 'action': 'delete'}, headers_csrf)
             self.assertEqual(status, 401)
 
+    def test_multi_user_registration_login_and_tenant_isolation(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'multi_user_test.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+
+            # 1. Validation checks on registration
+            bad_email_st, _ = self.request('/api/auth/register', {'email': 'invalid-email', 'password': 'pass123'}, headers_csrf)
+            self.assertEqual(bad_email_st, 400)
+            short_pw_st, _ = self.request('/api/auth/register', {'email': 'user@example.com', 'password': '123'}, headers_csrf)
+            self.assertEqual(short_pw_st, 400)
+
+            # 2. Register User 1
+            st1, res1 = self.request('/api/auth/register', {'email': 'hendra@inveys.io', 'password': 'PasswordHendra123', 'name': 'Hendra'}, headers_csrf)
+            self.assertEqual(st1, 200)
+            self.assertTrue(res1['ok'])
+            token1 = res1['token']
+            self.assertEqual(res1['user']['email'], 'hendra@inveys.io')
+            self.assertEqual(res1['user']['name'], 'Hendra')
+
+            # 3. Duplicate email registration rejected
+            dup_st, dup_res = self.request('/api/auth/register', {'email': 'hendra@inveys.io', 'password': 'OtherPassword123'}, headers_csrf)
+            self.assertEqual(dup_st, 400)
+
+            # 4. Register User 2
+            st2, res2 = self.request('/api/auth/register', {'email': 'partner@inveys.io', 'password': 'PasswordPartner123', 'name': 'Partner'}, headers_csrf)
+            self.assertEqual(st2, 200)
+            token2 = res2['token']
+
+            # 5. User 1 logs in with email & password
+            st_login, res_login = self.request('/api/auth/login', {'email': 'hendra@inveys.io', 'password': 'PasswordHendra123'}, headers_csrf)
+            self.assertEqual(st_login, 200)
+            self.assertTrue(res_login['token'])
+
+            # 6. Tenant Isolation: User 1 writes their workspace
+            headers_u1 = {**headers_csrf, 'Authorization': f'Bearer {token1}'}
+            ws_u1_payload = {'workspace': {'id': 'ws_hendra', 'name': 'Hendra Vault', 'accounts': [{'id': 'a1', 'balance': 50000000}]}}
+            st_ws1, _ = self.request('/api/workspace', ws_u1_payload, headers_u1)
+            self.assertEqual(st_ws1, 200)
+
+            # 7. User 2 writes their distinct workspace
+            headers_u2 = {**headers_csrf, 'Authorization': f'Bearer {token2}'}
+            ws_u2_payload = {'workspace': {'id': 'ws_partner', 'name': 'Partner Vault', 'accounts': [{'id': 'a2', 'balance': 10000000}]}}
+            st_ws2, _ = self.request('/api/workspace', ws_u2_payload, headers_u2)
+            self.assertEqual(st_ws2, 200)
+
+            # 8. User 1 retrieves their workspace -> receives Hendra Vault only
+            st_get1, res_get1 = self.request('/api/workspace', headers=headers_u1)
+            self.assertEqual(st_get1, 200)
+            self.assertEqual(res_get1['workspace']['name'], 'Hendra Vault')
+            self.assertEqual(res_get1['workspace']['accounts'][0]['balance'], 50000000)
+
+            # 9. User 2 retrieves their workspace -> receives Partner Vault only
+            st_get2, res_get2 = self.request('/api/workspace', headers=headers_u2)
+            self.assertEqual(st_get2, 200)
+            self.assertEqual(res_get2['workspace']['name'], 'Partner Vault')
+            self.assertEqual(res_get2['workspace']['accounts'][0]['balance'], 10000000)
+
+            # 10. Check /api/auth/me for User 1
+            st_me, res_me = self.request('/api/auth/me', headers=headers_u1)
+            self.assertEqual(st_me, 200)
+            self.assertEqual(res_me['user']['email'], 'hendra@inveys.io')
+
 if __name__=='__main__':unittest.main()

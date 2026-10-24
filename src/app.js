@@ -118,7 +118,7 @@
   const button = (text, action, type='', ic='') => `<button class="btn ${type}" data-action="${action}">${ic?icon(ic):''}${text}</button>`;
   const link = (text, target) => `<button class="quiet-link" data-page="${target}">${text}${icon('arrow')}</button>`;
   function toast(message){$('#toast').classList.remove('success');$('#toast').textContent=t(message);$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
-  let isServerMode=false, isAuthenticated=true, serverSyncBusy=false;
+  let isServerMode=false, isAuthenticated=true, serverSyncBusy=false, currentUser=null;
   async function syncToServer(){
     if(serverSyncBusy||!isServerMode||!isAuthenticated)return;
     try{
@@ -147,9 +147,10 @@
     $('.demo-tag').textContent=state.demo?'DEMO':(isServerMode?'VPS':'LOCAL');
     $('footer span:last-child').textContent=`${state.demo?'Demo':'Production'} workspace · ${isServerMode?'Hostinger KVM Node · SQLite Sync':'Manual records'} · v0.18.0`;
     const member=state.members[0]||{name:'Me',initials:'ME'};
-    $('.profile b').textContent=member.name;
-    $('.profile small').textContent=state.demo?'Local demo account':(isServerMode?'Hostinger VPS Account':'Local workspace');
-    $$('.avatar').filter(el=>el.closest('.profile')||el.closest('.top-actions')).forEach(el=>el.textContent=member.initials);
+    $('.profile b').textContent=currentUser?.name||member.name;
+    $('.profile small').textContent=state.demo?'Local demo account':(currentUser?`${currentUser.email} (${(currentUser.plan||'PRO').toUpperCase()})`:(isServerMode?'Hostinger VPS Account':'Local workspace'));
+    const initials=currentUser?.name?currentUser.name.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase():member.initials;
+    $$('.avatar').filter(el=>el.closest('.profile')||el.closest('.top-actions')).forEach(el=>el.textContent=initials);
     if(isServerMode&&isAuthenticated)syncToServer();
   }
   const pages=[['operations','Operations'],['home','Overview'],['shared','Shared Views'],['reports','Reports'],['forecast','Forecast'],['accounts','Accounts'],['investment','Investment'],['calendar','Bills & Subscriptions'],['budget','Budget'],['cashflow','Cash flow'],['transactions','Transactions'],['categories','Categories'],['goals','Goals & plans'],['debt','Debt management'],['scenarios','Scenarios'],['montecarlo','Monte Carlo'],['cards','Credit cards'],['household','Household'],['copilot','Financial copilot'],['capture','Capture'],['integrations','Integrations'],['updates','Version updates'],['plans','Plans & membership']];
@@ -5783,18 +5784,24 @@
   async function checkServerAuth(){
     if(typeof fetch!=='function'||!/^https?:$/.test(location.protocol||''))return;
     try{
-      const res=await fetch('/api/auth/status');
+      const token=localStorage.getItem('inveys_token');
+      const res=await fetch('/api/auth/status',{
+        headers:token?{'Authorization':'Bearer '+token}:{}
+      });
       if(!res.ok)return;
       const data=await res.json();
       isServerMode=true;
+      if(data.user){
+        currentUser=data.user;
+      }
       if(data.setupRequired){
         showAuthScreen('setup');
       }else if(!data.authenticated){
         showAuthScreen('login');
       }else{
         hideAuthScreen();
+        if(currentUser)save();
         try{
-          const token=localStorage.getItem('inveys_token');
           const wsRes=await fetch('/api/workspace',{
             headers:token?{'Authorization':'Bearer '+token}:{}
           });
@@ -5812,25 +5819,58 @@
       isServerMode=false;
     }
   }
-  function showAuthScreen(mode){
+  function showAuthScreen(mode='login'){
     isAuthenticated=false;
     const overlay=$('#auth-overlay');
     if(!overlay)return;
     overlay.style.display='flex';
+    const form=$('#auth-form');
+    if(form)form.dataset.mode=mode;
+    const nameInput=$('#auth-name');
+    const emailInput=$('#auth-email');
     const pwInput=$('#auth-password');
-    if(pwInput)pwInput.value='';
     const errEl=$('#auth-error');
+    const tabs=$('#auth-tabs');
+    const tabLogin=$('#auth-tab-login');
+    const tabRegister=$('#auth-tab-register');
+    const switchP=$('#auth-switch-p');
+    const submitBtn=$('#auth-submit-btn');
+
+    if(pwInput)pwInput.value='';
     if(errEl)errEl.style.display='none';
+
     if(mode==='setup'){
-      $('#auth-title').textContent='Set Master Password';
-      $('#auth-desc').textContent='Welcome to INVEYS on your Hostinger KVM VPS. Set a secure master password to protect your financial vault.';
-      $('#auth-submit-btn').textContent='Create Master Password';
-      $('#auth-form').dataset.mode='setup';
+      if(tabs)tabs.style.display='none';
+      if(nameInput)nameInput.style.display='none';
+      if(emailInput)emailInput.style.display='block';
+      if(switchP)switchP.style.display='none';
+      $('#auth-title').textContent='Setup Akun Master Vault';
+      $('#auth-desc').textContent='Selamat datang di INVEYS Cloud. Atur email dan password aman untuk brankas finansial Anda.';
+      if(submitBtn)submitBtn.textContent='Buat Akun Pemilik';
+    }else if(mode==='register'){
+      if(tabs)tabs.style.display='flex';
+      if(tabLogin){tabLogin.style.background='transparent';tabLogin.style.color='inherit';}
+      if(tabRegister){tabRegister.style.background='var(--accent,#34d399)';tabRegister.style.color='#05241d';}
+      if(nameInput)nameInput.style.display='block';
+      if(emailInput)emailInput.style.display='block';
+      if(switchP)switchP.style.display='block';
+      const switchBtn=$('#auth-mode-switch');
+      if(switchBtn)switchBtn.textContent='Sudah punya akun? Masuk di sini';
+      $('#auth-title').textContent='Daftar Akun INVEYS';
+      $('#auth-desc').textContent='Buat ruang kerja finansial multi-tenant pribadi Anda yang terenkripsi dan terisolasi.';
+      if(submitBtn)submitBtn.textContent='Daftar Akun Baru';
     }else{
-      $('#auth-title').textContent='INVEYS Vault Lock';
-      $('#auth-desc').textContent='Enter your master password to unlock your household workspace.';
-      $('#auth-submit-btn').textContent='Unlock Workspace';
-      $('#auth-form').dataset.mode='login';
+      if(tabs)tabs.style.display='flex';
+      if(tabLogin){tabLogin.style.background='var(--accent,#34d399)';tabLogin.style.color='#05241d';}
+      if(tabRegister){tabRegister.style.background='transparent';tabRegister.style.color='inherit';}
+      if(nameInput)nameInput.style.display='none';
+      if(emailInput)emailInput.style.display='block';
+      if(switchP)switchP.style.display='block';
+      const switchBtn=$('#auth-mode-switch');
+      if(switchBtn)switchBtn.textContent='Belum punya akun? Daftar gratis';
+      $('#auth-title').textContent='INVEYS Cloud Vault';
+      $('#auth-desc').textContent='Masuk ke akun Anda untuk menyinkronkan seluruh catatan finansial.';
+      if(submitBtn)submitBtn.textContent='Masuk ke Vault';
     }
   }
   function hideAuthScreen(){
@@ -5838,30 +5878,61 @@
     const overlay=$('#auth-overlay');
     if(overlay)overlay.style.display='none';
   }
+  $('#auth-tab-login')?.addEventListener('click',()=>{showAuthScreen('login');});
+  $('#auth-tab-register')?.addEventListener('click',()=>{showAuthScreen('register');});
+  $('#auth-mode-switch')?.addEventListener('click',()=>{
+    const currentMode=$('#auth-form')?.dataset.mode||'login';
+    showAuthScreen(currentMode==='login'?'register':'login');
+  });
   document.addEventListener('submit',async event=>{
     if(event.target.id==='auth-form'){
       event.preventDefault();
-      const pw=$('#auth-password').value;
-      const mode=event.target.dataset.mode;
+      const mode=event.target.dataset.mode||'login';
+      const email=($('#auth-email')?.value||'').trim();
+      const pw=$('#auth-password')?.value||'';
+      const name=($('#auth-name')?.value||'').trim();
       const errEl=$('#auth-error');
       if(errEl)errEl.style.display='none';
+      const submitBtn=$('#auth-submit-btn');
+      const originalText=submitBtn?submitBtn.textContent:'';
+      if(submitBtn){
+        submitBtn.disabled=true;
+        submitBtn.textContent='Memproses...';
+      }
       try{
-        const endpoint=mode==='setup'?'/api/auth/setup':'/api/auth/login';
+        let endpoint='/api/auth/login';
+        let payload={password:pw};
+        if(mode==='register'){
+          if(!email)throw new Error('Alamat email wajib diisi.');
+          endpoint='/api/auth/register';
+          payload={email,password:pw,name:name||email.split('@')[0]};
+        }else if(mode==='setup'){
+          endpoint='/api/auth/setup';
+          payload=email?{email,password:pw,name}:{password:pw};
+        }else{
+          if(email)payload.email=email;
+        }
         const res=await fetch(endpoint,{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({password:pw})
+          body:JSON.stringify(payload)
         });
         const data=await res.json();
-        if(!res.ok)throw new Error(data.error||'Authentication failed');
+        if(!res.ok)throw new Error(data.error||'Autentikasi gagal');
         if(data.token)localStorage.setItem('inveys_token',data.token);
+        if(data.user)currentUser=data.user;
         hideAuthScreen();
-        checkServerAuth();
-        toast('Authenticated with Hostinger VPS');
+        toast(mode==='register'?'Akun berhasil dibuat!':'Berhasil terautentikasi');
+        await checkServerAuth();
       }catch(err){
         if(errEl){
           errEl.textContent=err.message;
           errEl.style.display='block';
+        }
+      }finally{
+        if(submitBtn){
+          submitBtn.disabled=false;
+          submitBtn.textContent=originalText;
         }
       }
     }
@@ -5875,7 +5946,9 @@
       });
     }catch(e){}
     localStorage.removeItem('inveys_token');
+    currentUser=null;
     showAuthScreen('login');
+    toast('Terkunci. Sesi telah diakhiri.');
   });
   $('#about-button').innerHTML=`<span class="sidebar-icon">${icon('about')}</span><span class="nav-text">About INVEYS</span>`;
   $('#settings-button').innerHTML=`<span class="sidebar-icon">${icon('settings')}</span><span class="nav-text">Settings & data</span>`;
