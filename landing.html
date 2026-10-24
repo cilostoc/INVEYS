@@ -375,6 +375,33 @@
     .dot-yellow { background: #f59e0b; }
     .dot-green { background: #10b981; }
 
+    /* Live Vault Sync Status Pill */
+    .live-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #34d399;
+      background: rgba(52, 211, 153, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.28);
+      border-radius: var(--radius-full);
+      padding: 3px 10px;
+      letter-spacing: 0.05em;
+    }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background: #34d399;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #34d399;
+      animation: pulse-dot 1.8s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.8); }
+    }
+
     .preview-stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -410,6 +437,7 @@
       font-family: var(--font-display);
       color: var(--ink);
       font-variant-numeric: tabular-nums;
+      transition: color 0.3s ease;
     }
     .preview-stat-val.blur {
       filter: blur(6px);
@@ -424,6 +452,16 @@
       display: flex;
       align-items: center;
       gap: 4px;
+    }
+
+    /* Live update micro pulse */
+    @keyframes card-live-flash {
+      0% { border-color: rgba(52, 211, 153, 0.2); }
+      40% { border-color: #34d399; box-shadow: 0 0 25px rgba(52, 211, 153, 0.35); }
+      100% { border-color: var(--border-subtle); box-shadow: none; }
+    }
+    .pulse-update {
+      animation: card-live-flash 0.9s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     /* Mini Sankey Bar Preview */
@@ -459,7 +497,7 @@
       font-size: 0.72rem;
       font-weight: 700;
       color: #041f18;
-      transition: all 0.2s ease;
+      transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .seg-income { background: #34d399; width: 45%; }
     .seg-fixed { background: #38bdf8; width: 25%; }
@@ -650,7 +688,9 @@
       text-align: left;
     }
 
-    /* Comparison Table */
+    /* =========================================================================
+       COMPARISON TABLE (1 LINE ON DESKTOP, HARMONIOUS 2-LINE WRAP WITH SYMBOL)
+       ========================================================================= */
     .comparison-section {
       padding: 88px 0;
       background: rgba(0, 0, 0, 0.2);
@@ -661,35 +701,76 @@
       border-radius: var(--radius-xl);
       background: var(--bg-card);
       box-shadow: var(--shadow-md);
+      -webkit-overflow-scrolling: touch;
     }
     .comp-table {
       width: 100%;
-      border-collapse: collapse;
+      min-width: 960px;
+      border-collapse: separate;
+      border-spacing: 0;
       text-align: left;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
     }
     .comp-table th, .comp-table td {
-      padding: 18px 24px;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border);
+      vertical-align: middle;
     }
     .comp-table th {
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.45);
       color: var(--ink-muted);
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
     }
     .comp-highlight {
       background: rgba(52, 211, 153, 0.06);
       color: var(--accent);
       font-weight: 700;
     }
-    .check { color: #34d399; font-weight: 900; margin-right: 4px; }
-    .cross { color: #ef4444; font-weight: 700; opacity: 0.6; margin-right: 4px; }
+    .comp-cell {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.45;
+      text-align: left;
+      width: 100%;
+    }
+    .comp-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 800;
+      margin-top: 1px;
+    }
+    .comp-icon.check {
+      background: rgba(52, 211, 153, 0.18);
+      color: #34d399;
+    }
+    .comp-icon.cross {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+    .comp-text {
+      flex: 1;
+      white-space: nowrap;
+      line-height: 1.45;
+    }
+    @media (max-width: 1100px) {
+      .comp-text {
+        white-space: normal;
+      }
+    }
 
     /* =========================================================================
-       PRICING SECTION & INTUITIVE PACKAGE SELECTION (ENHANCED GLOW & BALANCE)
+       PRICING SECTION & INTUITIVE PACKAGE SELECTION (STABLE, TIDY, NO SHIFT)
        ========================================================================= */
     .pricing-section {
       padding: 104px 0;
@@ -747,7 +828,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
-      padding: 34px 26px 28px;
+      padding: 30px 26px 26px;
       text-align: left;
       display: flex;
       flex-direction: column;
@@ -755,6 +836,9 @@
       position: relative;
       cursor: pointer;
       overflow: hidden;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      -webkit-font-smoothing: antialiased;
       transition:
         transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
         border-color 0.35s ease,
@@ -763,7 +847,7 @@
         opacity 0.35s ease;
     }
 
-    /* Dynamic Interactive Spotlight Layer (Follows Mouse Coordinates) */
+    /* Dynamic Interactive Spotlight Layer */
     .pricing-card::before {
       content: '';
       position: absolute;
@@ -788,12 +872,16 @@
       );
     }
 
-    /* Uniform Symmetrical Sections Inside Each Card */
+    /* Uniform Top Slot: Fixed Height, Stable Baseline */
     .card-top-slot {
-      min-height: 28px;
-      margin-bottom: 8px;
+      height: 32px;
+      min-height: 32px;
+      max-height: 32px;
+      margin-bottom: 14px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      overflow: hidden;
       position: relative;
       z-index: 2;
     }
@@ -810,6 +898,7 @@
       text-transform: uppercase;
       background: var(--accent);
       color: #04241d;
+      white-space: nowrap;
     }
     .plan-badge.gold {
       background: var(--gold);
@@ -817,8 +906,49 @@
     }
     .plan-badge.subtle {
       background: rgba(255, 255, 255, 0.08);
-      color: var(--ink-muted);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    /* Selection Radio Check Indicator */
+    .plan-radio-indicator {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.22);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s ease;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .plan-radio-indicator svg {
+      width: 12px;
+      height: 12px;
+      opacity: 0;
+      transform: scale(0.5);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      color: #04241d;
+    }
+
+    .pricing-card.is-selected .plan-radio-indicator {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .pricing-card.is-selected .plan-radio-indicator svg {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .pricing-card.lifetime.is-selected .plan-radio-indicator {
+      background: var(--gold);
+      border-color: var(--gold);
+      box-shadow: 0 0 12px var(--gold-glow);
+    }
+    .pricing-card.lifetime.is-selected .plan-radio-indicator svg {
+      color: #381a03;
     }
 
     .plan-header {
@@ -827,15 +957,21 @@
       margin-bottom: 20px;
     }
     .plan-name {
-      font-size: 1.45rem;
-      font-weight: 800;
-      margin-bottom: 8px;
-      color: var(--ink);
+      font-family: var(--font-display) !important;
+      font-size: 1.45rem !important;
+      font-weight: 700 !important;
+      line-height: 1.25 !important;
+      letter-spacing: -0.02em !important;
+      color: var(--ink) !important;
+      margin-bottom: 8px !important;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      transform: translateZ(0);
+      -webkit-font-smoothing: antialiased;
     }
     .plan-desc {
+      font-family: var(--font-body);
       font-size: 0.88rem;
       color: var(--ink-muted);
       min-height: 44px;
@@ -900,28 +1036,12 @@
       font-size: 0.95rem;
     }
 
-    /* Active Selected Indicator */
-    .selected-tag {
-      display: none;
-      align-items: center;
-      gap: 5px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    /* =========================================================================
-       HOVER & FOCUS LIGHTING EFFECTS (CARD GLOWS UPON POINTER INTERACTION)
-       ========================================================================= */
-    /* When hovering on grid, soften non-hovered cards so hovered card pops out */
+    /* Hover & Selection Lighting */
     .pricing-grid:hover .pricing-card:not(:hover) {
       opacity: 0.82;
       filter: saturate(0.85);
     }
 
-    /* Hovering a card: Card lights up and lifts smoothly */
     .pricing-card:hover {
       transform: translateY(-8px) scale(1.02);
       border-color: rgba(52, 211, 153, 0.8);
@@ -937,7 +1057,6 @@
       opacity: 1;
     }
 
-    /* Lifetime Card Golden Glow on Hover */
     .pricing-card.lifetime:hover {
       border-color: rgba(251, 191, 36, 0.85);
       box-shadow:
@@ -945,7 +1064,6 @@
         0 25px 60px rgba(0, 0, 0, 0.75);
     }
 
-    /* Pro / Popular Card Default Accent & Hover Intense Glow */
     .pricing-card.popular {
       border-color: rgba(52, 211, 153, 0.4);
       box-shadow: 0 10px 35px rgba(52, 211, 153, 0.15);
@@ -957,16 +1075,12 @@
         0 25px 60px rgba(0, 0, 0, 0.8);
     }
 
-    /* Selected State (When clicked) */
+    /* Selected State (When chosen) */
     .pricing-card.is-selected {
       border-color: var(--accent) !important;
       box-shadow:
         0 0 35px rgba(52, 211, 153, 0.32),
         0 15px 40px rgba(0, 0, 0, 0.6) !important;
-      background: linear-gradient(180deg, rgba(52, 211, 153, 0.08) 0%, rgba(13, 34, 30, 0.9) 100%) !important;
-    }
-    .pricing-card.is-selected .selected-tag {
-      display: inline-flex;
     }
 
     .pricing-card.lifetime.is-selected {
@@ -974,10 +1088,6 @@
       box-shadow:
         0 0 40px rgba(251, 191, 36, 0.35),
         0 15px 40px rgba(0, 0, 0, 0.6) !important;
-      background: linear-gradient(180deg, rgba(251, 191, 36, 0.08) 0%, rgba(13, 34, 30, 0.9) 100%) !important;
-    }
-    .pricing-card.lifetime.is-selected .selected-tag {
-      color: var(--gold);
     }
 
     /* FAQ Accordion */
@@ -1186,7 +1296,7 @@
           </span>
         </div>
 
-        <!-- Interactive Hero Product Mockup -->
+        <!-- Interactive Hero Product Mockup with Dynamic Rolling Numbers -->
         <div class="hero-preview" id="hero-mockup">
           <div class="preview-header">
             <div class="preview-title">
@@ -1196,6 +1306,10 @@
                 <span class="preview-dot dot-green"></span>
               </div>
               <strong style="font-size: 0.92rem; font-family: var(--font-display); letter-spacing: -0.01em;">INVEYS Vault · Hostinger KVM Node · v0.23.0</strong>
+              <div class="live-status-pill">
+                <span class="live-dot"></span>
+                <span>LIVE SYNC</span>
+              </div>
             </div>
             <div>
               <button class="btn btn-secondary" id="ghost-demo-toggle" style="padding: 6px 14px; font-size: 0.8rem;">
@@ -1206,7 +1320,7 @@
           </div>
 
           <div class="preview-stats-grid">
-            <div class="preview-stat-card">
+            <div class="preview-stat-card" id="card-stat-networth">
               <div class="preview-stat-label">
                 <span>Total Kekayaan Bersih (Net Worth)</span>
                 <span>IDR</span>
@@ -1214,7 +1328,7 @@
               <div class="preview-stat-val" id="stat-networth">Rp 45.080.755</div>
               <div class="preview-stat-growth">▲ +14.2% YoY (2021–2026)</div>
             </div>
-            <div class="preview-stat-card">
+            <div class="preview-stat-card" id="card-stat-liquid">
               <div class="preview-stat-label">
                 <span>Dana Likuid / Rekening Kas</span>
                 <span>11 Bank</span>
@@ -1222,7 +1336,7 @@
               <div class="preview-stat-val" id="stat-liquid">Rp 34.010.091</div>
               <div class="preview-stat-growth" style="color: #38bdf8;">✓ 6.8 Bulan Cadangan Kas</div>
             </div>
-            <div class="preview-stat-card">
+            <div class="preview-stat-card" id="card-stat-debt">
               <div class="preview-stat-label">
                 <span>Kewajiban Kartu Kredit Terbuka</span>
                 <span>3 Kartu</span>
@@ -1230,12 +1344,12 @@
               <div class="preview-stat-val" id="stat-debt" style="color: #f87171;">Rp 12.681.740</div>
               <div class="preview-stat-growth" style="color: var(--ink-muted);">Jatuh tempo: Nov 2026</div>
             </div>
-            <div class="preview-stat-card">
+            <div class="preview-stat-card" id="card-stat-txs">
               <div class="preview-stat-label">
                 <span>Total Transaksi Terserap</span>
                 <span>AI Ingested</span>
               </div>
-              <div class="preview-stat-val">5.284 <span style="font-size: 1rem; font-weight: normal; color: var(--ink-muted);">txs</span></div>
+              <div class="preview-stat-val" id="stat-txs">5.284 <span style="font-size: 1rem; font-weight: normal; color: var(--ink-muted);">txs</span></div>
               <div class="preview-stat-growth" style="color: #a78bfa;">100% Parsed & Reconciled</div>
             </div>
           </div>
@@ -1244,13 +1358,13 @@
           <div class="preview-sankey">
             <div class="sankey-head">
               <span>Alur Arus Kas Monarch-Style Bulanan (Cash Flow Sankey)</span>
-              <span style="color: var(--accent);">Surplus Kas: +Rp 8.450.000 / bln</span>
+              <span style="color: var(--accent);" id="stat-surplus">Surplus Kas: +Rp 8.450.000 / bln</span>
             </div>
             <div class="sankey-bars">
-              <div class="sankey-segment seg-income" title="Gaji & Pemasukan: Rp 28.500.000">Pemasukan (45%)</div>
-              <div class="sankey-segment seg-fixed" title="Kebutuhan Rutin & Cicilan: Rp 15.800.000">Fixed Cost (25%)</div>
-              <div class="sankey-segment seg-flexible" title="Belanja Fleksibel: Rp 7.400.000">Gaya Hidup (18%)</div>
-              <div class="sankey-segment seg-invest" title="Investasi & Tabungan Emas: Rp 5.300.000">Investasi (12%)</div>
+              <div class="sankey-segment seg-income" data-target-width="45%" style="width: 45%;" title="Gaji & Pemasukan: Rp 28.500.000">Pemasukan (45%)</div>
+              <div class="sankey-segment seg-fixed" data-target-width="25%" style="width: 25%;" title="Kebutuhan Rutin & Cicilan: Rp 15.800.000">Fixed Cost (25%)</div>
+              <div class="sankey-segment seg-flexible" data-target-width="18%" style="width: 18%;" title="Belanja Fleksibel: Rp 7.400.000">Gaya Hidup (18%)</div>
+              <div class="sankey-segment seg-invest" data-target-width="12%" style="width: 12%;" title="Investasi & Tabungan Emas: Rp 5.300.000">Investasi (12%)</div>
             </div>
             <div class="sankey-legend">
               <div class="legend-item"><span class="legend-box" style="background:#34d399"></span>Pemasukan Bersih</div>
@@ -1420,7 +1534,7 @@
       </div>
     </section>
 
-    <!-- Comparison Table -->
+    <!-- Comparison Table (1 Line per Sentence on Desktop, Structured 2-Line Layout) -->
     <section class="comparison-section">
       <div class="container">
         <div class="section-head">
@@ -1433,55 +1547,175 @@
           <table class="comp-table">
             <thead>
               <tr>
-                <th>Fitur & Kapabilitas</th>
-                <th class="comp-highlight">INVEYS Financial OS</th>
-                <th>Monarch Money / YNAB</th>
-                <th>Aplikasi Keuangan Gratisan</th>
-                <th>Excel / Spreadsheet</th>
+                <th style="width: 27%;">Fitur & Kapabilitas</th>
+                <th class="comp-highlight" style="width: 23%;">INVEYS Financial OS</th>
+                <th style="width: 17%;">Monarch / YNAB</th>
+                <th style="width: 17%;">Aplikasi Gratisan</th>
+                <th style="width: 16%;">Spreadsheet</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>Dukungan Bank Indonesia Penuh (14+ Bank)</strong></td>
-                <td class="comp-highlight"><span class="check">✓</span> BCA, Mandiri, BRI, BNI, Jago, dll.</td>
-                <td><span class="cross">✕</span> Hanya Bank AS & Eropa</td>
-                <td><span class="cross">✕</span> Input manual ketik sendiri</td>
-                <td><span class="cross">✕</span> Copy-paste manual</td>
+                <td><strong>14+ Bank & Kartu Kredit Indonesia</strong></td>
+                <td class="comp-highlight">
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">BCA, Mandiri, BRI, BNI, Jago, dll.</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Hanya Bank AS & Eropa</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Ketik manual sendiri</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Copy-paste manual</span>
+                  </div>
+                </td>
               </tr>
               <tr>
-                <td><strong>AI Auto-Parse PDF e-Statement Bank</strong></td>
-                <td class="comp-highlight"><span class="check">✓</span> Deteksi password & kategori otomatis</td>
-                <td><span class="cross">✕</span> Tidak ada</td>
-                <td><span class="cross">✕</span> Tidak ada</td>
-                <td><span class="cross">✕</span> Rumus macro rumit</td>
+                <td><strong>AI Mutasi PDF e-Statement Bank</strong></td>
+                <td class="comp-highlight">
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Otomatisasi sandi & kategori</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Tidak tersedia</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Tidak tersedia</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Rumus macro rumit</span>
+                  </div>
+                </td>
               </tr>
               <tr>
-                <td><strong>Privasi Tanpa Serahkan Username m-Banking</strong></td>
-                <td class="comp-highlight"><span class="check">✓</span> 100% Aman & Zero Knowledge</td>
-                <td><span class="cross">✕</span> Wajib koneksi open-banking Plaid</td>
-                <td><span class="check">✓</span> Manual</td>
-                <td><span class="check">✓</span> Manual</td>
+                <td><strong>Privasi Tanpa Kredensial m-Banking</strong></td>
+                <td class="comp-highlight">
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">100% Aman & Zero Knowledge</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Wajib koneksi Plaid</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Input manual</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Input manual</span>
+                  </div>
+                </td>
               </tr>
               <tr>
                 <td><strong>Diagram Arus Kas Sankey Multi-Tier</strong></td>
-                <td class="comp-highlight"><span class="check">✓</span> Bawaan & Ekspor SVG</td>
-                <td><span class="check">✓</span> Ada di Monarch</td>
-                <td><span class="cross">✕</span> Tidak ada</td>
-                <td><span class="cross">✕</span> Butuh plugin luar</td>
+                <td class="comp-highlight">
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Bawaan & Ekspor SVG</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Tersedia di Monarch</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Tidak tersedia</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Perlu plugin luar</span>
+                  </div>
+                </td>
               </tr>
               <tr>
-                <td><strong>Rebalance Portofolio & Tabungan Emas Pegadaian</strong></td>
-                <td class="comp-highlight"><span class="check">✓</span> Termasuk harga Antam & Galeri 24</td>
-                <td><span class="cross">✕</span> Tidak mendukung</td>
-                <td><span class="cross">✕</span> Tidak ada</td>
-                <td><span class="cross">✕</span> Butuh update API manual</td>
+                <td><strong>Rebalancing Portofolio & Emas</strong></td>
+                <td class="comp-highlight">
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Harga real-time Antam & Galeri 24</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Tidak mendukung</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Tidak tersedia</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Update API manual</span>
+                  </div>
+                </td>
               </tr>
               <tr>
-                <td><strong>Opsi Beli Sekali Seumur Hidup (Self-Hosted)</strong></td>
-                <td class="comp-highlight"><span class="check">✓</span> Tersedia Lisensi Lifetime</td>
-                <td><span class="cross">✕</span> Langganan $15/bulan (~Rp 2,8 Jt/thn)</td>
-                <td><span class="check">✓</span> Penuh iklan</td>
-                <td><span class="check">✓</span> Gratis</td>
+                <td><strong>Opsi Beli Sekali Seumur Hidup</strong></td>
+                <td class="comp-highlight">
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Tersedia Lisensi Lifetime</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Langganan $15/bln (~Rp 2,8 Jt/th)</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Penuh iklan sponsor</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Gratis selamanya</span>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -1489,7 +1723,7 @@
       </div>
     </section>
 
-    <!-- Pricing Section with Intuitive Package Selection -->
+    <!-- Pricing Section with Stable, Non-Shifting Selection -->
     <section class="pricing-section" id="pricing">
       <div class="container">
         <div class="section-head">
@@ -1511,12 +1745,13 @@
           <div class="pricing-card" id="card-plus" onclick="selectCard('Plus', 'Rp 49.000 / bln', this)">
             <div>
               <div class="card-top-slot">
-                <span class="selected-tag">✓ Pilihan Anda</span>
+                <span class="plan-badge subtle">Personal</span>
+                <div class="plan-radio-indicator" title="Pilih Paket Plus">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
               </div>
               <div class="plan-header">
-                <h3 class="plan-name">
-                  <span>Plus</span>
-                </h3>
+                <h3 class="plan-name">Plus</h3>
                 <p class="plan-desc">Untuk individu yang ingin merapikan seluruh rekening kas, utang, dan kartu kredit.</p>
               </div>
               <div class="plan-price-wrap">
@@ -1541,12 +1776,12 @@
             <div>
               <div class="card-top-slot">
                 <span class="plan-badge">Paling Populer</span>
-                <span class="selected-tag" style="margin-left: auto;">✓ Pilihan Anda</span>
+                <div class="plan-radio-indicator" title="Pilih Paket Pro">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
               </div>
               <div class="plan-header">
-                <h3 class="plan-name">
-                  <span>Pro</span>
-                </h3>
+                <h3 class="plan-name">Pro</h3>
                 <p class="plan-desc">Pilihan terbaik untuk keluarga mapan dan investor yang mengelola portofolio majemuk.</p>
               </div>
               <div class="plan-price-wrap">
@@ -1563,7 +1798,7 @@
               </ul>
             </div>
             <div class="plan-cta-wrap">
-              <button class="btn btn-primary plan-cta" onclick="event.stopPropagation(); openCheckout('Pro', getPlanPriceText('Pro'))">Mulai Berlangganan Pro</button>
+              <button class="btn btn-primary plan-cta" onclick="event.stopPropagation(); openCheckout('Pro', getPlanPriceText('Pro'))">✓ Paket Terpilih — Lanjutkan</button>
             </div>
           </div>
 
@@ -1571,12 +1806,13 @@
           <div class="pricing-card" id="card-ultra" onclick="selectCard('Ultra', 'Rp 299.000 / bln', this)">
             <div>
               <div class="card-top-slot">
-                <span class="selected-tag">✓ Pilihan Anda</span>
+                <span class="plan-badge subtle">Power User</span>
+                <div class="plan-radio-indicator" title="Pilih Paket Ultra">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
               </div>
               <div class="plan-header">
-                <h3 class="plan-name">
-                  <span>Ultra</span>
-                </h3>
+                <h3 class="plan-name">Ultra</h3>
                 <p class="plan-desc">Kendali penuh bagi power user, pengusaha, dan trader multi-aset aktif.</p>
               </div>
               <div class="plan-price-wrap">
@@ -1601,12 +1837,12 @@
             <div>
               <div class="card-top-slot">
                 <span class="plan-badge gold">Miliki Selamanya</span>
-                <span class="selected-tag" style="margin-left: auto;">✓ Pilihan Anda</span>
+                <div class="plan-radio-indicator" title="Pilih Lisensi Lifetime">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
               </div>
               <div class="plan-header">
-                <h3 class="plan-name">
-                  <span>Lifetime</span>
-                </h3>
+                <h3 class="plan-name">Lifetime</h3>
                 <p class="plan-desc">Beli sekali, jalankan di VPS atau komputer Anda seumur hidup. Tanpa langganan bulanan.</p>
               </div>
               <div class="plan-price-wrap">
@@ -1773,6 +2009,7 @@
     const networthEl = document.getElementById('stat-networth');
     const liquidEl = document.getElementById('stat-liquid');
     const debtEl = document.getElementById('stat-debt');
+    const txEl = document.getElementById('stat-txs');
 
     ghostBtn.addEventListener('click', () => {
       isGhost = !isGhost;
@@ -1780,6 +2017,7 @@
         networthEl.classList.add('blur');
         liquidEl.classList.add('blur');
         debtEl.classList.add('blur');
+        if (txEl) txEl.classList.add('blur');
         ghostBtnText.textContent = 'Ghost Mode: AKTIF (Saldo Disensor)';
         ghostBtn.style.borderColor = 'var(--accent)';
         ghostBtn.style.color = 'var(--accent)';
@@ -1787,13 +2025,100 @@
         networthEl.classList.remove('blur');
         liquidEl.classList.remove('blur');
         debtEl.classList.remove('blur');
+        if (txEl) txEl.classList.remove('blur');
         ghostBtnText.textContent = 'Ghost Mode (Klik untuk sensor saldo)';
         ghostBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
         ghostBtn.style.color = 'var(--ink)';
       }
     });
 
-    // Pricing Billing Switcher
+    // =========================================================================
+    // DYNAMIC ROLLING NUMBERS & ANIMATION FOR INVEYS VAULT MOCKUP
+    // =========================================================================
+    let currentNetworth = 45080755;
+    let currentLiquid = 34010091;
+    let currentDebt = 12681740;
+    let currentTxs = 5284;
+    let vaultAnimated = false;
+
+    function animateValue(el, start, end, duration, formatFn) {
+      if (!el) return;
+      let startTime = null;
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Smooth easeOutCubic
+        const ease = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(start + (end - start) * ease);
+        el.innerHTML = formatFn(current);
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        } else {
+          el.innerHTML = formatFn(end);
+        }
+      }
+      window.requestAnimationFrame(step);
+    }
+
+    function triggerVaultAnimation() {
+      if (vaultAnimated) return;
+      vaultAnimated = true;
+
+      animateValue(networthEl, 0, currentNetworth, 1800, (v) => 'Rp ' + v.toLocaleString('id-ID'));
+      animateValue(liquidEl, 0, currentLiquid, 1800, (v) => 'Rp ' + v.toLocaleString('id-ID'));
+      animateValue(debtEl, 0, currentDebt, 1800, (v) => 'Rp ' + v.toLocaleString('id-ID'));
+      if (txEl) {
+        animateValue(txEl, 0, currentTxs, 1800, (v) => `${v.toLocaleString('id-ID')} <span style="font-size: 1rem; font-weight: normal; color: var(--ink-muted);">txs</span>`);
+      }
+
+      // Animate Sankey Bars Width
+      document.querySelectorAll('.sankey-segment').forEach(seg => {
+        const targetWidth = seg.getAttribute('data-target-width') || seg.style.width;
+        seg.style.width = '0%';
+        setTimeout(() => {
+          seg.style.width = targetWidth;
+        }, 120);
+      });
+    }
+
+    // Trigger animation via IntersectionObserver or DOMContentLoaded
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            triggerVaultAnimation();
+            observer.disconnect();
+          }
+        });
+      }, { threshold: 0.1 });
+      const mockupEl = document.getElementById('hero-mockup');
+      if (mockupEl) observer.observe(mockupEl);
+    } else {
+      triggerVaultAnimation();
+    }
+
+    // Live Simulated Transactions Sync (Every 5 seconds)
+    setInterval(() => {
+      if (isGhost) return;
+      currentTxs += 1;
+      currentNetworth += 15000;
+      if (txEl) {
+        txEl.innerHTML = `${currentTxs.toLocaleString('id-ID')} <span style="font-size: 1rem; font-weight: normal; color: var(--ink-muted);">txs</span>`;
+        const card = document.getElementById('card-stat-txs');
+        if (card) {
+          card.classList.add('pulse-update');
+          setTimeout(() => card.classList.remove('pulse-update'), 900);
+        }
+      }
+      if (networthEl) {
+        networthEl.innerHTML = 'Rp ' + currentNetworth.toLocaleString('id-ID');
+      }
+    }, 5000);
+
+    // =========================================================================
+    // PRICING BILLING SWITCHER & INTUITIVE SELECTION
+    // =========================================================================
     let currentBillingCycle = 'monthly';
     function switchBilling(cycle) {
       currentBillingCycle = cycle;
@@ -1848,13 +2173,42 @@
       return 'Rp 499.000 Sekali Bayar';
     }
 
-    // Dynamic Card Selection & Interactive Hover Spotlight
+    // Dynamic Card Selection: Highlights card, updates checkmark & CTA button with zero layout shift
     function selectCard(planName, planPrice, cardEl) {
-      document.querySelectorAll('.pricing-card').forEach(c => c.classList.remove('is-selected'));
+      document.querySelectorAll('.pricing-card').forEach(c => {
+        c.classList.remove('is-selected');
+        const btn = c.querySelector('.plan-cta');
+        if (btn) {
+          if (c.id === 'card-plus') {
+            btn.className = 'btn btn-secondary plan-cta';
+            btn.textContent = 'Pilih Paket Plus';
+          } else if (c.id === 'card-pro') {
+            btn.className = 'btn btn-secondary plan-cta';
+            btn.textContent = 'Pilih Paket Pro';
+          } else if (c.id === 'card-ultra') {
+            btn.className = 'btn btn-secondary plan-cta';
+            btn.textContent = 'Pilih Paket Ultra';
+          } else if (c.id === 'card-lifetime') {
+            btn.className = 'btn btn-gold plan-cta';
+            btn.textContent = 'Beli Lisensi Lifetime';
+          }
+        }
+      });
+
       cardEl.classList.add('is-selected');
+      const activeBtn = cardEl.querySelector('.plan-cta');
+      if (activeBtn) {
+        if (cardEl.id === 'card-lifetime') {
+          activeBtn.className = 'btn btn-gold plan-cta';
+          activeBtn.textContent = '✓ Paket Terpilih — Beli Sekarang';
+        } else {
+          activeBtn.className = 'btn btn-primary plan-cta';
+          activeBtn.textContent = '✓ Paket Terpilih — Lanjutkan';
+        }
+      }
     }
 
-    // Spotlight cursor tracking on pricing cards
+    // Spotlight Cursor Tracking on Pricing Cards
     document.querySelectorAll('.pricing-card').forEach(card => {
       card.addEventListener('mousemove', (e) => {
         const rect = card.getBoundingClientRect();
