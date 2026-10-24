@@ -689,64 +689,66 @@
     }
 
     /* =========================================================================
-       COMPARISON TABLE (1 LINE ON DESKTOP, HARMONIOUS 2-LINE WRAP WITH SYMBOL)
+       COMPARISON TABLE (100% FULL-WIDTH FIT, NO HORIZONTAL SCROLLBAR ON DESKTOP)
        ========================================================================= */
     .comparison-section {
       padding: 88px 0;
       background: rgba(0, 0, 0, 0.2);
     }
     .comp-table-wrap {
-      overflow-x: auto;
+      width: 100%;
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
       background: var(--bg-card);
       box-shadow: var(--shadow-md);
+      overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
     .comp-table {
       width: 100%;
-      min-width: 960px;
+      table-layout: fixed;
       border-collapse: separate;
       border-spacing: 0;
       text-align: left;
-      font-size: 0.92rem;
+      font-size: clamp(0.78rem, 0.92vw, 0.86rem);
     }
     .comp-table th, .comp-table td {
-      padding: 16px 20px;
+      padding: 13px 12px;
       border-bottom: 1px solid var(--border);
       vertical-align: middle;
+      word-break: normal;
+      overflow-wrap: break-word;
     }
     .comp-table th {
       background: rgba(0, 0, 0, 0.45);
       color: var(--ink-muted);
       font-weight: 600;
-      font-size: 0.82rem;
+      font-size: clamp(0.7rem, 0.8vw, 0.76rem);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      white-space: nowrap;
+      letter-spacing: 0.05em;
     }
     .comp-highlight {
       background: rgba(52, 211, 153, 0.06);
       color: var(--accent);
-      font-weight: 700;
+      font-weight: 600;
     }
     .comp-cell {
       display: flex;
       align-items: flex-start;
-      gap: 10px;
-      line-height: 1.45;
+      gap: 7px;
+      line-height: 1.36;
       text-align: left;
       width: 100%;
     }
     .comp-icon {
       flex-shrink: 0;
-      width: 20px;
-      height: 20px;
-      border-radius: 5px;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.8rem;
+      font-size: 0.74rem;
       font-weight: 800;
       margin-top: 1px;
     }
@@ -760,12 +762,20 @@
     }
     .comp-text {
       flex: 1;
-      white-space: nowrap;
-      line-height: 1.45;
+      line-height: 1.36;
     }
-    @media (max-width: 1100px) {
-      .comp-text {
-        white-space: normal;
+    @media (max-width: 868px) {
+      .comp-table {
+        min-width: 660px;
+        font-size: 0.76rem;
+      }
+      .comp-table th, .comp-table td {
+        padding: 10px 8px;
+      }
+      .comp-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 0.68rem;
       }
     }
 
@@ -1547,16 +1557,16 @@
           <table class="comp-table">
             <thead>
               <tr>
-                <th style="width: 27%;">Fitur & Kapabilitas</th>
-                <th class="comp-highlight" style="width: 23%;">INVEYS Financial OS</th>
-                <th style="width: 17%;">Monarch / YNAB</th>
-                <th style="width: 17%;">Aplikasi Gratisan</th>
-                <th style="width: 16%;">Spreadsheet</th>
+                <th style="width: 25%;">Fitur & Kapabilitas</th>
+                <th class="comp-highlight" style="width: 24%;">INVEYS Financial OS</th>
+                <th style="width: 18%;">Monarch / YNAB</th>
+                <th style="width: 16.5%;">Aplikasi Gratisan</th>
+                <th style="width: 16.5%;">Spreadsheet</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>14+ Bank & Kartu Kredit Indonesia</strong></td>
+                <td><strong>14+ Bank & Kartu Kredit RI</strong></td>
                 <td class="comp-highlight">
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
@@ -1713,7 +1723,7 @@
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Gratis selamanya</span>
+                    <span class="comp-text">Gratis</span>
                   </div>
                 </td>
               </tr>
