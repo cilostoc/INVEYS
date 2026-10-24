@@ -151,3 +151,155 @@ TOTAL : Rp 323.750`;
  assert.equal(r2[0].category,'Transportasi & Bahan Bakar');
 });
 
+test('quick transfer parses natural language transfers between accounts',()=>{
+ const accounts=[
+  {id:'acc_bca',name:'BCA 1234',currency:'IDR'},
+  {id:'acc_mandiri',name:'Bank Mandiri Utama',currency:'IDR'},
+  {id:'acc_seabank',name:'SeaBank',currency:'IDR'}
+ ];
+ // 1. Transfer with implicit source (using default account) and destination keyword
+ const t1=R.quickRecord('Transfer 500rb ke SeaBank',accounts[0],'2026-10-24',accounts);
+ assert.equal(t1.kind,'transfer');
+ assert.equal(t1.amount,50000000);
+ assert.equal(t1.accountId,'acc_bca');
+ assert.equal(t1.targetId,'acc_seabank');
+ assert.equal(t1.category,'Transfer');
+
+ // 2. Transfer with explicit 'dari ... ke ...'
+ const t2=R.quickRecord('Pindah 1.5 juta dari BCA ke Mandiri',accounts[2],'2026-10-24',accounts);
+ assert.equal(t2.kind,'transfer');
+ assert.equal(t2.amount,150000000);
+ assert.equal(t2.accountId,'acc_bca');
+ assert.equal(t2.targetId,'acc_mandiri');
+
+ // 3. Unknown destination throws helpful instruction error
+ assert.throws(()=>R.quickRecord('Transfer 500 ke tabungan',accounts[0],'2026-10-24',accounts),/Gunakan Tambah transaksi/);
+
+ // 4. Same source and destination throws error
+ assert.throws(()=>R.quickRecord('Transfer 200rb dari BCA ke BCA',accounts[0],'2026-10-24',accounts),/berbeda/);
+});
+
+test('duplicate detection catches inter-account transfer counterparts and prevents double counting',()=>{
+ const accounts=[
+  {id:'a1',name:'BCA',currency:'IDR'},
+  {id:'a2',name:'SeaBank',currency:'IDR'}
+ ];
+ const existingTransfer={
+  id:'tx_trf_1',
+  name:'Transfer BCA ke SeaBank',
+  date:'2026-10-20',
+  accountId:'a1',
+  targetId:'a2',
+  amount:100000000,
+  targetAmount:100000000,
+  currency:'IDR',
+  kind:'transfer'
+ };
+ const state={accounts,transactions:[existingTransfer]};
+
+ // When statement of SeaBank (a2) has incoming 1.000.000 on nearby date
+ const seaBankInflow={
+  name:'Transfer dari BCA',
+  date:'2026-10-21',
+  accountId:'a2',
+  amount:100000000,
+  currency:'IDR',
+  kind:'income'
+ };
+ const dupsInflow=R.duplicates(state,seaBankInflow);
+ assert.equal(dupsInflow.length,1);
+ assert.equal(dupsInflow[0].type,'transfer_counterpart');
+ assert.match(dupsInflow[0].reason,/transfer masuk dari BCA/);
+
+ // When statement of BCA (a1) has outgoing 1.000.000 on nearby date
+ const bcaOutflow={
+  name:'Transfer ke SeaBank',
+  date:'2026-10-20',
+  accountId:'a1',
+  amount:100000000,
+  currency:'IDR',
+  kind:'expense'
+ };
+ const dupsOutflow=R.duplicates(state,bcaOutflow);
+ assert.equal(dupsOutflow.length,1);
+ assert.equal(dupsOutflow[0].type,'transfer_counterpart');
+ assert.match(dupsOutflow[0].reason,/transfer keluar ke SeaBank/);
+});
+
+test('pairTransferDrafts merges complementary statement debit and credit into one transfer draft',()=>{
+ const accounts=[
+  {id:'bca',name:'Bank BCA',currency:'IDR'},
+  {id:'mandiri',name:'Bank Mandiri',currency:'IDR'}
+ ];
+ const drafts=[
+  {name:'TRF KE BANK MANDIRI',date:'2026-10-22',amount:75000000,kind:'expense',accountId:'bca',currency:'IDR',category:'Transfer Antar Akun'},
+  {name:'Gaji Kemenkeu',date:'2026-10-22',amount:500000000,kind:'income',accountId:'bca',currency:'IDR',category:'Gaji & Pendapatan'},
+  {name:'TRF DARI BANK BCA',date:'2026-10-22',amount:75000000,kind:'income',accountId:'mandiri',currency:'IDR',category:'Transfer Antar Akun'}
+ ];
+ const paired=R.pairTransferDrafts(drafts,accounts);
+ assert.equal(paired.length,2);
+ const trfDraft=paired.find(d=>d.kind==='transfer');
+ assert.ok(trfDraft);
+ assert.equal(trfDraft.accountId,'bca');
+ assert.equal(trfDraft.targetId,'mandiri');
+ assert.equal(trfDraft.amount,75000000);
+ assert.match(trfDraft.name,/Bank BCA → Bank Mandiri/);
+});
+
+test('Bank Jago statement detection and parser extracts income, expense, transfers and cashback',()=>{
+ const sampleStatement=`
+PT Bank Jago Tbk - Laporan Keuangan Bulanan November 2021
+Kantong Utama
+01 Nov 2021 16.27 MUHAMAD HENDRA FEB ALTOPay 2288003237 Transfer Masuk ID# 11235161 MUHAMAD HENDRA FEB +2.000.000,00 2.061.894,63
+01 Nov 2021 16.31 OVO MUXXXXD HEXXXA FEXXXXXXXXH OVO 081917167543 Isi Saldo Dompet Digital ID# 11235511 -200.000,00 1.861.894,63
+05 Nov 2021 18.30 Nikah Pindah uang antar Kantong Tambah Uang Kantong ID# 12219017 -4.000.000,00 731.524,63
+28 Nov 2021 01.00 Bunga Kantong Utama Bunga ID# 15357852 +237,54 682.264,17
+28 Nov 2021 01.00 Pajak Bunga Kantong Utama Pajak Bunga ID# 15357856 -47,51 682.216,66
+03 Des 2021 16.37 Cashback Cashback ID# 16552543 Jago Bayarin +6.500,00 588.716,66
+ `;
+ const detected=R.detectBankStatement(sampleStatement);
+ assert.ok(detected);
+ assert.equal(detected.type,'jago');
+ assert.equal(detected.bank,'Bank Jago');
+
+ const parsed=R.parse(sampleStatement,'IDR','2021-11-30');
+ assert.equal(parsed.length,6);
+
+ // Transfer masuk
+ assert.equal(parsed[0].date,'2021-11-01');
+ assert.equal(parsed[0].amount,200000000);
+ assert.equal(parsed[0].kind,'income');
+ assert.match(parsed[0].name,/Transfer Masuk/);
+
+ // Top Up OVO
+ assert.equal(parsed[1].date,'2021-11-01');
+ assert.equal(parsed[1].amount,20000000);
+ assert.equal(parsed[1].kind,'expense');
+ assert.match(parsed[1].name,/Top Up.*OVO/);
+
+ // Pindah Saldo Kantong (Transfer antar kantong)
+ assert.equal(parsed[2].date,'2021-11-05');
+ assert.equal(parsed[2].amount,400000000);
+ assert.equal(parsed[2].kind,'expense');
+ assert.match(parsed[2].name,/Pindah Saldo Kantong/);
+ assert.equal(parsed[2].category,'Transfer Antar Akun');
+
+ // Bunga
+ assert.equal(parsed[3].date,'2021-11-28');
+ assert.equal(parsed[3].amount,23754);
+ assert.equal(parsed[3].kind,'income');
+ assert.equal(parsed[3].category,'Investasi & Bunga');
+
+ // Pajak Bunga
+ assert.equal(parsed[4].date,'2021-11-28');
+ assert.equal(parsed[4].amount,4751);
+ assert.equal(parsed[4].kind,'expense');
+ assert.equal(parsed[4].category,'Biaya Finansial & Pajak');
+
+ // Cashback
+ assert.equal(parsed[5].date,'2021-12-03');
+ assert.equal(parsed[5].amount,650000);
+ assert.equal(parsed[5].kind,'income');
+ assert.equal(parsed[5].category,'Hadiah & Cashback');
+});
+

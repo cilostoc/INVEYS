@@ -67,9 +67,22 @@ function cleanMerchant(desc,kind){
  if(/MANDIRI/i.test(s))return kind==='income'?'Transfer dari Mandiri':'Transfer ke Bank Mandiri';
  if(/MCM InhouseTrf-makan/i.test(s))return 'Makan / Inhouse Transfer';
  if(/MCM InhouseTrf/i.test(s))return 'MCM Inhouse Transfer';
- if(/BSMDIDJA/i.test(s))return 'Transfer Masuk BSI (BI-Fast)';
+ if(/BSMDIDJA|BANK SYARIAH INDONESIA|BSI Mobile/i.test(s))return kind==='income'?'Transfer dari BSI (BI-Fast)':'Transfer ke BSI';
  if(/SSPIIDJA/i.test(s))return 'Transfer Masuk Shopee (BI-Fast)';
  if(/UBP\d+/i.test(s))return 'Pembayaran Tagihan Mandiri';
+ if(/GOPAY|GO-PAY|GOJEK/i.test(s))return 'Top Up / Pembayaran GoPay';
+ if(/OVO|BUMI INDAH CEMERLANG/i.test(s))return 'Top Up / Pembayaran OVO';
+ if(/DANA|ESPAY/i.test(s))return 'Top Up / Pembayaran DANA';
+ if(/BANK CENTRAL ASIA|KLIKBCA|BCA\b/i.test(s)&&/transfer|trf/i.test(s))return kind==='income'?'Transfer dari BCA':'Transfer ke Bank BCA';
+ if(/BANK NEGARA INDONESIA|BNI\b/i.test(s)&&/transfer|trf/i.test(s))return kind==='income'?'Transfer dari BNI':'Transfer ke Bank BNI';
+ if(/BANK JAGO/i.test(s))return kind==='income'?'Transfer dari Bank Jago':'Transfer ke Bank Jago';
+ if(/Pindah uang antar Kantong/i.test(s)){const target=s.match(/^([A-Za-z0-9\s]+?)\s+Pindah uang antar Kantong/i)?.[1]||s.match(/(?:Tarik|Tambah)\s+Uang\s+Kantong\s+([A-Za-z0-9\s]+?)(?:\s+ID#|$)/i)?.[1]||'Kantong';return 'Pindah Saldo Kantong ('+target.trim()+')';}
+ if(/EKA DEDI SATRIA/i.test(s))return 'Transfer ke Eka Dedi Satria (BCA)';
+ if(/SALBIAH.*Bank Syariah Indonesia/i.test(s))return 'Transfer ke Salbiah (BSI)';
+ if(/RIZKI CATUR PAMUNGKAS/i.test(s))return 'Transfer ke Rizki Catur Pamungkas (BCA)';
+ if(/Cashback.*Jago Bayarin|Jago Bayarin/i.test(s))return 'Cashback Jago Bayarin';
+ if(/Isi Saldo Dompet Digital/i.test(s)){if(/ShopeePay/i.test(s))return 'Top Up ShopeePay';if(/OVO/i.test(s))return 'Top Up OVO';if(/GoPay/i.test(s))return 'Top Up GoPay';return 'Top Up Dompet Digital';}
+ if(/ALTOPay.*Transfer Masuk/i.test(s)||/Transfer Masuk.*ALTOPay/i.test(s))return 'Transfer Masuk ALTOPay';
  s=s.replace(/^[-\s;:,]+/, '').replace(/[-\s;:,]+$/, '').replace(/\s+/g,' ');
  return s.slice(0,120);
 }
@@ -104,6 +117,7 @@ function detectBankStatement(text){
  if(/BRIMCRDT|BRIMDBT|BRImo|Britama|bankbri|LAPORAN TRANSAKSI FINANSIAL/i.test(s))return {bank:'Bank BRI',type:'bri'};
  if(/bankmandiri|mandiricare|Livin\'poin|MANDIRI TABUNGAN NOW|MCM InhouseTrf/i.test(s)||(/Rekening Koran/i.test(s)&&/Mandiri/i.test(s)))return {bank:'Bank Mandiri',type:'mandiri'};
  if(/BCA|Tahapan|KlikBCA/i.test(s)&&/\b(DB|CR)\b/.test(s))return {bank:'Bank BCA',type:'bca'};
+ if(/Bank Jago|jago\.com|ID Kantong|Laporan Keuangan Bulanan.*Jago|Pindah uang antar Kantong/i.test(s))return {bank:'Bank Jago',type:'jago'};
  return null;
 }
 function parseMandiriStatement(lines,year,currency){
@@ -268,6 +282,57 @@ function parseBcaStatement(lines,year,currency){
  }
  return rows;
 }
+function parseJagoStatement(lines,currency='IDR'){
+ const rows=[];let pending=null;
+ function commit(item){
+  if(!item||!item.date||!item.amountStr)return;
+  try{
+   const isNegative=item.amountStr.startsWith('-');
+   const kind=isNegative?'expense':'income';
+   const cleanAmt=item.amountStr.replace(/[+-]/g,'').trim();
+   const amount=number(cleanAmt,currency);
+   let desc=item.desc.replace(/ID#\s*\d+/g,'').replace(/\s+/g,' ').trim();
+   const isTransfer=/Pindah uang antar Kantong|Tambah Uang Kantong|Tarik Uang Kantong/i.test(desc);
+   const name=cleanMerchant(desc,kind);
+   const category=isTransfer?'Transfer Antar Akun':suggestCategory(name,kind);
+   rows.push({name,date:item.date,amount,kind,currency,category});
+  }catch{}
+ }
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i].trim();
+  if(!line||(!/^\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4}/.test(line)&&/Laporan Keuangan|PT Bank Jago|ID Kantong|Saldo Sebelumnya|Total Pemasukan|Total Pengeluaran|Saldo Akhir|Tanggal & Waktu|Sumber\/Tujuan|Rincian Transaksi|Catatan|Jumlah|Saldo|Mata Uang/i.test(line)))continue;
+  const singleMatch=line.match(/^(\d{1,2})\s+([A-Za-z]{3,4})\s+(\d{4})(?:\s+\d{1,2}[.:]\d{2})?\s+(.+?)\s+([+-]\s*[\d.,]+)(?:\s+[\d.,]+)?$/);
+  if(singleMatch){
+   if(pending){commit(pending);pending=null;}
+   const [_,day,monStr,yr,desc,amtStr]=singleMatch;
+   const mon=MONTH_MAP[monStr.toLowerCase().slice(0,3)]||'01';
+   const date=`${yr}-${mon}-${day.padStart(2,'0')}`;
+   commit({date,desc,amountStr:amtStr.replace(/\s+/g,'')});
+   continue;
+  }
+  const dateMatch=line.match(/^(\d{1,2})\s+([A-Za-z]{3,4})\s+(\d{4})$/);
+  if(dateMatch){
+   if(pending){commit(pending);pending=null;}
+   const [_,day,monStr,yr]=dateMatch;
+   const mon=MONTH_MAP[monStr.toLowerCase().slice(0,3)]||'01';
+   pending={date:`${yr}-${mon}-${day.padStart(2,'0')}`,descParts:[],amountStr:null};
+   continue;
+  }
+  if(pending){
+   const amtMatch=line.match(/^([+-]\s*[\d.,]+)(?:\s+[\d.,]+)?$/);
+   if(amtMatch){
+    pending.amountStr=amtMatch[1].replace(/\s+/g,'');
+    pending.desc=pending.descParts.join(' ');
+    commit(pending);
+    pending=null;
+   }else if(!/^\d{1,2}[.:]\d{2}$/.test(line)){
+    pending.descParts.push(line);
+   }
+  }
+ }
+ if(pending&&pending.amountStr)commit(pending);
+ return rows;
+}
 function parseReceipt(lines,today,currency){
  if(!lines||!lines.length)return null;
  let merchant='';
@@ -343,8 +408,11 @@ function parse(text,currency='IDR',today=new Date().toISOString().slice(0,10)) {
   else if(detected.type==='bri_kk'){const rows=parseBriCreditCardStatement(lines,currency);if(rows.length)return rows;}
   else if(detected.type==='seabank'){const rows=parseSeaBankStatement(lines,year,currency,text);if(rows.length)return rows;}
   else if(detected.type==='bca'){const rows=parseBcaStatement(lines,year,currency);if(rows.length)return rows;}
+  else if(detected.type==='jago'){const rows=parseJagoStatement(lines,currency);if(rows.length)return rows;}
  }
 
+ const jagoCandidate=parseJagoStatement(lines,currency);
+ if(jagoCandidate.length>=1)return jagoCandidate;
  const mandiriCandidate=parseMandiriStatement(lines,year,currency);
  if(mandiriCandidate.length>=2)return mandiriCandidate;
  const briCandidate=parseBriStatement(lines,currency);
@@ -379,16 +447,175 @@ function parse(text,currency='IDR',today=new Date().toISOString().slice(0,10)) {
  const name=(lines[0]||'Imported record').slice(0,120);
  return [{name,date:today,amount,kind,currency,category:suggestCategory(name,kind)}];
 }
-function duplicates(state,row){return state.transactions.filter(t=>t.accountId===row.accountId&&t.currency===row.currency&&t.amount===row.amount&&t.kind===row.kind&&Math.abs(Date.parse(t.date)-Date.parse(row.date))<=2*86400000).map(t=>({id:t.id,reason:t.date===row.date&&t.name.toLowerCase().trim()===row.name.toLowerCase().trim()?'Exact match':'Same account, amount and nearby date'}));}
+function duplicates(state,row){
+ const list=[];
+ const txs=state.transactions||[];
+ const rDate=Date.parse(row.date);
+ const rName=String(row.name||'').toLowerCase().trim();
+ const rAmt=row.amount;
+ const rCurr=row.currency;
+ const rKind=row.kind;
+ const rAcc=row.accountId;
+
+ for(const t of txs){
+  const tDate=Date.parse(t.date);
+  if(isNaN(tDate)||isNaN(rDate))continue;
+  if(Math.abs(tDate-rDate)>2*86400000)continue;
+
+  // 1. Same account match (Exact or nearby)
+  if(t.accountId===rAcc&&t.currency===rCurr&&t.amount===rAmt&&t.kind===rKind){
+   const tName=String(t.name||'').toLowerCase().trim();
+   const isExact=t.date===row.date&&tName===rName;
+   list.push({id:t.id,type:'same_account',reason:isExact?'Exact match':'Same account, amount and nearby date'});
+   continue;
+  }
+
+  // 2. Inter-account Transfer detection with existing transfer transactions
+  // If row is income on Account B, and t is a transfer from Account A -> Account B
+  if(rKind==='income'&&t.kind==='transfer'&&t.targetId===rAcc){
+   const matchAmt=(t.targetAmount!==undefined?t.targetAmount:t.amount)===rAmt;
+   if(matchAmt){
+    const srcName=state.accounts?.find(a=>a.id===t.accountId)?.name||'akun lain';
+    list.push({id:t.id,type:'transfer_counterpart',reason:`Transfer counterpart: sudah tercatat sebagai transfer masuk dari ${srcName}`});
+    continue;
+   }
+  }
+
+  // If row is expense on Account A, and t is a transfer from Account A -> Account B
+  if(rKind==='expense'&&t.kind==='transfer'&&t.accountId===rAcc&&t.amount===rAmt){
+   const dstName=state.accounts?.find(a=>a.id===t.targetId)?.name||'akun lain';
+   list.push({id:t.id,type:'transfer_counterpart',reason:`Transfer counterpart: sudah tercatat sebagai transfer keluar ke ${dstName}`});
+   continue;
+  }
+
+  // If row is transfer from A -> B
+  if(rKind==='transfer'){
+   if(t.kind==='transfer'&&t.accountId===rAcc&&t.targetId===row.targetId&&t.amount===rAmt){
+    list.push({id:t.id,type:'transfer_exact',reason:'Exact transfer match'});
+    continue;
+   }
+   if(t.kind==='expense'&&t.accountId===rAcc&&t.amount===rAmt){
+    list.push({id:t.id,type:'transfer_counterpart',reason:'Potential duplicate with standalone expense on source account'});
+    continue;
+   }
+   if(t.kind==='income'&&t.accountId===row.targetId&&(t.targetAmount||t.amount)===rAmt){
+    list.push({id:t.id,type:'transfer_counterpart',reason:'Potential duplicate with standalone income on destination account'});
+    continue;
+   }
+  }
+ }
+ return list;
+}
+
+function pairTransferDrafts(draftList,accounts=[]){
+ const paired=[];const consumed=new Set();
+ for(let i=0;i<draftList.length;i++){
+  if(consumed.has(i))continue;
+  const d1=draftList[i];
+  if(!['expense','income'].includes(d1.kind)){paired.push(d1);continue;}
+  let matchIdx=-1;
+  for(let j=i+1;j<draftList.length;j++){
+   if(consumed.has(j))continue;
+   const d2=draftList[j];
+   if(!['expense','income'].includes(d2.kind))continue;
+   if(d1.kind===d2.kind)continue;
+   if(d1.accountId===d2.accountId)continue;
+   if(d1.amount!==d2.amount)continue;
+   const daysDiff=Math.abs(Date.parse(d1.date)-Date.parse(d2.date));
+   if(daysDiff>2*86400000)continue;
+   const acc1=accounts.find(a=>a.id===d1.accountId);
+   const acc2=accounts.find(a=>a.id===d2.accountId);
+   const t1=(d1.name+' '+(d1.category||'')).toLowerCase();
+   const t2=(d2.name+' '+(d2.category||'')).toLowerCase();
+   const isTransferMention=/transfer|pindah|bi-fast|overbooking|trf|inhouse|kliring|llg/i.test(t1)||/transfer|pindah|bi-fast|overbooking|trf|inhouse|kliring|llg/i.test(t2);
+   const crossMention=(acc2&&t1.includes(acc2.name.toLowerCase().slice(0,3)))||(acc1&&t2.includes(acc1.name.toLowerCase().slice(0,3)));
+   if(isTransferMention||crossMention||daysDiff===0){matchIdx=j;break;}
+  }
+  if(matchIdx!==-1){
+   consumed.add(i);consumed.add(matchIdx);
+   const d2=draftList[matchIdx];
+   const outDraft=d1.kind==='expense'?d1:d2;
+   const inDraft=d1.kind==='income'?d1:d2;
+   const srcAcc=accounts.find(a=>a.id===outDraft.accountId);
+   const dstAcc=accounts.find(a=>a.id===inDraft.accountId);
+   paired.push({
+    ...outDraft,
+    name:`Transfer: ${srcAcc?.name||'Akun Asal'} → ${dstAcc?.name||'Akun Tujuan'}`,
+    kind:'transfer',
+    accountId:outDraft.accountId,
+    targetId:inDraft.accountId,
+    category:'Transfer',
+    affectBalance:outDraft.affectBalance??true,
+    selected:true,
+    pairedFrom:[outDraft.name,inDraft.name]
+   });
+  }else{
+   paired.push(d1);
+  }
+ }
+ return paired;
+}
 function rates(rows){const result={IDR:1},dates=[];for(const r of rows){if(r.base!=='IDR'||!['USD','EUR','GBP','SGD','AUD','JPY'].includes(r.quote))continue;if(!Number.isFinite(r.rate)||r.rate<=0||!/^\d{4}-\d{2}-\d{2}$/.test(r.date))throw Error('Invalid FX response');result[r.quote]=1/r.rate;dates.push(r.date);}if(Object.keys(result).length!==7)throw Error('Incomplete FX response');return {rates:result,date:dates.sort()[0],source:'Frankfurter · daily reference rates',updatedAt:new Date().toISOString()};}
 function quickIntent(text){
  const s=String(text).trim();
  if(/^(berapa|apa|apakah|bagaimana|mengapa|kapan|how|what|why|when|can|is|which)\b/i.test(s))return 'question';
  if(/\b(transfer|pindah|pindahkan)\b/i.test(s))return 'transfer';
- return /\b(catat|gajian|gaji|terima|pemasukan|pendapatan|beli|bayar|belanja|pengeluaran|spent|paid|bought|salary|income|expense|record)\b/i.test(s)?'record':'question';
+ return /\b(catat|gajian|gaji|terima|pemasukan|pendapatan|beli|bayar|belanja|pengeluaran|spent|paid|bought|salary|income|expense|record|kopi|makan|bensin|listrik|pulsa|token|lunch|dinner|coffee|groceries)\b/i.test(s)?'record':'question';
 }
-function quickRecord(text,account,today){
+function quickRecord(text,account,today,accounts=[]){
  if(!account)throw Error('Pilih akun pencatatan / Choose a recording account');
+ const isTransfer=quickIntent(text)==='transfer';
+
+ if(isTransfer){
+  const clean=String(text);
+  if(/-\s*\d/.test(clean))throw Error('Gunakan nominal positif / Use a positive amount');
+  const matches=[...clean.matchAll(/(\d[\d.,]*)\s*(ribu|rb|juta|jt)?/gi)];
+  if(!matches.length)throw Error('Gunakan satu nominal per pesan / Use one amount per message');
+  const m=matches[matches.length-1];let amount=number(m[1]);if(/^(ribu|rb)$/i.test(m[2]||''))amount*=1000;if(/^(juta|jt)$/i.test(m[2]||''))amount*=1000000;
+  if(!Number.isSafeInteger(amount))throw Error('Nominal terlalu besar / Amount too large');
+
+  let srcAcc=account, dstAcc=null;
+  const sLower=text.toLowerCase();
+
+  for(const a of accounts){
+   const aName=a.name.toLowerCase();
+   const aTokens=aName.split(/[\s-_/]+/).filter(x=>x.length>=2);
+   for(const token of aTokens){
+    const fromRe=new RegExp(`\\bdari\\s+${token}\\b|\\bfrom\\s+${token}\\b`,'i');
+    const toRe=new RegExp(`\\bke\\s+${token}\\b|\\bto\\s+${token}\\b`,'i');
+    if(fromRe.test(sLower))srcAcc=a;
+    if(toRe.test(sLower))dstAcc=a;
+   }
+  }
+
+  if(!dstAcc){
+   for(const a of accounts){
+    if(a.id===srcAcc.id)continue;
+    const aLower=a.name.toLowerCase();
+    const aTokens=aLower.split(/[\s-_/]+/).filter(x=>x.length>=2);
+    if(sLower.includes(aLower)||aTokens.some(tok=>sLower.includes(tok))){dstAcc=a;break;}
+   }
+  }
+
+  if(!dstAcc){
+   throw Error('Gunakan Tambah transaksi dan pilih Transfer agar akun asal dan tujuan tercatat dengan benar. / Use Add transaction and choose Transfer to record both source and destination accounts.');
+  }
+  if(dstAcc.id===srcAcc.id){
+   throw Error('Pilih akun tujuan yang berbeda / Destination must be different');
+  }
+
+  return {
+   name:String(text).trim().slice(0,120),
+   date:today,
+   amount,
+   currency:srcAcc.currency,
+   accountId:srcAcc.id,
+   targetId:dstAcc.id,
+   kind:'transfer',
+   category:'Transfer'
+  };
+ }
+
  // Account suffixes must never be mistaken for a transaction amount.
  const clean=String(text).split(account.name).join('');
  if(/-\s*\d/.test(clean))throw Error('Gunakan nominal positif / Use a positive amount');
@@ -401,5 +628,5 @@ function quickRecord(text,account,today){
  if(currency!==account.currency)throw Error('Mata uang pesan harus sama dengan akun / Message currency must match the account');
  return {name:String(text).trim().slice(0,120),date:today,amount,currency,accountId:account.id,kind:/\b(gajian|gaji|terima|pemasukan|pendapatan|salary|income|received)\b/i.test(text)?'income':'expense'};
 }
-const api={number,parse,parseReceipt,duplicates,rates,quickIntent,quickRecord,cleanMerchant,suggestCategory,detectBankStatement};if(typeof module!=='undefined')module.exports=api;else root.InveysRecording=api;
+const api={number,parse,parseReceipt,duplicates,pairTransferDrafts,rates,quickIntent,quickRecord,cleanMerchant,suggestCategory,detectBankStatement,parseJagoStatement};if(typeof module!=='undefined')module.exports=api;else root.InveysRecording=api;
 })(typeof window!=='undefined'?window:globalThis);

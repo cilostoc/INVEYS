@@ -677,3 +677,37 @@ test('integrations and settings render API key manager and allow tab switching',
   await new Promise(resolve => setImmediate(resolve));
   assert.match(app.elements.get('#modal-body').innerHTML, /class="key-pane active" id="pane-telegram"/);
 });
+
+test('quick composer supports multi-line bulk paste, habit chips and batch draft controls',()=>{
+  const app=boot();
+  const acc1=app.state().accounts[0];
+
+  // Check habit chips render
+  assert.match(app.html(),/quick-habit-bar/);
+  assert.match(app.html(),/data-quick-fill="Beli kopi 25rb"/);
+
+  // Multi-line bulk paste
+  const multiText='Kopi 25\nMakan siang 35\nBensin 50';
+  app.submitPage('quick-form',{text:multiText,accountId:acc1.id});
+  assert.match(app.html(),/Review drafts · 3|Tinjau draft · 3/);
+  assert.match(app.html(),/Pilih yang Aman|Clean only/);
+  assert.match(app.html(),/Pilih Semua|All/);
+  assert.match(app.html(),/Batal Semua|None/);
+
+  // Batch action Deselect All
+  app.click({action:'capture-deselect-all'});
+  assert.doesNotMatch(app.html(),/checked[^>]*>\s*(?:Save row 1|Simpan baris 1)/);
+
+  // Batch action Select All
+  app.click({action:'capture-select-all'});
+  assert.match(app.html(),/checked[^>]*>\s*(?:Save row 1|Simpan baris 1)/);
+
+  // Commit drafts
+  app.click({action:'capture-save'});
+  assert.doesNotMatch(app.html(),/Review drafts · 3|Tinjau draft · 3/);
+  const txs=app.state().transactions;
+  assert.ok(txs.some(t=>t.amount===2500&&t.name.includes('Kopi')));
+  assert.ok(txs.some(t=>t.amount===3500&&t.name.includes('Makan siang')));
+  assert.ok(txs.some(t=>t.amount===5000&&t.name.includes('Bensin')));
+});
+
