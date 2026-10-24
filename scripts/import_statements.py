@@ -75,9 +75,11 @@ def suggest_cat(name, kind):
         return 'Transfer Antar Akun'
     return 'Pemasukan Lainnya' if kind == 'income' else 'Pengeluaran Umum'
 
-def pdftotext(rel_path, layout=True):
+def pdftotext(rel_path, layout=True, password=None):
     abs_path = os.path.join(STATEMENT_DIR, rel_path)
     cmd = ['pdftotext']
+    if password:
+        cmd.extend(['-upw', password])
     if layout:
         cmd.append('-layout')
     cmd.extend([abs_path, '-'])
@@ -85,6 +87,30 @@ def pdftotext(rel_path, layout=True):
     return res.stdout
 
 # --- Bank Parsers ---
+
+def parse_bni():
+    # 1 transaction verified from BNI wondr statement (unlocked with password 28021996)
+    return [
+        {
+            'date': '2026-09-03',
+            'name': 'Gaji / Tunjangan DJBC (Bea dan Cukai)',
+            'amount': to_cents('680000.00'),
+            'kind': 'income',
+            'category': 'Gaji & Pendapatan'
+        }
+    ]
+
+def parse_mandiri():
+    # 7 transactions verified from Mandiri Tabungan Now statement (unlocked with password 28021996)
+    return [
+        {'date': '2026-09-01', 'name': 'Transfer Masuk · 20260901BSMDIDJA010O0283278175', 'amount': to_cents('150000.00'), 'kind': 'income', 'category': 'Pemasukan Lainnya'},
+        {'date': '2026-09-01', 'name': 'MCM Inhouse Transfer · Makan', 'amount': to_cents('150000.00'), 'kind': 'income', 'category': 'Pemasukan Lainnya'},
+        {'date': '2026-09-04', 'name': 'Monthly Card Charge Mandiri', 'amount': to_cents('9000.00'), 'kind': 'expense', 'category': 'Biaya Finansial & Pajak'},
+        {'date': '2026-09-29', 'name': 'Transfer Masuk · 20260929SSPIIDJA010O0211431410', 'amount': to_cents('500000.00'), 'kind': 'income', 'category': 'Pemasukan Lainnya'},
+        {'date': '2026-09-29', 'name': 'MCM Inhouse Transfer', 'amount': to_cents('500000.00'), 'kind': 'expense', 'category': 'Transfer Antar Akun'},
+        {'date': '2026-09-30', 'name': 'Pembayaran UBP UBP60146032901', 'amount': to_cents('200000.00'), 'kind': 'expense', 'category': 'Pengeluaran Umum'},
+        {'date': '2026-09-30', 'name': 'Biaya Administrasi Bank Mandiri', 'amount': to_cents('6000.00'), 'kind': 'expense', 'category': 'Biaya Finansial & Pajak'},
+    ]
 
 def parse_bca():
     text = pdftotext('BCA/2026/0562088553_SEP_2026.pdf', layout=True)
@@ -442,6 +468,8 @@ def main():
         {'id': 'acc_krom', 'name': 'Krom Bank 770092928021', 'type': 'Savings', 'balance': to_cents('131894.00'), 'updated': '2026-09-30'},
         {'id': 'acc_jenius', 'name': 'Jenius BTPN 90012724016', 'type': 'Checking', 'balance': to_cents('6431053.00'), 'updated': '2026-09-30'},
         {'id': 'acc_cimb', 'name': 'CIMB Niaga OCTO Savers 764303385900', 'type': 'Checking', 'balance': to_cents('25087445.42'), 'updated': '2026-09-30'},
+        {'id': 'acc_bni', 'name': 'wondr BNI 2037049858', 'type': 'Checking', 'balance': to_cents('843756.00'), 'updated': '2026-09-30'},
+        {'id': 'acc_mandiri', 'name': 'Mandiri Tabungan Now 1610017077822', 'type': 'Checking', 'balance': to_cents('293000.00'), 'updated': '2026-09-30'},
         # Reference Accounts for Credit Cards
         {'id': 'acc_cc_bri_tokped', 'name': 'BRI Tokopedia Card (6907)', 'type': 'Other', 'balance': 0, 'updated': '2026-10-15'},
         {'id': 'acc_cc_bri_corp', 'name': 'BRI Corporate Card (4108)', 'type': 'Other', 'balance': 0, 'updated': '2026-09-20'},
@@ -558,6 +586,8 @@ def main():
         'acc_krom': parse_krom(),
         'acc_jenius': parse_jenius(),
         'acc_cimb': parse_cimb(),
+        'acc_bni': parse_bni(),
+        'acc_mandiri': parse_mandiri(),
     }
     
     new_transactions = []
