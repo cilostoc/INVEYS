@@ -711,3 +711,39 @@ test('quick composer supports multi-line bulk paste, habit chips and batch draft
   assert.ok(txs.some(t=>t.amount===5000&&t.name.includes('Bensin')));
 });
 
+test('capture page renders AI smart extract button and handles ai-extract-statement flow',async()=>{
+  const app=boot();
+  app.click({page:'capture'});
+  assert.match(app.html(),/capture-ai-extract/);
+  assert.match(app.html(),/⚡ Ekstrak Cerdas AI|⚡ AI Smart Extract/);
+  assert.match(app.html(),/text\/csv/);
+
+  app.context.location.protocol='http:';
+  let apiCalled=false;
+  app.context.fetch=async(url,opts)=>{
+    if(url==='/api/status')return {ok:true,json:async()=>({csrf:'test'})};
+    if(url==='/api/ai-extract-statement'){
+      apiCalled=true;
+      return {
+        ok:true,
+        bank:'Bank BCA',
+        period:'Oktober 2026',
+        drafts:[
+          {name:'Kopi Kenangan',date:'2026-10-10',kind:'expense',amount:'28000',currency:app.state().accounts[0].currency,category:'Makanan & Minuman'}
+        ],
+        provider:'gemini'
+      };
+    }
+    return {ok:true,json:async()=>({})};
+  };
+
+  app.input('capture-text','2026-10-10 Kopi Kenangan 28000');
+  app.click({action:'capture-ai-extract'});
+  await new Promise(resolve=>setImmediate(resolve));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.ok(apiCalled);
+  assert.match(app.html(),/Kopi Kenangan/);
+  assert.match(app.html(),/280/);
+});
+
+

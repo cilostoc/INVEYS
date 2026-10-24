@@ -78,6 +78,49 @@ class Backend(unittest.TestCase):
             status,result=self.request('/api/chat',{'provider':'openai','prompt':'Explain'},headers)
             self.assertEqual(status,400);self.assertIn('consent',result['error']);transport.assert_not_called()
             self.assertNotIn('secret',json.dumps(result))
+    def test_ai_extract_statement_csrf_and_flow(self):
+        headers={'Origin':'http://127.0.0.1:3000','X-INVEYS-CSRF':s.TOKEN}
+        payload={'consent':True,'text':'2026-10-15 Beli Kopi 25000'}
+        # 1. CSRF required
+        self.assertEqual(self.request('/api/ai-extract-statement',payload)[0],403)
+        # 2. Consent required
+        self.assertEqual(self.request('/api/ai-extract-statement',{'consent':False,'text':'abc'},headers)[0],400)
+        # 3. Successful extraction with mock
+        mock_res={
+            'ok':True,'bank':'Bank BCA','period':'Oktober 2026','summary':'1 pengeluaran ditemukan',
+            'drafts':[{'name':'Beli Kopi','date':'2026-10-15','kind':'expense','amount':'25000','currency':'IDR','category':'Makanan & Minuman'}],
+            'provider':'gemini','model':'gemini-3.8-flash'
+        }
+        with patch.object(s.inveys_ai,'extract_statement',return_value=mock_res) as mock_fn:
+            status,result=self.request('/api/ai-extract-statement',payload,headers)
+            self.assertEqual(status,200)
+            self.assertTrue(result['ok'])
+            self.assertEqual(result['bank'],'Bank BCA')
+            self.assertEqual(len(result['drafts']),1)
+            self.assertEqual(result['drafts'][0]['amount'],'25000')
+    def test_extract_csv_and_text_direct(self):
+        csv_bytes=b'Date,Description,Amount\n2026-10-01,Salary,5000000\n2026-10-02,Coffee,25000'
+        text=s.extract({'data':base64.b64encode(csv_bytes).decode(),'type':'text/csv','name':'mutasi.csv'})
+        self.assertIn('Salary',text)
+        self.assertIn('Coffee',text)
+    def test_ai_extract_statement_logic(self):
+        with patch.dict(os.environ,{'GEMINI_API_KEY':'test-key'}):
+            ai_reply=json.dumps({
+                'bank':'Bank Mandiri',
+                'period':'Oktober 2026',
+                'summary':'2 transaksi',
+                'drafts':[
+                    {'name':'Gaji Kemenkeu','date':'2026-10-01','kind':'income','amount':'15000000','currency':'IDR','category':'Gaji & Pendapatan'},
+                    {'name':'Starbucks Coffee','date':'2026-10-02','kind':'expense','amount':'65000.50','currency':'IDR','category':'Makanan & Minuman'}
+                ]
+            })
+            with patch.object(s.inveys_ai,'transport',return_value={'candidates':[{'content':{'parts':[{'text':ai_reply}]}}]}) as mock_tp:
+                res=s.inveys_ai.extract_statement({'consent':True,'provider':'gemini','text':'sample raw text','recordContext':{'currency':'IDR'}},s.extract)
+                self.assertTrue(res['ok'])
+                self.assertEqual(res['bank'],'Bank Mandiri')
+                self.assertEqual(len(res['drafts']),2)
+                self.assertEqual(res['drafts'][0]['kind'],'income')
+                self.assertEqual(res['drafts'][1]['kind'],'expense')
     def test_release_manifest(self):
         rel_file = Path(__file__).resolve().parents[1]/'src'/'releases.json'
         if not rel_file.exists(): rel_file = Path(__file__).resolve().parents[1]/'releases.json'

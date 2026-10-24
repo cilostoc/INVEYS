@@ -102,7 +102,11 @@ def extract(data):
             subprocess.run(['pdftotext', '-f', '1', '-l', '30', '-layout', str(path), str(Path(d) / 'out.txt')], check=True, timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             text = (Path(d) / 'out.txt').read_text(errors='replace')[:100000]
             if not text.strip(): raise ValueError('PDF has no readable text. Export pages as images for OCR.')
-            return text
+        file_type = str(data.get('type', '')).lower()
+        file_name = str(data.get('name', '')).lower()
+        if 'csv' in file_type or 'text' in file_type or file_name.endswith('.csv') or file_name.endswith('.txt'):
+            try: return raw.decode('utf-8')[:100000]
+            except UnicodeDecodeError: return raw.decode('latin-1', errors='replace')[:100000]
         try:
             from PIL import Image
         except ImportError:
@@ -112,7 +116,7 @@ def extract(data):
             with Image.open(path) as im:
                 if im.width * im.height > 20_000_000: raise ValueError('Image too large')
                 im.convert('RGB').save(Path(d) / 'image.png')
-        except Exception: raise ValueError('Upload a valid PNG, JPEG or WebP image') from None
+        except Exception: raise ValueError('Upload a valid PNG, JPEG, WebP, PDF or CSV file') from None
         if not shutil.which('tesseract'): raise ValueError('Install Tesseract for local OCR')
         result = subprocess.run(['tesseract', str(Path(d) / 'image.png'), 'stdout', '-l', 'eng'], capture_output=True, timeout=40, check=True)
         return result.stdout.decode(errors='replace')[:100000]
@@ -825,6 +829,9 @@ class Handler(SimpleHTTPRequestHandler):
 
             if self.path == '/api/chat':
                 try: return self.send_json(inveys_ai.chat(data, extract, transcribe))
+                except ValueError as error: return self.send_json({'error': str(error)}, 400)
+            if self.path == '/api/ai-extract-statement':
+                try: return self.send_json(inveys_ai.extract_statement(data, extract))
                 except ValueError as error: return self.send_json({'error': str(error)}, 400)
             if self.path == '/api/extract': return self.send_json({'text': extract(data)})
             if self.path == '/api/transcribe': return self.send_json({'text': transcribe(data)})

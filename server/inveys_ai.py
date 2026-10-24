@@ -195,3 +195,237 @@ def chat(data,extract,transcribe):
     if not isinstance(d,dict) or d.get('kind') not in ('income','expense','transfer') or not isinstance(d.get('name'),str) or not d['name'].strip() or len(d['name'])>120 or not valid_date(d.get('date')) or not re.fullmatch(r'\d{1,12}(?:\.\d{1,2})?',str(d.get('amount',''))) or float(d['amount'])<=0 or d.get('currency')!=data['recordContext'].get('currency') or not isinstance(d.get('category','Imported'),str) or len(d.get('category',''))>80:raise ValueError('Invalid AI recording draft; no records saved')
   result.update(text=parsed['text'][:6000],intent=parsed['intent'],drafts=drafts if parsed['intent']=='record' else [])
  return result
+
+STATEMENT_SYSTEM = (
+ 'You are INVEYS Financial Statement & Receipt Extraction AI. '
+ 'Analyze the provided financial document (PDF e-statement, CSV, bank transaction export, or purchase receipt) '
+ 'and extract ALL individual transactions with 100% precision into a structured JSON response. '
+ 'Respond ONLY with valid JSON in this exact structure:\n'
+ '{\n'
+ '  "bank": "Bank / Store Name",\n'
+ '  "period": "Statement period or transaction date",\n'
+ '  "summary": "Short 1-2 sentence summary of extracted transactions in the user language",\n'
+ '  "drafts": [\n'
+ '    {\n'
+ '      "name": "Clean merchant or counterparty name (max 120 chars)",\n'
+ '      "date": "YYYY-MM-DD",\n'
+ '      "kind": "expense" or "income" or "transfer",\n'
+ '      "amount": "Positive decimal string in major currency units, e.g. 50000 or 125000.50 (max 2 decimals)",\n'
+ '      "currency": "IDR",\n'
+ '      "category": "Standard personal finance category",\n'
+ '      "targetAccount": "Optional destination account name if inter-account transfer"\n'
+ '    }\n'
+ '  ]\n'
+ '}\n\n'
+ 'Extraction Rules:\n'
+ '1. Debit / Outflow / Keluar / Belanja / Pembelian / Tarik Saldo = "expense".\n'
+ '2. Credit / Inflow / Masuk / Gaji / Bunga / Top Up Masuk / Reversal = "income".\n'
+ '3. Pocket transfer (Pindah uang antar Kantong, inter-account transfer) = "transfer".\n'
+ '4. Clean raw cryptic terminal codes (e.g. "MCM InhouseTrf-makan" -> "Makan", "QRISRNS123... KOPI KENANGAN" -> "Kopi Kenangan", "SPAN:..." -> "Gaji / Tukin").\n'
+ '5. Receipts: Extract the net grand total or individual purchased line items. Do NOT mistake cash given ("TUNAI") or change returned ("KEMBALI") as the expense amount.\n'
+ '6. Standard Categories: "Makanan & Minuman", "Belanja & Kebutuhan Rumah", "Transportasi & Bahan Bakar", "Gaji & Pendapatan", "Investasi & Bunga", "Biaya Finansial & Pajak", "Hutang & Kartu Kredit", "Hiburan & Rekreasi", "Kesehatan & Medis", "Langganan Digital", "Transfer".\n'
+ '7. Dates: Format as YYYY-MM-DD. If year is missing in row, use the statement period year or reference date.\n'
+ '8. Extract up to 100 transactions. Never invent transactions not present in the document.'
+)
+
+def extract_statement(data, extract):
+ if not isinstance(data, dict) or data.get('consent') is not True:
+  raise ValueError('AI data-sharing consent required')
+ config = configuration()
+ name = data.get('provider')
+ if not name or name not in config or not config[name]['enabled']:
+  for candidate in ('gemini', 'openai', '9router', 'muse'):
+   if config.get(candidate, {}).get('enabled'):
+    name = candidate
+    break
+ if not name or not config.get(name, {}).get('enabled'):
+  raise ValueError('Configure an AI provider (Gemini, OpenAI, or 9Router) on the local server first.')
+
+ model = config[name]['model']
+ record = data.get('recordContext', {})
+ if not isinstance(record, dict) or record.get('currency') not in (None, 'USD', 'IDR', 'EUR', 'GBP', 'SGD', 'JPY', 'AUD', 'MYR', 'CAD', 'CHF', 'CNY', 'HKD'):
+  raise ValueError('Invalid recording context')
+ target_currency = record.get('currency') or 'IDR'
+ target_date = record.get('date') or datetime.date.today().isoformat()
+
+ file = data.get('file')
+ raw_text = str(data.get('text', '')).strip()
+ if not file and not raw_text:
+  raise ValueError('Attach a file or provide statement text')
+
+ raw_bytes = None
+ if file:
+  if not isinstance(file, dict) or not isinstance(file.get('data'), str):
+   raise ValueError('Invalid attachment')
+  try:
+   raw_bytes = base64.b64decode(file['data'], validate=True)
+  except Exception:
+   raise ValueError('Invalid attachment encoding') from None
+  if not raw_bytes or len(raw_bytes) > 8 * 1024 * 1024:
+   raise ValueError('Attachment must be 1 byte–8 MB')
+  if file.get('type') == 'application/pdf' and not raw_bytes.startswith(b'%PDF-'):
+   raise ValueError('Invalid PDF')
+
+ key = os.environ[{'openai': 'OPENAI_API_KEY', 'gemini': 'GEMINI_API_KEY', 'muse': 'MODEL_API_KEY', '9router': 'NINEROUTER_API_KEY'}[name]]
+ doc_prompt = f"Target currency: {target_currency}. Reference date: {target_date}.\nExtract all transactions from this document into structured JSON."
+
+ if name == 'gemini':
+  parts = [{'text': doc_prompt}]
+  if file:
+   if file.get('type') in ('application/pdf', 'image/png', 'image/jpeg', 'image/webp'):
+    parts.append({'inlineData': {'mimeType': file['type'], 'data': file['data']}})
+   else:
+    try: txt = raw_bytes.decode('utf-8')
+    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
+    parts.append({'text': 'Document Content:\n' + txt[:40000]})
+  elif raw_text:
+   parts.append({'text': 'Document Content:\n' + raw_text[:40000]})
+
+  gen_config = {'maxOutputTokens': 8192, 'temperature': 0.1}
+  if 'flash' in model.lower():
+   gen_config['thinkingConfig'] = {'thinkingBudget': 0}
+  payload = {
+   'systemInstruction': {'parts': [{'text': STATEMENT_SYSTEM}]},
+   'contents': [{'role': 'user', 'parts': parts}],
+   'generationConfig': gen_config
+  }
+  models_to_try = [model]
+  for m_alt in ('gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'):
+   if m_alt not in models_to_try: models_to_try.append(m_alt)
+  result = None; last_err = None
+  for target_model in models_to_try:
+   try:
+    result = transport('https://generativelanguage.googleapis.com/v1beta/models/' + target_model + ':generateContent', payload, key, google=True)
+    model = target_model
+    break
+   except ValueError as ex:
+    last_err = ex
+    if 'thinking' in str(ex).lower() and 'thinkingConfig' in payload.get('generationConfig', {}):
+     try:
+      p_clean = dict(payload); p_clean['generationConfig'] = {'maxOutputTokens': 8192, 'temperature': 0.1}
+      result = transport('https://generativelanguage.googleapis.com/v1beta/models/' + target_model + ':generateContent', p_clean, key, google=True)
+      model = target_model
+      break
+     except Exception as ex2: last_err = ex2
+    if any(k in str(ex).lower() for k in ('not found', '404', 'unsupported', 'overloaded', '503')) and target_model != models_to_try[-1]:
+     continue
+    raise ex
+  if not result:
+   if last_err: raise last_err
+   raise ValueError('AI provider is unavailable; check network and configuration.')
+  answer = '\n'.join(p.get('text', '') for c in result.get('candidates', [])[:1] for p in c.get('content', {}).get('parts', []) if not p.get('thought'))
+
+ elif name == 'openai':
+  content = [{'type': 'input_text', 'text': doc_prompt}]
+  if file:
+   if file.get('type', '').startswith('image/'):
+    content.append({'type': 'input_image', 'image_url': 'data:' + file['type'] + ';base64,' + file['data']})
+   elif file.get('type') == 'application/pdf':
+    doc_text = extract(file)[:35000]
+    content[0]['text'] += '\nDocument content:\n' + doc_text
+   else:
+    try: txt = raw_bytes.decode('utf-8')
+    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
+    content[0]['text'] += '\nDocument content:\n' + txt[:35000]
+  elif raw_text:
+   content[0]['text'] += '\nDocument content:\n' + raw_text[:35000]
+
+  inputs = [{'role': 'user', 'content': content}]
+  res = transport('https://api.openai.com/v1/responses', {'model': model, 'instructions': STATEMENT_SYSTEM, 'input': inputs, 'store': False, 'max_output_tokens': 4000}, key)
+  answer = '\n'.join(p.get('text', '') for item in res.get('output', []) if item.get('type') == 'message' for p in item.get('content', []) if p.get('type') == 'output_text')
+
+ elif name == '9router':
+  base = router_base()
+  content = [{'type': 'text', 'text': doc_prompt}]
+  if file:
+   if file.get('type', '').startswith('image/'):
+    content.append({'type': 'image_url', 'image_url': {'url': 'data:' + file['type'] + ';base64,' + file['data']}})
+   elif file.get('type') == 'application/pdf':
+    doc_text = extract(file)[:35000]
+    content[0]['text'] += '\nDocument text:\n' + doc_text
+   else:
+    try: txt = raw_bytes.decode('utf-8')
+    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
+    content[0]['text'] += '\nDocument text:\n' + txt[:35000]
+  elif raw_text:
+   content[0]['text'] += '\nDocument text:\n' + raw_text[:35000]
+
+  res = router_transport(base + '/chat/completions', {'model': model, 'messages': [{'role': 'system', 'content': STATEMENT_SYSTEM}, {'role': 'user', 'content': content}], 'max_tokens': 4000}, key)
+  answer = res.get('choices', [{}])[0].get('message', {}).get('content', '')
+
+ else:
+  content = [{'type': 'text', 'text': doc_prompt}]
+  if file:
+   if file.get('type', '').startswith('image/'):
+    content.append({'type': 'image_url', 'image_url': {'url': 'data:' + file['type'] + ';base64,' + file['data']}})
+   else:
+    doc_text = extract(file)[:30000]
+    content[0]['text'] += '\nDocument text:\n' + doc_text
+  elif raw_text:
+   content[0]['text'] += '\nDocument text:\n' + raw_text[:30000]
+  res = transport('https://api.meta.ai/v1/chat/completions', {'model': model, 'messages': [{'role': 'system', 'content': STATEMENT_SYSTEM}, {'role': 'user', 'content': content}], 'max_completion_tokens': 4000}, key)
+  answer = res.get('choices', [{}])[0].get('message', {}).get('content', '')
+
+ if not isinstance(answer, str) or not answer.strip():
+  raise ValueError('AI returned empty response; check document format and AI quota.')
+
+ cleaned = re.sub(r'^```(?:json)?\s*|\s*```$', '', answer.strip())
+ s_idx = cleaned.find('{')
+ e_idx = cleaned.rfind('}')
+ if s_idx != -1 and e_idx != -1:
+  cleaned = cleaned[s_idx:e_idx+1]
+ try:
+  parsed = json.loads(cleaned)
+ except json.JSONDecodeError:
+  raise ValueError('AI did not return valid JSON. Try again or use manual parser.')
+
+ if not isinstance(parsed, dict):
+  raise ValueError('Invalid AI statement structure')
+
+ bank = str(parsed.get('bank') or 'Dokumen / Bank')[:100]
+ period = str(parsed.get('period') or '')[:100]
+ summary = str(parsed.get('summary') or '')[:500]
+ raw_drafts = parsed.get('drafts')
+ if not isinstance(raw_drafts, list):
+  raw_drafts = []
+
+ validated = []
+ for d in raw_drafts[:100]:
+  if not isinstance(d, dict): continue
+  name_val = str(d.get('name') or '').strip()
+  if not name_val: continue
+  amt_str = str(d.get('amount') or '').strip().replace(',', '')
+  amt_match = re.search(r'\d+(?:\.\d{1,2})?', amt_str)
+  if not amt_match: continue
+  amt_val = amt_match.group(0)
+  if float(amt_val) <= 0: continue
+  d_date = str(d.get('date') or '').strip()
+  if not valid_date(d_date):
+   d_date = target_date
+  d_kind = str(d.get('kind') or 'expense').lower()
+  if d_kind not in ('expense', 'income', 'transfer'):
+   d_kind = 'expense'
+  d_curr = str(d.get('currency') or target_currency).upper()
+  if len(d_curr) != 3: d_curr = target_currency
+  d_cat = str(d.get('category') or 'Imported').strip()[:80] or 'Imported'
+  d_target = str(d.get('targetAccount') or '').strip()[:80] if d.get('targetAccount') else None
+
+  validated.append({
+   'name': name_val[:120],
+   'date': d_date,
+   'kind': d_kind,
+   'amount': amt_val,
+   'currency': d_curr,
+   'category': d_cat,
+   'targetAccount': d_target
+  })
+
+ return {
+  'ok': True,
+  'bank': bank,
+  'period': period,
+  'summary': summary,
+  'drafts': validated,
+  'provider': name,
+  'model': model
+ }
