@@ -6,6 +6,8 @@ services:
     image: ghcr.io/cilostoc/inveys:latest
     container_name: inveys-app
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
     expose:
       - "3000"
     environment:
@@ -29,12 +31,8 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - inveys_data:/data
-    networks:
-      - default
-      - traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_default}"
       - "traefik.http.routers.inveys.rule=Host(`${DOMAIN:-inveys.io}`) || Host(`www.${DOMAIN:-inveys.io}`)"
       - "traefik.http.routers.inveys.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
       - "traefik.http.routers.inveys.tls=true"
@@ -63,14 +61,7 @@ services:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_POLL_INTERVAL=120
       - WATCHTOWER_LABEL_ENABLE=true
-    networks:
-      - default
 
 volumes:
   inveys_data:
     name: inveys_vault_data
-
-networks:
-  traefik:
-    name: ${TRAEFIK_NETWORK:-traefik_default}
-    external: true
