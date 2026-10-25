@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: inveys:latest
+    image: ghcr.io/cilostoc/inveys:latest
     container_name: inveys-app
     restart: unless-stopped
     ports:
@@ -29,6 +29,8 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - inveys_data:/data
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/auth/status"]
       interval: 30s
@@ -40,6 +42,17 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: inveys-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=120
+      - WATCHTOWER_LABEL_ENABLE=true
 
 volumes:
   inveys_data:
