@@ -150,7 +150,10 @@
     $('.profile b').textContent=currentUser?.name||member.name;
     $('.profile small').textContent=state.demo?'Local demo account':(currentUser?`${currentUser.email} (${(currentUser.plan||'PRO').toUpperCase()})`:(isServerMode?'Hostinger VPS Account':'Local workspace'));
     const initials=currentUser?.name?currentUser.name.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase():member.initials;
-    $$('.avatar').filter(el=>el.closest('.profile')||el.closest('.top-actions')).forEach(el=>el.textContent=initials);
+    $$('.avatar').filter(el=>el.closest('.profile')).forEach(el=>el.textContent=initials);
+    const popName=$('.profile-popover-name');if(popName)popName.textContent=currentUser?.name||member.name;
+    const popEmail=$('.profile-popover-email');if(popEmail)popEmail.textContent=state.demo?'Local demo account':(currentUser?`${currentUser.email} (${(currentUser.plan||'PRO').toUpperCase()})`:(isServerMode?'Hostinger VPS Account':'Local workspace'));
+    $$('.profile-popover-header .avatar').forEach(el=>el.textContent=initials);
     if(isServerMode&&isAuthenticated)syncToServer();
   }
   const pages=[['operations','Operations'],['home','Overview'],['shared','Shared Views'],['reports','Reports'],['forecast','Forecast'],['accounts','Accounts'],['investment','Investment'],['calendar','Bills & Subscriptions'],['budget','Budget'],['cashflow','Cash flow'],['transactions','Transactions'],['categories','Categories'],['goals','Goals & plans'],['debt','Debt management'],['scenarios','Scenarios'],['montecarlo','Monte Carlo'],['cards','Credit cards'],['household','Household'],['copilot','Financial copilot'],['capture','Capture'],['integrations','Integrations'],['updates','Version updates'],['plans','Plans & membership']];
@@ -5935,6 +5938,9 @@
   $('#close-modal').addEventListener('click',()=>$('#modal').close());$('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=$('#modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('#modal').close();}});
   $('#menu-button').addEventListener('click',()=>{setSidebarOpen(!sidebarOpen);if(sidebarOpen)$('#navigation button')?.focus();});$('#search-button').addEventListener('click',searchModal);$('#notification-button').addEventListener('click',openReminders);$('#workspace-button').addEventListener('click',()=>navigate('household'));
   $('#about-button').addEventListener('click',()=>openModal('Your financial life, connected.',`<p class="dialog-copy">INVEYS stands for <b>INtelligent VElocity for Your Financial System</b>. Connect your financial picture, anticipate commitments, plan meaningful goals, and coordinate your next steps.</p><p class="note">This is a local-first MVP with sample data. No funds are moved, no institutions are connected, and external providers require separate configuration and explicit consent.</p><div class="form-actions">${button('Explore your workspace','modal-close','primary')}</div>`));
+  /* --- Profile popover toggle --- */
+  const profileBtn=$('#profile-button'),profilePopover=$('#profile-popover');
+  if(profileBtn&&profilePopover){profileBtn.addEventListener('click',e=>{e.stopPropagation();const isOpen=profilePopover.classList.toggle('open');profileBtn.setAttribute('aria-expanded',String(isOpen));});document.addEventListener('click',e=>{if(!e.target.closest('.profile-wrap')){profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');}});$('#popover-lock-btn')?.addEventListener('click',()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');$('#auth-lock-btn')?.click();});$('#popover-logout-btn')?.addEventListener('click',async()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');$('#auth-lock-btn')?.click();});}
   document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('#modal').open){e.preventDefault();searchModal();}});
   window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(target!==page)navigate(target);});
   let sidebarOpen=false,sidebarPinned=false;
