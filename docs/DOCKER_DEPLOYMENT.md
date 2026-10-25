@@ -145,6 +145,38 @@ Gunakan opsi ini jika di VPS Anda sudah berjalan **Traefik** (mengelola port 80 
    curl -I http://127.0.0.1:3000/api/auth/status
    ```
 
+#### Panduan Khusus Hostinger VPS (Docker Manager):
+Jika Anda menggunakan **Hostinger Docker Manager (hPanel)**:
+1. Buka **Docker Manager** di hPanel VPS Hostinger Anda.
+2. Pada project **`invyes`**, klik **Kelola** lalu buka tab **Editor .yaml**.
+3. Pastikan `networks` terhubung ke `default` dan `traefik`, serta deklarasi external network Traefik:
+   ```yaml
+   services:
+     inveys:
+       # ... konfigurasi service ...
+       networks:
+         - default
+         - traefik
+       labels:
+         - "traefik.enable=true"
+         - "traefik.docker.network=traefik_default"
+         - "traefik.http.routers.inveys.rule=Host(`inveys.io`)"
+         - "traefik.http.routers.inveys.entrypoints=websecure"
+         - "traefik.http.routers.inveys.tls=true"
+         - "traefik.http.routers.inveys.tls.certresolver=letsencrypt"
+         - "traefik.http.services.inveys.loadbalancer.server.port=3000"
+
+   volumes:
+     inveys_data:
+       name: inveys_vault_data
+
+   networks:
+     traefik:
+       external: true
+       name: traefik_default
+   ```
+4. Jika tombol **Deploy** di kanan atas berwarna abu-abu karena kontainer sedang berstatus *Running*, klik tombol menu aksi **`[ ≡ ]`** di samping *Batalkan*, pilih **Stop**, lalu klik tombol **Deploy**.
+
 ---
 
 ## 5. Pemeliharaan & Perintah Esensial

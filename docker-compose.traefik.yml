@@ -32,15 +32,16 @@ services:
     volumes:
       - inveys_data:/data
     networks:
-      - traefik_network
+      - default
+      - traefik
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_default}"
       - "traefik.http.routers.inveys.rule=Host(`${DOMAIN:-inveys.io}`) || Host(`www.${DOMAIN:-inveys.io}`)"
       - "traefik.http.routers.inveys.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
       - "traefik.http.routers.inveys.tls=true"
       - "traefik.http.routers.inveys.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}"
       - "traefik.http.services.inveys.loadbalancer.server.port=3000"
-      - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_default}"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/auth/status"]
       interval: 30s
@@ -58,6 +59,6 @@ volumes:
     name: inveys_vault_data
 
 networks:
-  traefik_network:
+  traefik:
     name: ${TRAEFIK_NETWORK:-traefik_default}
     external: true
