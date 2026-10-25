@@ -6,30 +6,40 @@ services:
     image: ghcr.io/cilostoc/inveys:latest
     container_name: inveys-app
     restart: unless-stopped
-    ports:
-      - "${INVEYS_PORT:-3000}:3000"
+    expose:
+      - "3000"
     environment:
       - HOST=0.0.0.0
       - PORT=3000
       - INVEYS_DATA_DIR=/data
-      - DOMAIN=${DOMAIN:-}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
+      - DOMAIN=${DOMAIN:-inveys.io}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-inveys.io,www.inveys.io,187.77.134.249,127.0.0.1,localhost}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-}
       - MODEL_API_KEY=${MODEL_API_KEY:-}
       - MUSE_MODEL=${MUSE_MODEL:-}
-      - NINEROUTER_API_KEY=${NINEROUTER_API_KEY:-}
-      - NINEROUTER_MODEL=${NINEROUTER_MODEL:-}
-      - NINEROUTER_BASE_URL=${NINEROUTER_BASE_URL:-}
+      - NINEROUTER_API_KEY=${NINEROUTER_API_KEY:-sk-4bcae7c02ecceeb2-uh4vw9-e53871ae}
+      - NINEROUTER_MODEL=${NINEROUTER_MODEL:-ag/gemini-3.8-flash}
+      - NINEROUTER_BASE_URL=${NINEROUTER_BASE_URL:-https://9router-uef5.srv2048942.hstgr.cloud/v1}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - inveys_data:/data
+    networks:
+      - default
+      - traefik
     labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_default}"
+      - "traefik.http.routers.inveys.rule=Host(`${DOMAIN:-inveys.io}`) || Host(`www.${DOMAIN:-inveys.io}`)"
+      - "traefik.http.routers.inveys.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+      - "traefik.http.routers.inveys.tls=true"
+      - "traefik.http.routers.inveys.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}"
+      - "traefik.http.services.inveys.loadbalancer.server.port=3000"
       - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/auth/status"]
@@ -53,7 +63,14 @@ services:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_POLL_INTERVAL=120
       - WATCHTOWER_LABEL_ENABLE=true
+    networks:
+      - default
 
 volumes:
   inveys_data:
     name: inveys_vault_data
+
+networks:
+  traefik:
+    name: ${TRAEFIK_NETWORK:-traefik_default}
+    external: true

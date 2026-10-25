@@ -1,0 +1,22 @@
+# Docker Compose configuration for local standalone execution (offline/no Traefik)
+services:
+  inveys:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: inveys:local
+    container_name: inveys-local
+    restart: unless-stopped
+    ports:
+      - "${INVEYS_PORT:-3000}:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - INVEYS_DATA_DIR=/data
+      - DOMAIN=localhost
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+    volumes:
+      - inveys_local_data:/data
+
+volumes:
+  inveys_local_data:
