@@ -58,7 +58,7 @@
   paths.receipt='<path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2-3-2Zm4 6h8m-8 4h8m-8 4h5"/>';
   const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.about}</svg>`;
   const seed = () => ({
-    version:1,currency:'USD',name:'Morgan household',demo:true,
+    version:1,currency:'USD',name:"Hendra's Vault",demo:true,
     accounts:[{id:'a1',name:'Northstar Checking',type:'Checking',balance:824000,owner:'Alex',updated:date()},{id:'a2',name:'High-Yield Savings',type:'Savings',balance:3845000,owner:'Household',updated:date()},{id:'a3',name:'Long-Term Portfolio',type:'Investment',balance:18476000,owner:'Alex',updated:date()},{id:'a4',name:'Retirement Account',type:'Investment',balance:3200000,owner:'Sam',updated:date()}],
     debts:[{id:'d1',name:'Auto loan',balance:1820000,apr:5.9,minimum:42500},{id:'d2',name:'Student loan',balance:1840000,apr:4.5,minimum:36500},{id:'d3',name:'Credit card',balance:248000,apr:19.9,minimum:12000}],
     goals:[{id:'g1',name:'Emergency reserve',emoji:'◌',target:2500000,saved:1800000,monthly:50000,due:'2027-06-01'},{id:'g2',name:'A place to call home',emoji:'⌂',target:1500000,saved:540000,monthly:60000,due:'2028-01-01'},{id:'g3',name:'Japan, together',emoji:'✈',target:800000,saved:210000,monthly:25000,due:'2027-10-01'}],
@@ -143,16 +143,22 @@
   function save(){
     try {E.validate(state);localStorage.setItem(storageKey,JSON.stringify(state));persistent=true;} catch(error){persistent=false;toast('Changes are in memory only. Export your workspace to keep them.');}
     $('.local-status').innerHTML=`<i></i>${isServerMode?'VPS Synced':(persistent?'Saved on this device':'Not saved · Export to keep changes')}`;
-    $('#workspace-name').textContent=state.name;
-    $('.demo-tag').textContent=state.demo?'DEMO':(isServerMode?'VPS':'LOCAL');
-    $('footer span:last-child').textContent=`${state.demo?'Demo':'Production'} workspace · ${isServerMode?'Hostinger KVM Node · SQLite Sync':'Manual records'} · v0.18.0`;
-    const member=state.members[0]||{name:'Me',initials:'ME'};
-    $('.profile b').textContent=currentUser?.name||member.name;
-    $('.profile small').textContent=state.demo?'Local demo account':(currentUser?`${currentUser.email} (${(currentUser.plan||'PRO').toUpperCase()})`:(isServerMode?'Hostinger VPS Account':'Local workspace'));
-    const initials=currentUser?.name?currentUser.name.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase():member.initials;
+    const member=state.members[0]||{name:currentUser?.name||'Hendra Febriansyah',initials:'HF'};
+    const activeOwnerName=currentUser?.name||member.name;
+    const wsName=(state.name&&state.name!=='Morgan household')?state.name:(activeOwnerName.includes(' ')?`${activeOwnerName.split(' ')[0]}'s Vault`:`${activeOwnerName}'s Vault`);
+    $('#workspace-name').textContent=wsName;
+    const wsInitials=activeOwnerName.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase()||'HF';
+    const wsAvatar=$('.workspace-avatar');
+    if(wsAvatar)wsAvatar.textContent=wsInitials;
+    $('.demo-tag').textContent=isServerMode?(currentUser?.plan?currentUser.plan.toUpperCase():'VAULT'):(state.demo?'ACTIVE':'LOCAL');
+    $('footer span:last-child').textContent=`${isServerMode?'Production':(state.demo?'Demo':'Production')} workspace · ${isServerMode?'Hostinger VPS · SQLite Vault':'Local records'} · v0.23.0`;
+    $('.profile b').textContent=activeOwnerName;
+    const profileRole=isServerMode?(currentUser?.plan?`${currentUser.plan.toUpperCase()} · Vault Owner`:'Vault Owner'):(state.demo?'Vault Owner':'Local workspace');
+    $('.profile small').textContent=profileRole;
+    const initials=activeOwnerName.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase()||'HF';
     $$('.avatar').filter(el=>el.closest('.profile')).forEach(el=>el.textContent=initials);
-    const popName=$('.profile-popover-name');if(popName)popName.textContent=currentUser?.name||member.name;
-    const popEmail=$('.profile-popover-email');if(popEmail)popEmail.textContent=state.demo?'Local demo account':(currentUser?`${currentUser.email} (${(currentUser.plan||'PRO').toUpperCase()})`:(isServerMode?'Hostinger VPS Account':'Local workspace'));
+    const popName=$('.profile-popover-name');if(popName)popName.textContent=activeOwnerName;
+    const popEmail=$('.profile-popover-email');if(popEmail)popEmail.textContent=currentUser?.email||(isServerMode?'Vault Owner':'Local account');
     $$('.profile-popover-header .avatar').forEach(el=>el.textContent=initials);
     if(isServerMode&&isAuthenticated)syncToServer();
   }
@@ -5942,7 +5948,7 @@
   document.addEventListener('change',event=>{const el=event.target;if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='import-file')importFile(el.files[0]);});
   document.addEventListener('submit',event=>{if(event.target.id==='quick-form'){event.preventDefault();const d=Object.fromEntries(new FormData(event.target));quickSend(d.text,d.accountId);return;}if(event.target.id==='chat-form'){event.preventDefault();ask($('#chat-question').value.trim());}});
   $('#close-modal').addEventListener('click',()=>$('#modal').close());$('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=$('#modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('#modal').close();}});
-  $('#menu-button').addEventListener('click',()=>{setSidebarOpen(!sidebarOpen);if(sidebarOpen)$('#navigation button')?.focus();});$('#search-button').addEventListener('click',searchModal);$('#notification-button').addEventListener('click',openReminders);$('#workspace-button').addEventListener('click',()=>navigate('household'));
+  $('#menu-button').addEventListener('click',()=>{setSidebarOpen(!sidebarOpen);if(sidebarOpen)$('#navigation button')?.focus();});$('#search-button').addEventListener('click',searchModal);$('#notification-button').addEventListener('click',openReminders);$('#workspace-button').addEventListener('click',()=>navigate('home'));
   $('#about-button').addEventListener('click',()=>openModal('Your financial life, connected.',`<p class="dialog-copy">INVEYS stands for <b>INtelligent VElocity for Your Financial System</b>. Connect your financial picture, anticipate commitments, plan meaningful goals, and coordinate your next steps.</p><p class="note">This is a local-first MVP with sample data. No funds are moved, no institutions are connected, and external providers require separate configuration and explicit consent.</p><div class="form-actions">${button('Explore your workspace','modal-close','primary')}</div>`));
   /* --- Profile popover toggle --- */
   const profileBtn=$('#profile-button'),profilePopover=$('#profile-popover');
