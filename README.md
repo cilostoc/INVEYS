@@ -103,7 +103,7 @@ Jika menggunakan antarmuka web Hostinger:
 
 Proyek ini telah dilengkapi pipeline otomasi penuh:
 1. **GitHub Actions**: Setiap ada perubahan kode yang di-push ke branch `main`, GitHub Actions secara otomatis menjalankan seluruh 260 unit tests, meng-compile image Docker, dan mem-publish ke **GitHub Container Registry** (`ghcr.io/cilostoc/inveys:latest`).
-2. **Watchtower**: Di server VPS Anda, container pembantu `inveys-watchtower` memeriksa rilis baru setiap 2 menit. Jika ada versi baru, Watchtower otomatis mendownload dan merestart container **tanpa menyentuh database SQLite (`/data`) dan tanpa downtime**.
+2. **Pembaruan 1-Klik / Zero Downtime**: Di server VPS Hostinger Anda, pembaruan versi terbaru dapat ditarik kapan saja cukup dengan menekan tombol **Update / Deploy** di panel Docker Manager, atau via perintah `docker compose pull && docker compose up -d` tanpa merusak database vault (`/data`).
 
 ---
 
