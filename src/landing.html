@@ -1317,8 +1317,8 @@
       </ul>
 
       <div class="nav-actions">
-        <a href="inveys-app.html#home" class="btn btn-secondary" id="nav-demo-btn">
-          <span>Buka Demo</span>
+        <a href="/app" class="btn btn-secondary" id="nav-app-btn">
+          <span>Buka Aplikasi</span>
         </a>
         <a href="#pricing" class="btn btn-primary" id="nav-buy-btn">
           <span>Beli Lisensi</span>
@@ -1344,9 +1344,9 @@
         </p>
 
         <div class="hero-actions">
-          <a href="inveys-app.html#home" class="btn btn-primary" id="hero-demo-btn" style="padding: 15px 34px; font-size: 1.02rem;">
+          <a href="/app" class="btn btn-primary" id="hero-demo-btn" style="padding: 15px 34px; font-size: 1.02rem;">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            <span>Coba Demo Interaktif Sekarang</span>
+            <span>Buka Aplikasi INVEYS</span>
           </a>
           <a href="#pricing" class="btn btn-secondary" id="hero-pricing-btn" style="padding: 15px 30px; font-size: 1.02rem;">
             <span>Pilih Paket & Lisensi</span>
@@ -1996,7 +1996,7 @@
         <h2 style="font-size: clamp(2.2rem, 4.4vw, 3.4rem); margin-bottom: 20px;">Siap Mengambil Kendali Penuh atas Keuangan Anda?</h2>
         <p class="lead" style="margin-bottom: 36px;">Bergabunglah dengan ratusan pengguna pintar yang telah meninggalkan spreadsheet manual.</p>
         <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
-          <a href="inveys-app.html#home" class="btn btn-primary" style="padding: 16px 36px;">Buka Demo Aplikasi Gratis</a>
+          <a href="/app" class="btn btn-primary" style="padding: 16px 36px;">Buka Aplikasi INVEYS</a>
           <a href="#pricing" class="btn btn-gold" style="padding: 16px 36px;">Beli Lisensi Sekarang</a>
         </div>
       </div>
@@ -2051,8 +2051,8 @@
         <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 20px;">
           Permintaan aktivasi untuk paket <strong id="success-plan-name" style="color:var(--ink);"></strong> telah dicatat.
         </p>
-        <a href="inveys-app.html#home" class="btn btn-primary" style="width: 100%;">
-          Lanjut Coba Demo Sekarang
+        <a href="/app" class="btn btn-primary" style="width: 100%;">
+          Lanjut Buka Aplikasi Sekarang
         </a>
       </div>
     </div>
@@ -2062,7 +2062,7 @@
   <footer class="landing-footer">
     <div class="container">
       <div class="footer-links">
-        <a href="inveys-app.html#home">Buka Demo Aplikasi</a>
+        <a href="/app">Buka Aplikasi</a>
         <a href="#fitur">Fitur Lengkap</a>
         <a href="#pricing">Paket Harga</a>
         <a href="https://github.com/cilostoc/INVYES" target="_blank" rel="noopener">GitHub Repository</a>
@@ -2393,7 +2393,7 @@
               <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--accent); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 12px; color: var(--accent); margin-bottom: 16px; word-break: break-all;">
                 ${sData.licenseKey}
               </div>
-              <a href="inveys-app.html#plans" class="btn btn-primary" style="width: 100%;">
+              <a href="/app#plans" class="btn btn-primary" style="width: 100%;">
                 Buka INVEYS Vault & Mulai Eksplorasi
               </a>
             `;
@@ -2418,6 +2418,21 @@
         closeCheckout();
       }
     };
+
+    // Client/Server Smart Link Resolver
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a[href^="/app"]').forEach(a => {
+        a.href = a.getAttribute('href').replace(/^\/app/, 'inveys-app.html');
+      });
+    } else {
+      try {
+        const token = localStorage.getItem('inveys_token');
+        if (token) {
+          const navBtn = document.getElementById('nav-app-btn');
+          if (navBtn) navBtn.innerHTML = '<span>⚡ Vault Saya</span>';
+        }
+      } catch (e) {}
+    }
   </script>
 </body>
 </html>

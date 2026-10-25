@@ -4874,7 +4874,7 @@
   }
   function planGate(feature){if(P.allowed(state.commercial.previewTier,feature))return false;openModal(L('Fitur pada paket lebih tinggi','Feature on a higher plan'),`<p class="note">${L('Fitur ini berada pada paket Pro atau Ultra dalam pratinjau. Data yang sudah ada tetap tersedia. Tidak ada pembayaran otomatis.','This feature belongs to Pro or Ultra in preview. Existing records remain available. No automatic payment occurs.')}</p><div class="button-group">${button(L('Bandingkan paket','Compare plans'),'plan-open','primary')}${button(t('Close'),'modal-close')}</div>`);return true;}
   function planAction(name,id){
-    if(name==='landing-open'){window.open('landing.html', '_blank');return;}
+    if(name==='landing-open'){window.open('/', '_blank');return;}
     if(name==='plan-open'){$('#modal').close();navigate('plans');}
     if(name==='plan-cycle'&&['monthly','annual'].includes(id)){planCycle=id;render();}
     if(name==='plan-preview'&&P.catalog.some(p=>p.id===id))confirmAction(L('Ganti pratinjau ke ','Switch preview to ')+id.toUpperCase(),L('Ini bukan pembelian. Catatan dan skenario lama tidak dihapus; batas diterapkan saat membuat fitur baru.','This is not a purchase. Existing records/scenarios remain; limits apply when creating new items.'),()=>{state.commercial.previewTier=id;toast(L('Pratinjau paket diperbarui','Plan preview updated'));},L('Ganti pratinjau','Switch preview'));

@@ -197,6 +197,30 @@ class Backend(unittest.TestCase):
             self.assertEqual(resp.status, 200)
             self.assertTrue(len(resp.read()) > 100000)
 
+    def test_landing_and_app_routing(self):
+        # 1. GET / must serve landing.html
+        req = urllib.request.Request(self.url + '/', headers={'Host': '127.0.0.1:3000'})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            body = resp.read().decode('utf-8', errors='ignore')
+            self.assertIn('INVEYS — Financial OS', body)
+            self.assertIn('/app', body)
+
+        # 2. GET /landing must also serve landing.html
+        req = urllib.request.Request(self.url + '/landing', headers={'Host': '127.0.0.1:3000'})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            body = resp.read().decode('utf-8', errors='ignore')
+            self.assertIn('INVEYS — Financial OS', body)
+
+        # 3. GET /app must serve index.html (the financial app shell)
+        req = urllib.request.Request(self.url + '/app', headers={'Host': '127.0.0.1:3000'})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            body = resp.read().decode('utf-8', errors='ignore')
+            self.assertIn('app-shell', body)
+            self.assertIn('navigation', body)
+
     def test_vps_segments_and_1click_update(self):
         # 1. GET /api/vps/segments
         status, segs = self.request('/api/vps/segments')

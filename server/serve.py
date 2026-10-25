@@ -693,8 +693,16 @@ class Handler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path):
         clean = path.split('?', 1)[0].split('#', 1)[0]
+        if clean in ('/', '/landing', '/landing.html'):
+            return str(SRC_DIR / 'landing.html')
+        if clean in ('/app', '/app/', '/vault', '/dashboard', '/index.html'):
+            return str(SRC_DIR / 'index.html')
         if clean == '/inveys-app.html':
             return str(PROJECT_ROOT / 'inveys-app.html')
+        if clean.startswith('/app/'):
+            sub = clean[5:].lstrip('/')
+            if sub:
+                return str(SRC_DIR / sub)
         return super().translate_path(path)
 
     def end_headers(self):
@@ -1013,15 +1021,31 @@ class Handler(SimpleHTTPRequestHandler):
                     rows = c.execute('SELECT id, workspace_id, created_at, note, length(data) FROM backups WHERE user_id = ? ORDER BY id DESC LIMIT 30', (user['id'],)).fetchall()
             return self.send_json({'ok': True, 'backups': [{'id': r[0], 'workspaceId': r[1], 'createdAt': r[2], 'note': r[3], 'sizeBytes': r[4]} for r in rows]})
 
-        allowed_static = ('/', '/index.html', '/inveys-app.html', '/landing.html', '/landing', '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js', '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js', '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest', '/sw.js', '/icon.svg')
-        if self.path.split('?')[0] not in allowed_static: return self.send_json({'error': 'Not found'}, 404)
-        if self.path.split('?')[0] == '/landing': self.path = '/landing.html'
+        allowed_static = (
+            '/', '/index.html', '/inveys-app.html', '/landing.html', '/landing',
+            '/app', '/app/', '/vault', '/dashboard',
+            '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js',
+            '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js',
+            '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest',
+            '/sw.js', '/icon.svg'
+        )
+        clean = self.path.split('?')[0].split('#')[0]
+        if clean not in allowed_static and not (clean.startswith('/app/') and ('/' + clean[5:].lstrip('/')) in allowed_static):
+            return self.send_json({'error': 'Not found'}, 404)
         super().do_GET()
 
     def do_HEAD(self):
-        allowed_static = ('/', '/index.html', '/inveys-app.html', '/landing.html', '/landing', '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js', '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js', '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest', '/sw.js', '/icon.svg')
-        if self.path.split('?')[0] not in allowed_static or not self.allowed(): return self.send_json({'error': 'Not found'}, 404)
-        if self.path.split('?')[0] == '/landing': self.path = '/landing.html'
+        allowed_static = (
+            '/', '/index.html', '/inveys-app.html', '/landing.html', '/landing',
+            '/app', '/app/', '/vault', '/dashboard',
+            '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js',
+            '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js',
+            '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest',
+            '/sw.js', '/icon.svg'
+        )
+        clean = self.path.split('?')[0].split('#')[0]
+        if not self.allowed() or (clean not in allowed_static and not (clean.startswith('/app/') and ('/' + clean[5:].lstrip('/')) in allowed_static)):
+            return self.send_json({'error': 'Not found'}, 404)
         super().do_HEAD()
 
     def do_POST(self):
