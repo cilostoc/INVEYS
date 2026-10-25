@@ -170,8 +170,9 @@ def chat(data,extract,transcribe):
    if file['type'].startswith('image/'):content.append({'type':'image_url','image_url':{'url':'data:'+file['type']+';base64,'+file['data']}})
    elif file['type'].startswith('audio/'):content[0]['text']+='\nAudio transcript:\n'+audio_openai(file,key,base)
    else:content[0]['text']+='\nDocument text:\n'+extract(file)[:30000]
-  result=router_transport(base+'/chat/completions',{'model':model,'messages':[{'role':'system','content':instructions}]+[{'role':m['role'],'content':m['text']} for m in history]+[{'role':'user','content':content}],'max_tokens':3000},key)
-  answer=result.get('choices',[{}])[0].get('message',{}).get('content','')
+  result=router_transport(base+'/chat/completions',{'model':model,'messages':[{'role':'system','content':instructions}]+[{'role':m['role'],'content':m['text']} for m in history]+[{'role':'user','content':content}],'max_tokens':3000,'stream':False},key)
+  _msg=result.get('choices',[{}])[0].get('message',{})
+  answer=_msg.get('content') or _msg.get('reasoning_content') or ''
  else:
   content=[{'type':'text','text':text}]
   if file:
@@ -366,8 +367,9 @@ def extract_statement(data, extract):
   elif raw_text:
    content[0]['text'] += '\nDocument text:\n' + raw_text[:35000]
 
-  res = router_transport(base + '/chat/completions', {'model': model, 'messages': [{'role': 'system', 'content': STATEMENT_SYSTEM}, {'role': 'user', 'content': content}], 'max_tokens': 4000}, key)
-  answer = res.get('choices', [{}])[0].get('message', {}).get('content', '')
+  res = router_transport(base + '/chat/completions', {'model': model, 'messages': [{'role': 'system', 'content': STATEMENT_SYSTEM}, {'role': 'user', 'content': content}], 'max_tokens': 4000, 'stream': False}, key)
+  _msg = res.get('choices', [{}])[0].get('message', {})
+  answer = _msg.get('content') or _msg.get('reasoning_content') or ''
 
  else:
   content = [{'type': 'text', 'text': doc_prompt}]
