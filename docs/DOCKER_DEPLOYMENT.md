@@ -58,8 +58,8 @@ Arsitektur Docker INVEYS dirancang dengan prinsip **Stateless Container + Statef
 Masuk ke terminal VPS Anda via SSH dan clone proyek:
 
 ```bash
-git clone https://github.com/cilostoc/INVYES.git
-cd INVYES
+git clone https://github.com/cilostoc/inveys.git
+cd inveys
 ```
 
 ### Langkah 2: Instalasi Docker & Docker Compose (Jika belum terpasang)
