@@ -4266,10 +4266,136 @@ dialog.has-key-mgr > #modal-body {
   display: none !important;
 }
 
+/* ==========================================================================
+   PRIORITY 2: Ultra-Smooth Navigation Accordions & Progress Bar Fill-ups
+   ========================================================================== */
 
+/* 1. Sidebar Accordion Spring Transitions & Tactile Submenu */
+.nav-disclosure {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  transform-origin: center center;
+  will-change: transform;
+}
 
+.nav-section[open] .nav-disclosure {
+  transform: rotate(180deg);
+}
 
+.nav-section[open] .nav-submenu {
+  animation: navSubmenuSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
 
+@keyframes navSubmenuSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-submenu .nav-item {
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.nav-submenu .nav-item:hover {
+  transform: translateX(4px);
+}
+
+/* 2. Ultra-Smooth Progress Bar ScaleX Fill-up & Luminous Shimmer */
+.progress-fill,
+.budget-bar-fill,
+.gold-progress-fill,
+.rebalance-fill {
+  position: relative !important;
+}
+
+.pace-fill-spend {
+  position: absolute !important;
+}
+
+.progress-fill,
+.budget-bar-fill,
+.gold-progress-fill,
+.rebalance-fill,
+.pace-fill-spend {
+  overflow: hidden !important;
+  transform-origin: left center;
+  animation: progressFillUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: width 0.75s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: transform, width;
+}
+
+@keyframes progressFillUp {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.progress-fill::after,
+.budget-bar-fill::after,
+.gold-progress-fill::after,
+.rebalance-fill::after,
+.pace-fill-spend::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 50%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: progressShimmerGleam 1.6s ease-out 0.2s 1 forwards;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .progress-fill::after,
+[data-theme="dark"] .budget-bar-fill::after,
+[data-theme="dark"] .gold-progress-fill::after,
+[data-theme="dark"] .rebalance-fill::after,
+[data-theme="dark"] .pace-fill-spend::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+}
+
+@keyframes progressShimmerGleam {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+/* Accessibility: Respect Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  .nav-disclosure,
+  .nav-submenu .nav-item,
+  .progress-fill,
+  .budget-bar-fill,
+  .gold-progress-fill,
+  .rebalance-fill,
+  .pace-fill-spend {
+    animation: none !important;
+    transition: none !important;
+  }
+  .nav-section[open] .nav-submenu {
+    animation: none !important;
+  }
+  .nav-submenu .nav-item:hover {
+    transform: none !important;
+  }
+  .progress-fill::after,
+  .budget-bar-fill::after,
+  .gold-progress-fill::after,
+  .rebalance-fill::after,
+  .pace-fill-spend::after {
+    display: none !important;
+  }
+}
 </style>
 </head>
 <body>
