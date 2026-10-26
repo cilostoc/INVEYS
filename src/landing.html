@@ -3,39 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#061210">
+  <meta name="theme-color" content="#040d0b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="INVEYS — Sistem Operasi Finansial & Pengelolaan Kekayaan Pribadi dengan dukungan 14 Bank Indonesia, diagram arus kas Sankey, AI e-statement extractor, dan privasi 100% lokal.">
+  <meta name="description" content="INVEYS — Sistem Operasi Finansial & Brankas Kekayaan Pribadi Berdaulat. Dukungan 14+ Bank Indonesia, AI e-statement extractor, diagram arus kas Sankey, dan privasi 100% lokal.">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <title>INVEYS — Financial OS & Wealth Management untuk Indonesia | Monarch Money Alternative</title>
+  <title>INVEYS — Financial OS & Sovereign Wealth Management Vault | Monarch Money Alternative Indonesia</title>
   
   <!-- Modern Typography Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <style>
     :root {
-      --bg: #061210;
-      --bg-surface: #0a1c18;
-      --bg-card: rgba(13, 34, 30, 0.72);
-      --bg-card-hover: rgba(18, 46, 40, 0.88);
-      --border: rgba(52, 211, 153, 0.16);
+      --bg: #040d0b;
+      --bg-surface: #081714;
+      --bg-card: rgba(10, 28, 23, 0.75);
+      --bg-card-hover: rgba(15, 38, 31, 0.9);
+      --border: rgba(52, 211, 153, 0.18);
       --border-subtle: rgba(255, 255, 255, 0.08);
       --border-focus: #34d399;
       
       --accent: #34d399;
-      --accent-glow: rgba(52, 211, 153, 0.28);
+      --accent-glow: rgba(52, 211, 153, 0.32);
       --accent-hover: #10b981;
       --accent-light: #a7f3d0;
       
       --gold: #fbbf24;
-      --gold-glow: rgba(251, 191, 36, 0.28);
+      --gold-glow: rgba(251, 191, 36, 0.3);
       --gold-light: #fef08a;
       
       --cyan: #38bdf8;
-      --cyan-glow: rgba(56, 189, 248, 0.25);
+      --cyan-glow: rgba(56, 189, 248, 0.28);
+
+      --purple: #a78bfa;
+      --purple-glow: rgba(167, 139, 250, 0.28);
       
       --ink: #f8fafc;
       --ink-muted: #94a3b8;
@@ -78,15 +81,16 @@
       line-height: 1.65;
       overflow-x: hidden;
       background-image:
-        radial-gradient(circle at 12% 10%, rgba(52, 211, 153, 0.12) 0%, transparent 45%),
-        radial-gradient(circle at 88% 22%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 50% 65%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+        radial-gradient(circle at 10% 8%, rgba(52, 211, 153, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 90% 18%, rgba(56, 189, 248, 0.1) 0%, transparent 42%),
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 55%),
+        radial-gradient(circle at 80% 82%, rgba(251, 191, 36, 0.06) 0%, transparent 45%);
       background-attachment: fixed;
     }
 
     /* Container & Layout */
     .container {
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
       padding: 0 24px;
     }
@@ -100,30 +104,30 @@
     }
 
     h1 {
-      font-size: clamp(2.35rem, 4.4vw, 3.8rem);
+      font-size: clamp(2.4rem, 4.8vw, 4.2rem);
       font-weight: 800;
-      letter-spacing: -0.035em;
-      line-height: 1.15;
+      letter-spacing: -0.038em;
+      line-height: 1.12;
       text-wrap: balance;
     }
 
     h2 {
-      font-size: clamp(1.85rem, 3.2vw, 2.65rem);
+      font-size: clamp(1.9rem, 3.4vw, 2.75rem);
       font-weight: 800;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.032em;
       line-height: 1.2;
       text-wrap: balance;
     }
 
     h3 {
-      font-size: clamp(1.15rem, 1.8vw, 1.4rem);
+      font-size: clamp(1.2rem, 1.9vw, 1.45rem);
       font-weight: 700;
       letter-spacing: -0.02em;
       line-height: 1.35;
     }
 
     p.lead {
-      font-size: clamp(1.02rem, 1.6vw, 1.18rem);
+      font-size: clamp(1.04rem, 1.65vw, 1.22rem);
       color: var(--ink-muted);
       line-height: 1.7;
       font-weight: 400;
@@ -215,11 +219,16 @@
       border-color: rgba(251, 191, 36, 0.3);
       color: #fcd34d;
     }
+    .pill-cyan {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+    }
 
     /* Section Head Standard */
     .section-head {
       text-align: center;
-      max-width: 760px;
+      max-width: 780px;
       margin: 0 auto 56px;
     }
     .section-head .pill {
@@ -232,7 +241,7 @@
       font-size: 1.05rem;
       line-height: 1.65;
       color: var(--ink-muted);
-      max-width: 660px;
+      max-width: 680px;
       margin: 0 auto;
     }
 
@@ -241,8 +250,8 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(6, 18, 16, 0.85);
-      backdrop-filter: blur(16px);
+      background: rgba(4, 13, 11, 0.88);
+      backdrop-filter: blur(18px);
       border-bottom: 1px solid var(--border);
       padding: 14px 0;
     }
@@ -261,17 +270,17 @@
       letter-spacing: -0.03em;
     }
     .nav-brand-symbol {
-      width: 32px;
-      height: 32px;
-      border-radius: 9px;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
       background: linear-gradient(135deg, #34d399 0%, #059669 100%);
-      color: #061210;
+      color: #040d0b;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 900;
-      font-size: 1.05rem;
-      box-shadow: 0 0 16px rgba(52, 211, 153, 0.3);
+      font-size: 1.1rem;
+      box-shadow: 0 0 18px rgba(52, 211, 153, 0.35);
     }
     .nav-tagline {
       font-size: 0.65rem;
@@ -302,22 +311,55 @@
       gap: 12px;
     }
 
-    /* Hero Section */
+    /* =========================================================================
+       HERO SECTION & 3D INTERACTIVE VAULT ENGINE
+       ========================================================================= */
     .hero {
-      padding: 85px 0 70px;
+      padding: 80px 0 75px;
       text-align: center;
       position: relative;
+      overflow: hidden;
     }
+
+    /* Ambient 3D Canvas Background Behind Hero */
+    .hero-canvas-wrap {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 1000px;
+      height: 600px;
+      pointer-events: auto;
+      z-index: 1;
+      opacity: 0.75;
+      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 70%);
+      -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 70%);
+    }
+    #vault-3d-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+    #vault-3d-canvas:active {
+      cursor: grabbing;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+    }
+
     .hero h1 {
-      max-width: 920px;
-      margin: 0 auto 22px;
-      background: linear-gradient(180deg, #ffffff 30%, #a7f3d0 100%);
+      max-width: 960px;
+      margin: 0 auto 24px;
+      background: linear-gradient(180deg, #ffffff 25%, #a7f3d0 90%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .hero p.lead {
-      max-width: 760px;
-      margin: 0 auto 36px;
+      max-width: 800px;
+      margin: 0 auto 38px;
     }
     .hero-actions {
       display: flex;
@@ -331,28 +373,73 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 26px;
+      gap: 28px;
       flex-wrap: wrap;
       color: var(--ink-subtle);
-      font-size: 0.85rem;
-      margin-bottom: 52px;
+      font-size: 0.86rem;
+      margin-bottom: 56px;
     }
     .trust-checks span { display: inline-flex; align-items: center; gap: 7px; }
     .trust-checks svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
 
+    /* =========================================================================
+       3D PERSPECTIVE WRAPPER & HERO COCKPIT MOCKUP
+       ========================================================================= */
+    .hero-perspective-viewport {
+      perspective: 1400px;
+      position: relative;
+      max-width: 1120px;
+      margin: 0 auto;
+      z-index: 3;
+    }
+
+    .hero-perspective-wrap {
+      transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.8s ease;
+      will-change: transform;
+      position: relative;
+    }
+
+    /* Dramatic 3D Isometric View Mode */
+    .hero-perspective-wrap.is-isometric-3d {
+      transform: perspective(1400px) rotateX(15deg) rotateY(-12deg) rotateZ(2deg) scale(0.96);
+      box-shadow: -20px 40px 90px rgba(0, 0, 0, 0.85), 0 0 60px rgba(52, 211, 153, 0.35);
+    }
+
     /* Interactive Hero Mockup Card */
     .hero-preview {
-      max-width: 1040px;
-      margin: 0 auto;
-      background: rgba(13, 34, 30, 0.72);
-      border: 1px solid rgba(52, 211, 153, 0.28);
+      background: var(--bg-card);
+      border: 1px solid rgba(52, 211, 153, 0.3);
       border-radius: var(--radius-xl);
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.65), var(--shadow-glow);
-      padding: 24px;
-      backdrop-filter: blur(24px);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), var(--shadow-glow);
+      padding: 26px;
+      backdrop-filter: blur(28px);
       position: relative;
-      overflow: hidden;
+      overflow: visible;
+      transform-style: preserve-3d;
+      transition: border-color 0.3s ease;
     }
+
+    /* Specular dynamic glare that follows cursor */
+    .hero-preview::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(
+        700px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+        rgba(52, 211, 153, 0.16),
+        transparent 65%
+      );
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 10;
+    }
+    .hero-preview:hover::before {
+      opacity: 1;
+    }
+
     .preview-header {
       display: flex;
       align-items: center;
@@ -362,6 +449,8 @@
       margin-bottom: 24px;
       flex-wrap: wrap;
       gap: 12px;
+      position: relative;
+      z-index: 2;
     }
     .preview-title {
       display: flex;
@@ -405,25 +494,27 @@
     .preview-stats-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
+      gap: 16px;
       margin-bottom: 24px;
+      position: relative;
+      z-index: 2;
     }
     .preview-stat-card {
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.035);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
-      padding: 16px 16px 14px;
+      padding: 18px 18px 15px;
       text-align: left;
       position: relative;
       transition: all 0.25s ease;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      min-height: 136px;
+      min-height: 140px;
     }
     .preview-stat-card:hover {
-      border-color: rgba(52, 211, 153, 0.35);
-      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(52, 211, 153, 0.45);
+      background: rgba(255, 255, 255, 0.055);
       transform: translateY(-2px);
     }
     .preview-stat-label {
@@ -436,7 +527,7 @@
       min-width: 0;
     }
     .preview-stat-title {
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: var(--ink-subtle);
       letter-spacing: -0.01em;
@@ -484,7 +575,7 @@
       color: #a78bfa;
     }
     .preview-stat-val {
-      font-size: 1.52rem;
+      font-size: 1.55rem;
       font-weight: 700;
       font-family: var(--font-display);
       color: var(--ink);
@@ -525,35 +616,37 @@
 
     /* Mini Sankey Bar Preview */
     .preview-sankey {
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(0, 0, 0, 0.3);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
-      padding: 20px;
+      padding: 22px;
       text-align: left;
+      position: relative;
+      z-index: 2;
     }
     .sankey-head {
       display: flex;
       justify-content: space-between;
-      font-size: 0.85rem;
-      margin-bottom: 12px;
+      font-size: 0.88rem;
+      margin-bottom: 14px;
       font-weight: 600;
       flex-wrap: wrap;
       gap: 8px;
     }
     .sankey-bars {
       display: flex;
-      height: 30px;
+      height: 32px;
       border-radius: var(--radius-sm);
       overflow: hidden;
       margin-bottom: 14px;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
     }
     .sankey-segment {
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.72rem;
+      font-size: 0.74rem;
       font-weight: 700;
       color: #041f18;
       transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -572,18 +665,267 @@
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-box { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
+    /* =========================================================================
+       LAYERED 3D FLOATING ASSET CARDS (DEPTH TRANSLATEZ)
+       ========================================================================= */
+    .floating-3d-card {
+      position: absolute;
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+      pointer-events: none;
+      z-index: 8;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Floating Titanium Black Credit Card */
+    .card-titanium-black {
+      width: 250px;
+      height: 145px;
+      top: -45px;
+      right: -35px;
+      background: linear-gradient(135deg, #18201e 0%, #0a110f 100%);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      transform: translateZ(55px) rotate(4deg);
+      animation: float-3d-1 4.5s ease-in-out infinite alternate;
+    }
+    .card-chip-gold {
+      width: 32px;
+      height: 24px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, #fef08a 0%, #d97706 100%);
+      border: 1px solid #78350f;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.35);
+      position: relative;
+    }
+    .card-chip-gold::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border: 1px solid rgba(0,0,0,0.3);
+      border-radius: 2px;
+    }
+    .card-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-brand-label {
+      font-family: var(--font-display);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #a7f3d0;
+    }
+    .card-num-obfuscated {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      letter-spacing: 0.12em;
+      color: #e2e8f0;
+      margin: 10px 0 6px;
+    }
+    .card-bottom-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.65rem;
+      color: var(--ink-muted);
+      font-weight: 600;
+    }
+
+    /* Floating 24K Pegadaian Gold Bullion Certificate */
+    .card-gold-bullion {
+      width: 230px;
+      height: 125px;
+      bottom: -35px;
+      left: -35px;
+      background: linear-gradient(135deg, rgba(38, 28, 8, 0.9) 0%, rgba(18, 14, 4, 0.95) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(251, 191, 36, 0.2);
+      transform: translateZ(45px) rotate(-3deg);
+      animation: float-3d-2 5s ease-in-out infinite alternate;
+    }
+    .gold-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .gold-seal {
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: #381a03;
+      background: linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%);
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+    .gold-brand-txt {
+      font-size: 0.72rem;
+      color: #fbbf24;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .gold-weight-txt {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fef08a;
+      margin: 4px 0 2px;
+    }
+    .gold-rate-txt {
+      font-size: 0.7rem;
+      color: var(--ink-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Floating AI Smart Extractor Pill */
+    .card-ai-extractor {
+      position: absolute;
+      top: -30px;
+      left: 30%;
+      transform: translateZ(65px);
+      background: rgba(13, 38, 32, 0.92);
+      border: 1px solid rgba(52, 211, 153, 0.45);
+      border-radius: var(--radius-full);
+      padding: 8px 18px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(52, 211, 153, 0.25);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #6ee7b7;
+      animation: float-3d-3 4s ease-in-out infinite alternate;
+      z-index: 9;
+    }
+    .ai-radar-pulse {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 12px #34d399;
+      animation: pulse-dot 1.4s infinite;
+    }
+
+    @keyframes float-3d-1 {
+      0% { transform: translateZ(55px) rotate(4deg) translateY(0); }
+      100% { transform: translateZ(65px) rotate(6deg) translateY(-12px); }
+    }
+    @keyframes float-3d-2 {
+      0% { transform: translateZ(45px) rotate(-3deg) translateY(0); }
+      100% { transform: translateZ(55px) rotate(-1deg) translateY(10px); }
+    }
+    @keyframes float-3d-3 {
+      0% { transform: translateZ(65px) translateY(0); }
+      100% { transform: translateZ(75px) translateY(-8px); }
+    }
+
+    /* =========================================================================
+       VISION & PHILOSOPHY SECTION (3 SOVEREIGN PILLARS)
+       ========================================================================= */
+    .vision-section {
+      padding: 100px 0 80px;
+      position: relative;
+    }
+    .vision-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+    .vision-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 36px 30px;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      transform-style: preserve-3d;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .vision-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+      transition: opacity 0.3s ease;
+    }
+    .vision-card:hover {
+      border-color: rgba(52, 211, 153, 0.45);
+      background: var(--bg-card-hover);
+      transform: translateY(-6px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(52, 211, 153, 0.15);
+    }
+    .vision-card:hover::after {
+      opacity: 1;
+    }
+    .vision-icon-wrap {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      background: rgba(52, 211, 153, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.28);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      margin-bottom: 22px;
+      color: var(--accent);
+    }
+    .vision-card h3 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+      color: var(--ink);
+    }
+    .vision-card p {
+      font-size: 0.94rem;
+      color: var(--ink-muted);
+      line-height: 1.7;
+    }
+    .vision-features-list {
+      margin-top: 20px;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+    .vision-features-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vision-features-list svg {
+      width: 15px;
+      height: 15px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
     /* Ecosystem / Logo Marquee */
     .ecosystem-section {
-      padding: 64px 0;
+      padding: 68px 0;
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
-      background: rgba(0, 0, 0, 0.22);
+      background: rgba(0, 0, 0, 0.25);
       text-align: center;
     }
     .ecosystem-title {
-      font-size: 0.85rem;
+      font-size: 0.86rem;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       color: #6ee7b7;
       margin-bottom: 26px;
       font-weight: 700;
@@ -594,7 +936,7 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      max-width: 1100px;
+      max-width: 1140px;
       margin: 0 auto;
     }
     .bank-chip {
@@ -637,6 +979,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      transform-style: preserve-3d;
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .bento-card:hover {
@@ -751,7 +1094,7 @@
        COMPARISON TABLE (100% FULL-WIDTH FIT, NO HORIZONTAL SCROLLBAR ON DESKTOP)
        ========================================================================= */
     .comparison-section {
-      padding: 88px 0;
+      padding: 92px 0;
       background: rgba(0, 0, 0, 0.2);
     }
     .comp-table-wrap {
@@ -839,7 +1182,7 @@
     }
 
     /* =========================================================================
-       PRICING SECTION & INTUITIVE PACKAGE SELECTION (STABLE, TIDY, NO SHIFT)
+       PRICING SECTION & INTUITIVE PACKAGE SELECTION
        ========================================================================= */
     .pricing-section {
       padding: 104px 0;
@@ -887,7 +1230,7 @@
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 24px;
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
       align-items: stretch;
     }
@@ -907,7 +1250,6 @@
       overflow: hidden;
       transform: translateZ(0);
       backface-visibility: hidden;
-      -webkit-font-smoothing: antialiased;
       transition:
         transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
         border-color 0.35s ease,
@@ -941,7 +1283,7 @@
       );
     }
 
-    /* Uniform Top Slot: Fixed Height, Stable Baseline */
+    /* Uniform Top Slot */
     .card-top-slot {
       height: 32px;
       min-height: 32px;
@@ -949,154 +1291,93 @@
       margin-bottom: 14px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      overflow: hidden;
-      position: relative;
-      z-index: 2;
+      justify-content: flex-start;
     }
 
     .plan-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
-      border-radius: var(--radius-full);
       font-size: 0.72rem;
       font-weight: 700;
-      letter-spacing: 0.04em;
       text-transform: uppercase;
-      background: var(--accent);
-      color: #04241d;
-      white-space: nowrap;
+      letter-spacing: 0.06em;
+      padding: 5px 12px;
+      border-radius: var(--radius-full);
+      line-height: 1;
     }
-    .plan-badge.gold {
-      background: var(--gold);
-      color: #381a03;
+    .badge-basic {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink-muted);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    .plan-badge.subtle {
-      background: rgba(255, 255, 255, 0.08);
-      color: #cbd5e1;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    .badge-pop {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
     }
-
-    /* Selection Radio Check Indicator */
-    .plan-radio-indicator {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: 1.5px solid rgba(255, 255, 255, 0.22);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.25s ease;
-      flex-shrink: 0;
-      background: rgba(0, 0, 0, 0.2);
+    .badge-vip {
+      background: rgba(167, 139, 250, 0.15);
+      color: #a78bfa;
+      border: 1px solid rgba(167, 139, 250, 0.3);
     }
-    .plan-radio-indicator svg {
-      width: 12px;
-      height: 12px;
-      opacity: 0;
-      transform: scale(0.5);
-      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-      color: #04241d;
+    .badge-lt {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.35);
     }
 
-    .pricing-card.is-selected .plan-radio-indicator {
-      background: var(--accent);
-      border-color: var(--accent);
-      box-shadow: 0 0 12px var(--accent-glow);
-    }
-    .pricing-card.is-selected .plan-radio-indicator svg {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    .pricing-card.lifetime.is-selected .plan-radio-indicator {
-      background: var(--gold);
-      border-color: var(--gold);
-      box-shadow: 0 0 12px var(--gold-glow);
-    }
-    .pricing-card.lifetime.is-selected .plan-radio-indicator svg {
-      color: #381a03;
-    }
-
-    .plan-header {
-      position: relative;
-      z-index: 2;
-      margin-bottom: 20px;
-    }
-    .plan-name {
-      font-family: var(--font-display) !important;
-      font-size: 1.45rem !important;
-      font-weight: 700 !important;
-      line-height: 1.25 !important;
-      letter-spacing: -0.02em !important;
-      color: var(--ink) !important;
-      margin-bottom: 8px !important;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transform: translateZ(0);
-      -webkit-font-smoothing: antialiased;
+    .pricing-card h3 {
+      font-size: 1.45rem;
+      margin-bottom: 8px;
     }
     .plan-desc {
-      font-family: var(--font-body);
-      font-size: 0.88rem;
+      font-size: 0.86rem;
       color: var(--ink-muted);
-      min-height: 44px;
+      margin-bottom: 20px;
+      min-height: 42px;
       line-height: 1.5;
     }
-
     .plan-price-wrap {
-      position: relative;
-      z-index: 2;
       margin-bottom: 24px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
     }
     .plan-price {
-      font-size: 2.25rem;
+      font-size: 2.1rem;
       font-weight: 800;
       font-family: var(--font-display);
-      font-variant-numeric: tabular-nums;
       color: var(--ink);
     }
     .plan-cycle {
-      font-size: 0.85rem;
-      color: var(--ink-subtle);
-      margin-left: 4px;
-      font-weight: 500;
+      font-size: 0.86rem;
+      color: var(--ink-muted);
     }
 
     .plan-features {
-      position: relative;
-      z-index: 2;
       list-style: none;
-      margin-bottom: 28px;
-      flex-grow: 1;
+      margin-bottom: 30px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
+      font-size: 0.88rem;
     }
     .plan-features li {
-      font-size: 0.88rem;
-      color: #cbd5e1;
-      line-height: 1.5;
       display: flex;
       align-items: flex-start;
       gap: 10px;
+      color: #cbd5e1;
+      line-height: 1.45;
     }
-    .plan-features li svg {
-      width: 17px;
-      height: 17px;
+    .plan-features svg {
+      width: 16px;
+      height: 16px;
       color: var(--accent);
       flex-shrink: 0;
-      margin-top: 2px;
+      margin-top: 3px;
     }
-
     .plan-cta-wrap {
-      position: relative;
-      z-index: 2;
       margin-top: auto;
     }
     .plan-cta {
@@ -1144,14 +1425,13 @@
         0 25px 60px rgba(0, 0, 0, 0.8);
     }
 
-    /* Selected State (When chosen) */
+    /* Selected State */
     .pricing-card.is-selected {
       border-color: var(--accent) !important;
       box-shadow:
         0 0 35px rgba(52, 211, 153, 0.32),
         0 15px 40px rgba(0, 0, 0, 0.6) !important;
     }
-
     .pricing-card.lifetime.is-selected {
       border-color: var(--gold) !important;
       box-shadow:
@@ -1161,7 +1441,7 @@
 
     /* FAQ Accordion */
     .faq-section {
-      padding: 88px 0;
+      padding: 92px 0;
     }
     .faq-list {
       max-width: 820px;
@@ -1276,8 +1556,11 @@
         grid-template-columns: repeat(2, 1fr);
         max-width: 760px;
       }
-      .pricing-card.popular {
-        order: -1;
+      .vision-grid {
+        grid-template-columns: 1fr;
+      }
+      .floating-3d-card {
+        display: none;
       }
     }
 
@@ -1291,6 +1574,7 @@
       }
       .hero { padding: 60px 0 45px; }
       .preview-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero-canvas-wrap { width: 100%; height: 380px; }
     }
     @media (max-width: 520px) {
       .preview-stats-grid { grid-template-columns: 1fr; }
@@ -1309,9 +1593,10 @@
       </a>
 
       <ul class="nav-menu">
+        <li><a href="#visi" class="nav-link">Visi & Kedaulatan</a></li>
         <li><a href="#fitur" class="nav-link">Fitur Unggulan</a></li>
-        <li><a href="#ekosistem" class="nav-link">Bank & Ekosistem</a></li>
-        <li><a href="#privasi" class="nav-link">Privasi & Keamanan</a></li>
+        <li><a href="#ekosistem" class="nav-link">14+ Bank Indonesia</a></li>
+        <li><a href="#privasi" class="nav-link">Zero-Knowledge</a></li>
         <li><a href="#pricing" class="nav-link">Pilihan Paket</a></li>
         <li><a href="#faq" class="nav-link">FAQ</a></li>
       </ul>
@@ -1327,28 +1612,33 @@
     </div>
   </header>
 
-  <!-- Hero Section -->
+  <!-- Hero Section with 3D Vault Core & Floating Cards -->
   <main>
     <section class="hero">
-      <div class="container">
+      <!-- Interactive 3D Geometric Financial Vault Core Canvas -->
+      <div class="hero-canvas-wrap" id="canvas-container">
+        <canvas id="vault-3d-canvas" title="Gerakkan kursor untuk memutar 3D Financial Vault Core"></canvas>
+      </div>
+
+      <div class="container hero-content">
         <div class="pill">
           <span>⚡ Versi 0.23.0 Dirilis</span>
           <span>·</span>
-          <span>Dukungan Penuh 14 Bank & Kartu Kredit Indonesia</span>
+          <span>Sistem Operasi Finansial Berdaulat & Brankas Keluarga Indonesia</span>
         </div>
 
-        <h1>Kendalikan Seluruh Kekayaan & Investasi Keluarga dalam Satu Vault Finansial Pribadi</h1>
+        <h1>Sistem Operasi Finansial & Brankas Kekayaan Keluarga Berdaulat</h1>
 
         <p class="lead">
-          Alternatif modern untuk Monarch Money & Copilot. Sinkronkan mutasi e-statement BCA, Mandiri, BRI, BNI, kartu kredit, hingga tabungan emas Pegadaian secara otomatis dengan kecerdasan buatan, privasi 100% lokal, dan tanpa pernah menyerahkan password m-Banking Anda.
+          Alternatif modern untuk Monarch Money & Copilot di Indonesia. Kendalikan mutasi 14+ bank (BCA, Mandiri, BRI, BNI), kartu kredit, tabungan emas Pegadaian, dan portofolio investasi dalam brankas berenkripsi 100% lokal — tanpa pernah menyerahkan password m-Banking ke pihak ketiga.
         </p>
 
         <div class="hero-actions">
-          <a href="/app" class="btn btn-primary" id="hero-demo-btn" style="padding: 15px 34px; font-size: 1.02rem;">
+          <a href="/app" class="btn btn-primary" id="hero-demo-btn" style="padding: 16px 36px; font-size: 1.05rem;">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             <span>Buka Aplikasi INVEYS</span>
           </a>
-          <a href="#pricing" class="btn btn-secondary" id="hero-pricing-btn" style="padding: 15px 30px; font-size: 1.02rem;">
+          <a href="#pricing" class="btn btn-secondary" id="hero-pricing-btn" style="padding: 16px 32px; font-size: 1.05rem;">
             <span>Pilih Paket & Lisensi</span>
           </a>
         </div>
@@ -1356,94 +1646,185 @@
         <div class="trust-checks">
           <span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Tanpa kredensial m-Banking
+            100% Kedaulatan Data Lokal (Zero-Knowledge)
           </span>
           <span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            100% Data tersimpan di perangkat lokal
+            Tanpa Kredensial m-Banking / Open Finance
           </span>
           <span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Dapat dijalankan offline & self-hosted di VPS
+            Dapat Dijalankan Offline & Private VPS
           </span>
         </div>
 
-        <!-- Interactive Hero Product Mockup with Dynamic Rolling Numbers -->
-        <div class="hero-preview" id="hero-mockup">
-          <div class="preview-header">
-            <div class="preview-title">
-              <div class="preview-dots">
-                <span class="preview-dot dot-red"></span>
-                <span class="preview-dot dot-yellow"></span>
-                <span class="preview-dot dot-green"></span>
+        <!-- 3D Perspective Viewport for the Financial Cockpit -->
+        <div class="hero-perspective-viewport">
+          <div class="hero-perspective-wrap" id="hero-perspective-wrap">
+
+            <!-- 3D Floating Asset Card 1: Obsidian Titanium Black Card -->
+            <div class="floating-3d-card card-titanium-black" title="Obsidian Titanium Card Simulation">
+              <div class="card-top-row">
+                <div class="card-chip-gold"></div>
+                <span class="card-brand-label">BCA PLATINUM</span>
               </div>
-              <strong style="font-size: 0.92rem; font-family: var(--font-display); letter-spacing: -0.01em;">INVEYS Vault · Hostinger KVM Node · v0.23.0</strong>
-              <div class="live-status-pill">
-                <span class="live-dot"></span>
-                <span>LIVE SYNC</span>
+              <div class="card-num-obfuscated">•••• 8829</div>
+              <div class="card-bottom-row">
+                <span>LIMIT: RP 50.000.000</span>
+                <span style="font-family: var(--font-display); font-weight: 800; color: #fff;">VISA</span>
               </div>
             </div>
-            <div>
-              <button class="btn btn-secondary" id="ghost-demo-toggle" style="padding: 6px 14px; font-size: 0.8rem;">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-                <span id="ghost-btn-text">Ghost Mode (Klik untuk sensor saldo)</span>
-              </button>
+
+            <!-- 3D Floating Asset Card 2: 24K Pegadaian Gold Bullion Certificate -->
+            <div class="floating-3d-card card-gold-bullion" title="24K Physical Gold Certificate">
+              <div class="gold-header">
+                <span class="gold-seal">24K</span>
+                <span class="gold-brand-txt">PEGADAIAN GALERI 24</span>
+              </div>
+              <div class="gold-weight-txt">50.000 gr <span style="font-size: 0.75rem; font-weight: normal; color: var(--gold);">(Au 99.99%)</span></div>
+              <div class="gold-rate-txt">
+                <span>Spot: Rp 1.485.000/gr</span>
+                <span style="color: #34d399; font-weight: 700;">▲ +22.4%</span>
+              </div>
+            </div>
+
+            <!-- 3D Floating Asset Card 3: AI Smart Extractor Pulse -->
+            <div class="card-ai-extractor" title="Gemini & DeepSeek Multimodal OCR">
+              <div class="ai-radar-pulse"></div>
+              <span>⚡ AI e-Statement Extractor · Mandiri 142 Mutasi · 0.28s</span>
+            </div>
+
+            <!-- Interactive Hero Product Mockup -->
+            <div class="hero-preview" id="hero-mockup">
+              <div class="preview-header">
+                <div class="preview-title">
+                  <div class="preview-dots">
+                    <span class="preview-dot dot-red"></span>
+                    <span class="preview-dot dot-yellow"></span>
+                    <span class="preview-dot dot-green"></span>
+                  </div>
+                  <strong style="font-size: 0.92rem; font-family: var(--font-display); letter-spacing: -0.01em;">INVEYS Sovereign Vault · Hostinger KVM Node · v0.23.0</strong>
+                  <div class="live-status-pill">
+                    <span class="live-dot"></span>
+                    <span>LIVE SYNC</span>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <!-- 3D Perspective Angle Switcher -->
+                  <button class="btn btn-secondary" id="btn-toggle-3d-view" style="padding: 6px 14px; font-size: 0.8rem;" title="Ubah sudut pandang dashboard 3D">
+                    <span>◰ Mode Perspektif 3D</span>
+                  </button>
+                  <button class="btn btn-secondary" id="ghost-demo-toggle" style="padding: 6px 14px; font-size: 0.8rem;" title="Sensor angka sensitif">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span id="ghost-btn-text">Ghost Mode</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="preview-stats-grid">
+                <div class="preview-stat-card" id="card-stat-networth">
+                  <div class="preview-stat-label">
+                    <span class="preview-stat-title" title="Total Kekayaan Bersih">Total Kekayaan Bersih</span>
+                    <span class="preview-stat-badge badge-green">Net Worth</span>
+                  </div>
+                  <div class="preview-stat-val" id="stat-networth">Rp 45.080.755</div>
+                  <div class="preview-stat-growth">▲ +14.2% YoY (2021–2026)</div>
+                </div>
+                <div class="preview-stat-card" id="card-stat-liquid">
+                  <div class="preview-stat-label">
+                    <span class="preview-stat-title" title="Saldo Kas & Bank">Saldo Kas & Bank</span>
+                    <span class="preview-stat-badge badge-blue">11 Bank</span>
+                  </div>
+                  <div class="preview-stat-val" id="stat-liquid">Rp 34.010.091</div>
+                  <div class="preview-stat-growth" style="color: #38bdf8;">✓ 6.8 Bulan Cadangan Kas</div>
+                </div>
+                <div class="preview-stat-card" id="card-stat-debt">
+                  <div class="preview-stat-label">
+                    <span class="preview-stat-title" title="Tagihan Kartu Kredit">Tagihan Kartu Kredit</span>
+                    <span class="preview-stat-badge badge-rose">3 Kartu</span>
+                  </div>
+                  <div class="preview-stat-val" id="stat-debt" style="color: #f87171;">Rp 12.681.740</div>
+                  <div class="preview-stat-growth" style="color: var(--ink-muted);">Jatuh tempo: Nov 2026</div>
+                </div>
+                <div class="preview-stat-card" id="card-stat-txs">
+                  <div class="preview-stat-label">
+                    <span class="preview-stat-title" title="Total Transaksi">Total Transaksi</span>
+                    <span class="preview-stat-badge badge-purple">Auto-Sync</span>
+                  </div>
+                  <div class="preview-stat-val" id="stat-txs">5.284 <span style="font-size: 0.95rem; font-weight: normal; color: var(--ink-muted);">transaksi</span></div>
+                  <div class="preview-stat-growth" style="color: #a78bfa;">✓ 100% Cocok & Terverifikasi</div>
+                </div>
+              </div>
+
+              <!-- Interactive Sankey Flow Bar Mockup -->
+              <div class="preview-sankey">
+                <div class="sankey-head">
+                  <span>Alur Arus Kas Monarch-Style Bulanan (Cash Flow Sankey)</span>
+                  <span style="color: var(--accent);" id="stat-surplus">Surplus Kas: +Rp 8.450.000 / bln</span>
+                </div>
+                <div class="sankey-bars">
+                  <div class="sankey-segment seg-income" data-target-width="45%" style="width: 45%;" title="Gaji & Pemasukan: Rp 28.500.000">Pemasukan (45%)</div>
+                  <div class="sankey-segment seg-fixed" data-target-width="25%" style="width: 25%;" title="Kebutuhan Rutin & Cicilan: Rp 15.800.000">Fixed Cost (25%)</div>
+                  <div class="sankey-segment seg-flexible" data-target-width="18%" style="width: 18%;" title="Belanja Fleksibel: Rp 7.400.000">Gaya Hidup (18%)</div>
+                  <div class="sankey-segment seg-invest" data-target-width="12%" style="width: 12%;" title="Investasi & Tabungan Emas: Rp 5.300.000">Investasi (12%)</div>
+                </div>
+                <div class="sankey-legend">
+                  <div class="legend-item"><span class="legend-box" style="background:#34d399"></span>Pemasukan Bersih</div>
+                  <div class="legend-item"><span class="legend-box" style="background:#38bdf8"></span>Kebutuhan Wajib & Utang</div>
+                  <div class="legend-item"><span class="legend-box" style="background:#fbbf24"></span>Belanja Fleksibel & Lifestyle</div>
+                  <div class="legend-item"><span class="legend-box" style="background:#a78bfa"></span>Alokasi Portofolio & Emas</div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
 
-          <div class="preview-stats-grid">
-            <div class="preview-stat-card" id="card-stat-networth">
-              <div class="preview-stat-label">
-                <span class="preview-stat-title" title="Total Kekayaan Bersih">Total Kekayaan Bersih</span>
-                <span class="preview-stat-badge badge-green">Net Worth</span>
-              </div>
-              <div class="preview-stat-val" id="stat-networth">Rp 45.080.755</div>
-              <div class="preview-stat-growth">▲ +14.2% YoY (2021–2026)</div>
-            </div>
-            <div class="preview-stat-card" id="card-stat-liquid">
-              <div class="preview-stat-label">
-                <span class="preview-stat-title" title="Saldo Kas & Bank">Saldo Kas & Bank</span>
-                <span class="preview-stat-badge badge-blue">11 Bank</span>
-              </div>
-              <div class="preview-stat-val" id="stat-liquid">Rp 34.010.091</div>
-              <div class="preview-stat-growth" style="color: #38bdf8;">✓ 6.8 Bulan Cadangan Kas</div>
-            </div>
-            <div class="preview-stat-card" id="card-stat-debt">
-              <div class="preview-stat-label">
-                <span class="preview-stat-title" title="Tagihan Kartu Kredit">Tagihan Kartu Kredit</span>
-                <span class="preview-stat-badge badge-rose">3 Kartu</span>
-              </div>
-              <div class="preview-stat-val" id="stat-debt" style="color: #f87171;">Rp 12.681.740</div>
-              <div class="preview-stat-growth" style="color: var(--ink-muted);">Jatuh tempo: Nov 2026</div>
-            </div>
-            <div class="preview-stat-card" id="card-stat-txs">
-              <div class="preview-stat-label">
-                <span class="preview-stat-title" title="Total Transaksi">Total Transaksi</span>
-                <span class="preview-stat-badge badge-purple">Auto-Sync</span>
-              </div>
-              <div class="preview-stat-val" id="stat-txs">5.284 <span style="font-size: 0.95rem; font-weight: normal; color: var(--ink-muted);">transaksi</span></div>
-              <div class="preview-stat-growth" style="color: #a78bfa;">✓ 100% Cocok & Terverifikasi</div>
-            </div>
+    <!-- Vision & Philosophy Section (3 Sovereign Pillars) -->
+    <section class="vision-section" id="visi">
+      <div class="container">
+        <div class="section-head">
+          <div class="pill">Visi & Filosofi INVEYS</div>
+          <h2>Tiga Pilar Utama Kedaulatan Finansial Keluarga</h2>
+          <p>Kami menolak kompromi antara kenyamanan otomatisasi modern dan kedaulatan privasi data keuangan Anda.</p>
+        </div>
+
+        <div class="vision-grid">
+          <!-- Pillar 1 -->
+          <div class="vision-card">
+            <div class="vision-icon-wrap">🛡️</div>
+            <h3>1. Kedaulatan Mutlak & Zero-Knowledge</h3>
+            <p>Data keuangan adalah hal paling intim dan sensitif. INVEYS tidak pernah meminta password m-Banking, PIN ATM, atau nomor kartu Anda. Semua catatan tersimpan secara lokal di mesin Anda dengan enkripsi kelas militer, kebal terhadap kebocoran data pihak ketiga.</p>
+            <ul class="vision-features-list">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Zero credential collection</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Standalone offline browser & self-hosted</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ghost Mode sekali klik di ruang publik</li>
+            </ul>
           </div>
 
-          <!-- Interactive Sankey Flow Bar Mockup -->
-          <div class="preview-sankey">
-            <div class="sankey-head">
-              <span>Alur Arus Kas Monarch-Style Bulanan (Cash Flow Sankey)</span>
-              <span style="color: var(--accent);" id="stat-surplus">Surplus Kas: +Rp 8.450.000 / bln</span>
-            </div>
-            <div class="sankey-bars">
-              <div class="sankey-segment seg-income" data-target-width="45%" style="width: 45%;" title="Gaji & Pemasukan: Rp 28.500.000">Pemasukan (45%)</div>
-              <div class="sankey-segment seg-fixed" data-target-width="25%" style="width: 25%;" title="Kebutuhan Rutin & Cicilan: Rp 15.800.000">Fixed Cost (25%)</div>
-              <div class="sankey-segment seg-flexible" data-target-width="18%" style="width: 18%;" title="Belanja Fleksibel: Rp 7.400.000">Gaya Hidup (18%)</div>
-              <div class="sankey-segment seg-invest" data-target-width="12%" style="width: 12%;" title="Investasi & Tabungan Emas: Rp 5.300.000">Investasi (12%)</div>
-            </div>
-            <div class="sankey-legend">
-              <div class="legend-item"><span class="legend-box" style="background:#34d399"></span>Pemasukan Bersih</div>
-              <div class="legend-item"><span class="legend-box" style="background:#38bdf8"></span>Kebutuhan Wajib & Utang</div>
-              <div class="legend-item"><span class="legend-box" style="background:#fbbf24"></span>Belanja Fleksibel & Lifestyle</div>
-              <div class="legend-item"><span class="legend-box" style="background:#a78bfa"></span>Alokasi Portofolio & Emas</div>
-            </div>
+          <!-- Pillar 2 -->
+          <div class="vision-card">
+            <div class="vision-icon-wrap">⚡</div>
+            <h3>2. Ekosistem Indonesia & AI Ingestion</h3>
+            <p>Dibuat spesifik untuk arsitektur perbankan Indonesia. Cukup unggah berkas PDF rekening koran e-statement (termasuk yang diproteksi tanggal lahir) atau billing tagihan, kecerdasan buatan INVEYS otomatis mengekstrak mutasi dan membuat akun yang belum terdaftar.</p>
+            <ul class="vision-features-list">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Dukungan penuh 14+ Bank & Kartu Kredit</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Auto-create missing bank accounts</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tabungan Emas Pegadaian live gram rate</li>
+            </ul>
+          </div>
+
+          <!-- Pillar 3 -->
+          <div class="vision-card">
+            <div class="vision-icon-wrap">🌊</div>
+            <h3>3. Cockpit Arus Kas & Proyeksi 40 Tahun</h3>
+            <p>Bukan sekadar pencatat bon belanjaan. INVEYS menyajikan diagram arus kas Sankey bertingkat bergaya Monarch Money, amortisasi cicilan multi-tenor, serta simulasi stokastik Monte Carlo 40 tahun untuk merancang kemandirian finansial keluarga.</p>
+            <ul class="vision-features-list">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Monarch-grade multi-tier Sankey diagram</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 1.000 iterasi Monte Carlo retirement test</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bot Telegram asisten pencatatan instan</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -1455,18 +1836,19 @@
         <h2 class="ecosystem-title">Dirancang Khusus untuk Ekosistem Perbankan & Investasi Indonesia</h2>
         <div class="bank-chips">
           <div class="bank-chip"><span>🏦</span> BCA</div>
-          <div class="bank-chip"><span>🏦</span> Mandiri</div>
+          <div class="bank-chip"><span>🏦</span> Bank Mandiri</div>
           <div class="bank-chip"><span>🏦</span> BRI</div>
           <div class="bank-chip"><span>🏦</span> BNI</div>
-          <div class="bank-chip"><span>📱</span> Bank Jago</div>
+          <div class="bank-chip"><span>🏦</span> CIMB Niaga</div>
+          <div class="bank-chip"><span>🏦</span> Permata Bank</div>
+          <div class="bank-chip"><span>📱</span> Jenius BTPN</div>
+          <div class="bank-chip"><span>📱</span> Blu by BCA</div>
           <div class="bank-chip"><span>📱</span> SeaBank</div>
-          <div class="bank-chip"><span>📱</span> Superbank</div>
-          <div class="bank-chip"><span>📱</span> blu by BCA</div>
-          <div class="bank-chip"><span>📱</span> Krom Bank</div>
-          <div class="bank-chip"><span>📱</span> Jenius</div>
-          <div class="bank-chip"><span>🏦</span> CIMB</div>
-          <div class="bank-chip"><span>💳</span> Kartu Kredit BRI</div>
-          <div class="bank-chip"><span>💳</span> Kartu Kredit BNI</div>
+          <div class="bank-chip"><span>📱</span> Bank Jago</div>
+          <div class="bank-chip"><span>🏦</span> OCBC NISP</div>
+          <div class="bank-chip"><span>🏦</span> DBS Digibank</div>
+          <div class="bank-chip"><span>🏦</span> Danamon</div>
+          <div class="bank-chip"><span>🕌</span> BSI (Bank Syariah)</div>
           <div class="bank-chip"><span>✨</span> Pegadaian Emas & Galeri 24</div>
           <div class="bank-chip"><span>🪙</span> Indodax, Tokocrypto & Binance</div>
         </div>
@@ -1479,7 +1861,7 @@
         <div class="section-head">
           <div class="pill">Kemampuan Super</div>
           <h2>Bukan Sekadar Pencatat Keuangan Biasa</h2>
-          <p>Semua alat yang dibutuhkan oleh keluarga modern, profesional, dan investor untuk mengoptimalkan kekayaan dalam satu platform yang estetik dan presisi.</p>
+          <p>Semua instrumen yang dibutuhkan oleh keluarga modern, profesional, dan investor untuk mengoptimalkan kekayaan dalam satu platform yang estetik dan presisi.</p>
         </div>
 
         <div class="bento-grid">
@@ -1488,7 +1870,7 @@
             <div class="bento-header">
               <div class="bento-icon">⚡</div>
               <h3>Ekstraksi Multimodal AI untuk PDF e-Statement & Struk</h3>
-              <p>Tinggalkan input transaksi manual yang melelahkan. Cukup unggah berkas PDF e-statement rekening koran atau foto struk belanja, AI INVEYS (bertenaga Google Gemini / OpenAI) langsung membuka enkripsi tanggal lahir, membaca debit/kredit, merapikan merchant, dan mengklasifikasikan pos keuangan secara instan.</p>
+              <p>Tinggalkan input transaksi manual yang melelahkan. Cukup unggah berkas PDF e-statement rekening koran atau foto struk belanja, AI INVEYS (bertenaga Google Gemini / OpenAI) langsung membuka proteksi tanggal lahir, mengekstrak debit/kredit, mengenali transfer antar-rekening, dan secara otomatis membuat akun bank jika belum terdaftar di vault Anda.</p>
             </div>
             
             <div class="bento-visual">
@@ -1606,7 +1988,7 @@
       </div>
     </section>
 
-    <!-- Comparison Table (1 Line per Sentence on Desktop, Structured 2-Line Layout) -->
+    <!-- Comparison Table (100% Full Width Desktop Fit) -->
     <section class="comparison-section">
       <div class="container">
         <div class="section-head">
@@ -1650,142 +2032,169 @@
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Copy-paste manual</span>
+                    <span class="comp-text">Ketik baris per baris</span>
                   </div>
                 </td>
               </tr>
               <tr>
-                <td><strong>AI Mutasi PDF e-Statement Bank</strong></td>
+                <td><strong>AI e-Statement Parser</strong></td>
                 <td class="comp-highlight">
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Otomatisasi sandi & kategori</span>
+                    <span class="comp-text">Buka PDF ber-password otomatis</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Tidak tersedia</span>
+                    <span class="comp-text">Tidak ada parser PDF</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Tidak tersedia</span>
+                    <span class="comp-text">Hanya OCR struk terbatas</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Rumus macro rumit</span>
+                    <span class="comp-text">Harus copy paste CSV</span>
                   </div>
                 </td>
               </tr>
               <tr>
-                <td><strong>Privasi Tanpa Kredensial m-Banking</strong></td>
+                <td><strong>Kedaulatan & Privasi Data</strong></td>
                 <td class="comp-highlight">
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">100% Aman & Zero Knowledge</span>
+                    <span class="comp-text">100% Lokal di perangkat / VPS</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Wajib koneksi Plaid</span>
+                    <span class="comp-text">Data tersimpan di server AS</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Rentan monetisasi data iklan</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Input manual</span>
-                  </div>
-                </td>
-                <td>
-                  <div class="comp-cell">
-                    <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Input manual</span>
+                    <span class="comp-text">Tersimpan di Google Drive</span>
                   </div>
                 </td>
               </tr>
               <tr>
-                <td><strong>Diagram Arus Kas Sankey Multi-Tier</strong></td>
+                <td><strong>Diagram Arus Kas Sankey</strong></td>
                 <td class="comp-highlight">
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Bawaan & Ekspor SVG</span>
+                    <span class="comp-text">Interaktif & auto-kategori</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Tersedia di Monarch</span>
+                    <span class="comp-text">Tersedia (Monarch Money)</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Tidak tersedia</span>
+                    <span class="comp-text">Hanya diagram donat pie</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Perlu plugin luar</span>
+                    <span class="comp-text">Rumit diatur di Excel</span>
                   </div>
                 </td>
               </tr>
               <tr>
-                <td><strong>Rebalancing Portofolio & Emas</strong></td>
+                <td><strong>Simulasi Pensiun Monte Carlo</strong></td>
                 <td class="comp-highlight">
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Harga real-time Antam & Galeri 24</span>
+                    <span class="comp-text">1.000 iterasi ekonomi acak</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Tidak mendukung</span>
+                    <span class="comp-text">Hanya proyeksi garis linier</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Tidak tersedia</span>
+                    <span class="comp-text">Tidak ada fitur forecast</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Update API manual</span>
+                    <span class="comp-text">Butuh makro rumit</span>
                   </div>
                 </td>
               </tr>
               <tr>
-                <td><strong>Opsi Beli Sekali Seumur Hidup</strong></td>
+                <td><strong>Pencatatan Cepat Bot Telegram</strong></td>
                 <td class="comp-highlight">
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Tersedia Lisensi Lifetime</span>
+                    <span class="comp-text">Dua arah (Catat & Cek Saldo)</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Langganan $15/bln (~Rp 2,8 Jt/th)</span>
+                    <span class="comp-text">Wajib buka aplikasi</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon cross">✕</span>
-                    <span class="comp-text">Penuh iklan sponsor</span>
+                    <span class="comp-text">Tidak tersedia bot chat</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Perlu Google Form</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Pilihan Self-Hosted Lifetime</strong></td>
+                <td class="comp-highlight">
+                  <div class="comp-cell">
+                    <span class="comp-icon check">✓</span>
+                    <span class="comp-text">Sekali bayar untuk selamanya</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Wajib langganan $100+/thn</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="comp-cell">
+                    <span class="comp-icon cross">✕</span>
+                    <span class="comp-text">Disisipi iklan pop-up</span>
                   </div>
                 </td>
                 <td>
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">Gratis</span>
+                    <span class="comp-text">Gratis / tanpa biaya lisensi</span>
                   </div>
                 </td>
               </tr>
@@ -1795,140 +2204,110 @@
       </div>
     </section>
 
-    <!-- Pricing Section with Stable, Non-Shifting Selection -->
+    <!-- Pricing Section -->
     <section class="pricing-section" id="pricing">
       <div class="container">
         <div class="section-head">
-          <div class="pill">Harga Transparan & Fleksibel</div>
-          <h2>Investasi Terbaik untuk Masa Depan Finansial Anda</h2>
-          <p>Arahkan kursor ke paket pilihan Anda untuk melihat detail kapabilitas. Pilih model langganan cloud otomatis atau miliki lisensi seumur hidup tanpa biaya bulanan.</p>
+          <div class="pill pill-gold">Investasi Cerdas</div>
+          <h2>Pilih Paket Kendali Finansial Anda</h2>
+          <p>Mulai gratis, tingkatkan dengan fitur AI multimodal, atau miliki seumur hidup untuk kedaulatan data di server Anda sendiri.</p>
         </div>
 
         <div class="pricing-switcher-wrap">
           <div class="pricing-switcher">
-            <button class="pricing-btn active" id="cycle-monthly" onclick="switchBilling('monthly')">Langganan Bulanan</button>
+            <button class="pricing-btn active" id="cycle-monthly" onclick="switchBilling('monthly')">Bulanan</button>
             <button class="pricing-btn" id="cycle-annual" onclick="switchBilling('annual')">Tahunan (Hemat 20%)</button>
-            <button class="pricing-btn" id="cycle-lifetime" onclick="switchBilling('lifetime')">💎 Lisensi Seumur Hidup</button>
+            <button class="pricing-btn" id="cycle-lifetime" onclick="switchBilling('lifetime')">Self-Hosted Lifetime ⚡</button>
           </div>
         </div>
 
-        <div class="pricing-grid" id="pricing-grid">
-          <!-- Plus Tier -->
-          <div class="pricing-card" id="card-plus" onclick="selectCard('Plus', 'Rp 49.000 / bln', this)">
-            <div>
-              <div class="card-top-slot">
-                <span class="plan-badge subtle">Personal</span>
-                <div class="plan-radio-indicator" title="Pilih Paket Plus">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-              </div>
-              <div class="plan-header">
-                <h3 class="plan-name">Plus</h3>
-                <p class="plan-desc">Untuk individu yang ingin merapikan seluruh rekening kas, utang, dan kartu kredit.</p>
-              </div>
-              <div class="plan-price-wrap">
-                <span class="plan-price" id="price-plus">Rp 49.000</span>
-                <span class="plan-cycle" id="cycle-plus">/ bulan</span>
-              </div>
-              <ul class="plan-features">
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Sinkronisasi 14 Rekening Bank & Kartu Kredit</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Laporan Keuangan Lengkap & Arus Kas</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Auto-Rules & Kategori Otomatis</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Perencanaan Forecast Pensiun Dasar</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Mode Privasi Global (Ghost Mode)</li>
-              </ul>
+        <div class="pricing-grid">
+          <!-- Card 1: Plus -->
+          <div class="pricing-card" id="card-plus" onclick="selectCard('Plus', getPlanPriceText('Plus'), this)">
+            <div class="card-top-slot">
+              <span class="plan-badge badge-basic">Pemula & Esensial</span>
             </div>
+            <h3>Plus</h3>
+            <p class="plan-desc">Untuk individu yang ingin mencatat keuangan harian rapi tanpa ribet.</p>
+            <div class="plan-price-wrap">
+              <span class="plan-price" id="price-plus">Rp 49.000</span>
+              <span class="plan-cycle" id="cycle-plus">/ bulan</span>
+            </div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Akun Bank & Kartu Tanpa Batas</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Diagram Arus Kas Bulanan</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ekstraksi e-Statement Manual (CSV)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Privasi 100% Offline di Browser</li>
+            </ul>
             <div class="plan-cta-wrap">
               <button class="btn btn-secondary plan-cta" onclick="event.stopPropagation(); openCheckout('Plus', getPlanPriceText('Plus'))">Pilih Paket Plus</button>
             </div>
           </div>
 
-          <!-- Pro Tier (Popular) -->
-          <div class="pricing-card popular is-selected" id="card-pro" onclick="selectCard('Pro', 'Rp 129.000 / bln', this)">
-            <div>
-              <div class="card-top-slot">
-                <span class="plan-badge">Paling Populer</span>
-                <div class="plan-radio-indicator" title="Pilih Paket Pro">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-              </div>
-              <div class="plan-header">
-                <h3 class="plan-name">Pro</h3>
-                <p class="plan-desc">Pilihan terbaik untuk keluarga mapan dan investor yang mengelola portofolio majemuk.</p>
-              </div>
-              <div class="plan-price-wrap">
-                <span class="plan-price" id="price-pro">Rp 129.000</span>
-                <span class="plan-cycle" id="cycle-pro">/ bulan</span>
-              </div>
-              <ul class="plan-features">
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua fitur paket Plus</strong></li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>⚡ AI Bank Statement & Receipt Extractor</strong></li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Diagram Alir Kas Sankey Multi-Tier</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Portfolio Rebalancer & Drift Alokasi</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Simulasi Pensiun Monte Carlo (1.000 skenario)</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Hingga 5 Skenario Finansial Paralel</li>
-              </ul>
+          <!-- Card 2: Pro (Popular) -->
+          <div class="pricing-card popular is-selected" id="card-pro" onclick="selectCard('Pro', getPlanPriceText('Pro'), this)">
+            <div class="card-top-slot">
+              <span class="plan-badge badge-pop">Paling Diminati</span>
             </div>
+            <h3>Pro</h3>
+            <p class="plan-desc">Otomasi penuh AI untuk profesional dengan beragam kartu kredit & investasi.</p>
+            <div class="plan-price-wrap">
+              <span class="plan-price" id="price-pro">Rp 129.000</span>
+              <span class="plan-cycle" id="cycle-pro">/ bulan</span>
+            </div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua Fitur Plus</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> AI e-Statement Scanner (PDF ber-password)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Diagram Arus Kas Sankey Multi-Tier</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bot Telegram Asisten Pencatatan 2-Arah</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tabungan Emas Pegadaian Live Rate</li>
+            </ul>
             <div class="plan-cta-wrap">
               <button class="btn btn-primary plan-cta" onclick="event.stopPropagation(); openCheckout('Pro', getPlanPriceText('Pro'))">✓ Paket Terpilih — Lanjutkan</button>
             </div>
           </div>
 
-          <!-- Ultra Tier -->
-          <div class="pricing-card" id="card-ultra" onclick="selectCard('Ultra', 'Rp 299.000 / bln', this)">
-            <div>
-              <div class="card-top-slot">
-                <span class="plan-badge subtle">Power User</span>
-                <div class="plan-radio-indicator" title="Pilih Paket Ultra">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-              </div>
-              <div class="plan-header">
-                <h3 class="plan-name">Ultra</h3>
-                <p class="plan-desc">Kendali penuh bagi power user, pengusaha, dan trader multi-aset aktif.</p>
-              </div>
-              <div class="plan-price-wrap">
-                <span class="plan-price" id="price-ultra">Rp 299.000</span>
-                <span class="plan-cycle" id="cycle-ultra">/ bulan</span>
-              </div>
-              <ul class="plan-features">
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua fitur paket Pro</strong></li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>🤖 Integrasi Bot Telegram Finansial Co-Pilot</strong></li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Sinkronisasi Bursa Kripto (Indodax, Binance)</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 20 Skenario Finansial & 100 Rencana Hidup</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Akses Multimodal AI Tanpa Batas Kuota</li>
-              </ul>
+          <!-- Card 3: Ultra -->
+          <div class="pricing-card" id="card-ultra" onclick="selectCard('Ultra', getPlanPriceText('Ultra'), this)">
+            <div class="card-top-slot">
+              <span class="plan-badge badge-vip">Keluarga & HNW</span>
             </div>
+            <h3>Ultra</h3>
+            <p class="plan-desc">Solusi komprehensif bagi keluarga dan investor multi-aset generasi mendatang.</p>
+            <div class="plan-price-wrap">
+              <span class="plan-price" id="price-ultra">Rp 299.000</span>
+              <span class="plan-cycle" id="cycle-ultra">/ bulan</span>
+            </div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua Fitur Pro</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Simulasi Pensiun Monte Carlo 40 Tahun</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Multi-User Family & Split Budgeting</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kuota AI Token Ekstraksi Tak Terbatas</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Prioritas Dukungan Setup & Konsultasi</li>
+            </ul>
             <div class="plan-cta-wrap">
               <button class="btn btn-secondary plan-cta" onclick="event.stopPropagation(); openCheckout('Ultra', getPlanPriceText('Ultra'))">Pilih Paket Ultra</button>
             </div>
           </div>
 
-          <!-- Special: Self-Hosted Lifetime License -->
+          <!-- Card 4: Lifetime -->
           <div class="pricing-card lifetime" id="card-lifetime" onclick="selectCard('Self-Hosted Lifetime', 'Rp 499.000 Sekali Bayar', this)">
-            <div>
-              <div class="card-top-slot">
-                <span class="plan-badge gold">Miliki Selamanya</span>
-                <div class="plan-radio-indicator" title="Pilih Lisensi Lifetime">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-              </div>
-              <div class="plan-header">
-                <h3 class="plan-name">Lifetime</h3>
-                <p class="plan-desc">Beli sekali, jalankan di VPS atau komputer Anda seumur hidup. Tanpa langganan bulanan.</p>
-              </div>
-              <div class="plan-price-wrap">
-                <span class="plan-price" style="color: var(--gold);">Rp 499.000</span>
-                <span class="plan-cycle">/ sekali bayar</span>
-              </div>
-              <ul class="plan-features">
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Akses 100% Seluruh Fitur Ultra</strong></li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> File Standalone Single HTML + Docker Image</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bebas host di VPS / Docker / Synology NAS Anda</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Gunakan API Key Gemini gratis Anda sendiri (BYOK)</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Termasuk 1 Tahun Pembaruan Kode Sumber</li>
-              </ul>
+            <div class="card-top-slot">
+              <span class="plan-badge badge-lt">Self-Hosted Bebas Abadi</span>
             </div>
+            <h3>Self-Hosted Lifetime</h3>
+            <p class="plan-desc">Pasang di VPS Hostinger, Synology NAS, atau PC lokal Anda sendiri. Sekali bayar selamanya.</p>
+            <div class="plan-price-wrap">
+              <span class="plan-price" id="price-lifetime" style="color: #fbbf24;">Rp 499.000</span>
+              <span class="plan-cycle" id="cycle-lifetime">sekali bayar</span>
+            </div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Lisensi Akses Penuh Selamanya (Lifetime)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Container Docker Siap Pakai & VPS Updater</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kunci Kedaulatan Data Finansial 100%</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Integrasi API Key Pribadi (Gemini/OpenAI)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bebas Biaya Berlangganan Bulanan</li>
+            </ul>
             <div class="plan-cta-wrap">
               <button class="btn btn-gold plan-cta" onclick="event.stopPropagation(); openCheckout('Self-Hosted Lifetime', 'Rp 499.000 Sekali Bayar')">Beli Lisensi Lifetime</button>
             </div>
@@ -1941,63 +2320,77 @@
     <section class="faq-section" id="faq">
       <div class="container">
         <div class="section-head">
-          <div class="pill">Pertanyaan Populer</div>
-          <h2>Ada Pertanyaan? Kami Punya Jawabannya</h2>
+          <div class="pill">Tanya Jawab</div>
+          <h2>Pertanyaan yang Sering Diajukan</h2>
+          <p>Pelajari lebih lanjut tentang keamanan, kompatibilitas, dan cara kerja INVEYS.</p>
         </div>
 
         <div class="faq-list">
           <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)">
-              <span>Apakah data perbankan saya benar-benar aman di INVEYS?</span>
+              <span>Apakah INVEYS meminta username atau password m-Banking saya?</span>
               <span class="faq-icon">+</span>
             </div>
-            <div class="faq-answer">
-              Sangat aman. INVEYS tidak pernah meminta username, PIN, atau password mobile banking Anda. Ekstraksi mutasi dilakukan secara offline-first melalui berkas e-statement PDF resmi yang Anda unduh dari bank Anda. Data tersebut disimpan terenkripsi di perangkat lokal Anda atau VPS pribadi Anda, bukan di database pihak ketiga.
+            <div class="faq-answer" style="display: none;">
+              <strong>Sama sekali tidak.</strong> INVEYS menolak model agregator pihak ketiga yang menyimpan kredensial perbankan Anda di server awan. Anda cukup mengunggah berkas e-statement rekening koran PDF atau mutasi CSV resmi dari bank Anda. AI lokal INVEYS yang akan membaca transaksi tersebut secara aman di mesin Anda.
             </div>
           </div>
 
           <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)">
-              <span>Format dokumen bank apa saja yang didukung oleh AI INVEYS?</span>
+              <span>Bagaimana jika akun bank atau kartu kredit saya belum pernah dibuat di INVEYS?</span>
               <span class="faq-icon">+</span>
             </div>
-            <div class="faq-answer">
-              AI INVEYS telah dioptimalkan khusus untuk membaca format e-statement PDF dan ekspor CSV dari BCA, Mandiri, BRI, BNI, Bank Jago, SeaBank, Superbank, blu by BCA, Jenius, Krom Bank, CIMB, Kartu Kredit, Pegadaian Emas, serta struk belanja ritel seperti Indomaret dan Alfamart.
+            <div class="faq-answer" style="display: none;">
+              INVEYS memiliki fitur <em>Autonomous Account Ingestion</em>. Saat Anda mengunggah e-statement BCA, Mandiri, atau bank lainnya, AI akan mendeteksi institusi perbankan, nomor rekening/kartu, serta jenis mata uangnya. Jika akun tersebut belum ada, sistem akan secara otomatis membuatkannya untuk Anda lengkap dengan logo dan saldo awalnya.
             </div>
           </div>
 
           <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)">
-              <span>Apa perbedaan versi Cloud SaaS dengan Lisensi Lifetime Self-Hosted?</span>
+              <span>Bagaimana cara membuka e-statement PDF yang diproteksi password tanggal lahir?</span>
               <span class="faq-icon">+</span>
             </div>
-            <div class="faq-answer">
-              Versi Cloud SaaS berjalan di cloud inveys.io kami sehingga Anda bisa langsung login tanpa perlu pusing urusan server. Sedangkan Lisensi Lifetime memberikan Anda kode dan paket Docker lengkap untuk Anda pasang di server VPS sendiri (Hostinger, DigitalOcean) atau komputer Anda seumur hidup dengan sekali pembayaran.
+            <div class="faq-answer" style="display: none;">
+              Saat mengunggah PDF e-statement, INVEYS menyediakan dialog sandi aman. Sandi didekripsi secara lokal di browser Anda menggunakan WebAssembly PDF engine tanpa pernah dikirimkan ke internet.
             </div>
           </div>
 
           <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)">
-              <span>Apakah aplikasi ini bisa dijalankan tanpa koneksi internet?</span>
+              <span>Apakah saya bisa menjalankan INVEYS di VPS saya sendiri?</span>
               <span class="faq-icon">+</span>
             </div>
-            <div class="faq-answer">
-              Ya! INVEYS dirancang dengan arsitektur Local-First. File aplikasi standalone <code>inveys-app.html</code> dapat Anda buka langsung di browser Chrome, Safari, atau Firefox di laptop Anda bahkan saat mode pesawat (offline) tanpa internet.
+            <div class="faq-answer" style="display: none;">
+              <strong>Bisa.</strong> Paket <em>Self-Hosted Lifetime</em> dirancang khusus untuk deployment di VPS (seperti Hostinger KVM, DigitalOcean, Hetzner) atau NAS rumahan (Synology/TrueNAS) menggunakan Docker Compose atau file executable tunggal Python. Anda memiliki kontrol penuh atas infrastruktur Anda.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Apakah aplikasi ini bisa digunakan tanpa koneksi internet (offline)?</span>
+              <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer" style="display: none;">
+              Ya! Seluruh aplikasi INVEYS dapat dikompilasi menjadi satu berkas mandiri <code>inveys-app.html</code>. Anda dapat mengunduhnya dan membukanya langsung di Google Chrome atau Safari bahkan saat berada di dalam pesawat tanpa sambungan internet sama sekali.
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Final Call to Action -->
+    <!-- Bottom Call To Action Banner -->
     <section style="padding: 96px 0; background: linear-gradient(180deg, transparent 0%, rgba(52, 211, 153, 0.08) 100%); text-align: center;">
       <div class="container">
-        <div class="pill pill-gold">Mulai Hari Ini</div>
-        <h2 style="font-size: clamp(2.2rem, 4.4vw, 3.4rem); margin-bottom: 20px;">Siap Mengambil Kendali Penuh atas Keuangan Anda?</h2>
-        <p class="lead" style="margin-bottom: 36px;">Bergabunglah dengan ratusan pengguna pintar yang telah meninggalkan spreadsheet manual.</p>
+        <h2 style="font-size: clamp(2rem, 3.5vw, 3rem); margin-bottom: 20px;">
+          Kedaulatan Finansial Keluarga Anda Dimulai Hari Ini
+        </h2>
+        <p class="lead" style="max-width: 680px; margin: 0 auto 36px;">
+          Bergabunglah dengan ribuan profesional dan investor di Indonesia yang telah mengambil kendali penuh atas kekayaan mereka tanpa risiko privasi.
+        </p>
         <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
-          <a href="/app" class="btn btn-primary" style="padding: 16px 36px;">Buka Aplikasi INVEYS</a>
-          <a href="#pricing" class="btn btn-gold" style="padding: 16px 36px;">Beli Lisensi Sekarang</a>
+          <a href="/app" class="btn btn-primary" style="padding: 16px 36px;">Buka Aplikasi INVEYS Sekarang</a>
+          <a href="#pricing" class="btn btn-gold" style="padding: 16px 36px;">Beli Lisensi Lifetime</a>
         </div>
       </div>
     </section>
@@ -2064,17 +2457,321 @@
       <div class="footer-links">
         <a href="/app">Buka Aplikasi</a>
         <a href="#fitur">Fitur Lengkap</a>
+        <a href="#ekosistem">14+ Bank Indonesia</a>
         <a href="#pricing">Paket Harga</a>
         <a href="https://github.com/cilostoc/inveys" target="_blank" rel="noopener">GitHub Repository</a>
         <a href="#faq">Bantuan & FAQ</a>
       </div>
-      <p style="margin-bottom: 8px;">© 2026 INVEYS. All rights reserved. Your financial life, connected.</p>
+      <p style="margin-bottom: 8px;">© 2026 INVEYS. All rights reserved. Sovereign Wealth OS for Indonesia.</p>
       <p style="font-size: 0.82rem; opacity: 0.75;">Dirancang khusus untuk profesional dan keluarga di Indonesia dengan standar privasi global.</p>
     </div>
   </footer>
 
+  <!-- =========================================================================
+       SCRIPTS: 3D VAULT ENGINE, 3D CARD TILT, ROLLING COUNTERS, CHECKOUT
+       ========================================================================= -->
   <script>
-    // Ghost Mode Interactive Toggle in Hero
+    // =========================================================================
+    // 1. INTERACTIVE 3D GEOMETRIC FINANCIAL VAULT CORE CANVAS ENGINE
+    // =========================================================================
+    (function init3DVaultCore() {
+      const canvas = document.getElementById('vault-3d-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      let width, height, dpr;
+      function resize() {
+        dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        width = rect.width || 800;
+        height = rect.height || 500;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // 3D Geometry: Geodesic Polyhedron Core
+      const phi = (1 + Math.sqrt(5)) / 2;
+      const scale = 110;
+      const baseVertices = [
+        [-1,  phi, 0], [ 1,  phi, 0], [-1, -phi, 0], [ 1, -phi, 0],
+        [0, -1,  phi], [0,  1,  phi], [0, -1, -phi], [0,  1, -phi],
+        [ phi, 0, -1], [ phi, 0,  1], [-phi, 0, -1], [-phi, 0,  1]
+      ].map(([x, y, z]) => {
+        const len = Math.hypot(x, y, z);
+        return [ (x / len) * scale, (y / len) * scale, (z / len) * scale ];
+      });
+
+      // Connections between vertices
+      const edges = [];
+      for (let i = 0; i < baseVertices.length; i++) {
+        for (let j = i + 1; j < baseVertices.length; j++) {
+          const dx = baseVertices[i][0] - baseVertices[j][0];
+          const dy = baseVertices[i][1] - baseVertices[j][1];
+          const dz = baseVertices[i][2] - baseVertices[j][2];
+          const dist = Math.hypot(dx, dy, dz);
+          if (dist < scale * 1.15) {
+            edges.push([i, j]);
+          }
+        }
+      }
+
+      // Satellite Orbiting Financial Nodes
+      const satelliteNodes = [
+        { label: 'BCA & Mandiri', angle: 0, r: scale * 1.85, speed: 0.008, color: '#34d399', badge: '🏦' },
+        { label: '24K Emas Galeri 24', angle: (Math.PI * 2) / 5, r: scale * 2.05, speed: 0.006, color: '#fbbf24', badge: '✨' },
+        { label: 'Gemini AI Extractor', angle: (Math.PI * 4) / 5, r: scale * 1.75, speed: 0.009, color: '#38bdf8', badge: '⚡' },
+        { label: 'Zero-Knowledge Key', angle: (Math.PI * 6) / 5, r: scale * 2.15, speed: 0.005, color: '#a78bfa', badge: '🛡️' },
+        { label: 'Monarch Cash Flow', angle: (Math.PI * 8) / 5, r: scale * 1.95, speed: 0.007, color: '#34d399', badge: '🌊' }
+      ];
+
+      // Ambient Wealth Dust Particles in 3D Space
+      const particles = [];
+      for (let i = 0; i < 48; i++) {
+        particles.push({
+          x: (Math.random() - 0.5) * scale * 4.5,
+          y: (Math.random() - 0.5) * scale * 4.5,
+          z: (Math.random() - 0.5) * scale * 4.5,
+          size: Math.random() * 2 + 1,
+          opacity: Math.random() * 0.7 + 0.2
+        });
+      }
+
+      // 3D Rotation State with Spring Damping
+      let rotX = 0.2;
+      let rotY = 0;
+      let targetRotX = 0.2;
+      let targetRotY = 0;
+      let isDragging = false;
+      let lastMouseX = 0;
+      let lastMouseY = 0;
+
+      // Mouse & Pointer Tracking
+      window.addEventListener('mousemove', (e) => {
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        targetRotY = ((e.clientX - cx) / cx) * 0.85;
+        targetRotX = ((e.clientY - cy) / cy) * -0.65;
+      });
+
+      canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      });
+      window.addEventListener('mouseup', () => { isDragging = false; });
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        rotY += dx * 0.005;
+        rotX += dy * 0.005;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      });
+
+      // 3D Math Helper
+      const fov = 420;
+      function project(x, y, z) {
+        const factor = fov / (fov + z + scale * 2);
+        return {
+          x: width / 2 + x * factor,
+          y: height / 2 + y * factor,
+          scale: factor,
+          z: z
+        };
+      }
+
+      function rotatePoint(x, y, z, rx, ry) {
+        // Rotate around Y
+        const cosY = Math.cos(ry);
+        const sinY = Math.sin(ry);
+        const x1 = x * cosY - z * sinY;
+        const z1 = z * cosY + x * sinY;
+
+        // Rotate around X
+        const cosX = Math.cos(rx);
+        const sinX = Math.sin(rx);
+        const y2 = y * cosX - z1 * sinX;
+        const z2 = z1 * cosX + y * sinX;
+
+        return [x1, y2, z2];
+      }
+
+      let animId;
+      function render() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Spring damping interpolation
+        rotX += (targetRotX - rotX) * 0.04;
+        rotY += (targetRotY - rotY) * 0.04;
+
+        // Continuous subtle rotation
+        const tRotY = rotY + performance.now() * 0.0004;
+        const tRotX = rotX + Math.sin(performance.now() * 0.0006) * 0.08;
+
+        // 1. Render Ambient Particle Dust
+        particles.forEach(p => {
+          const [rx, ry, rz] = rotatePoint(p.x, p.y, p.z, tRotX, tRotY);
+          const pr = project(rx, ry, rz);
+          const alpha = Math.max(0.05, Math.min(0.8, (rz + scale * 2.5) / (scale * 5)));
+          ctx.beginPath();
+          ctx.arc(pr.x, pr.y, p.size * pr.scale, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(52, 211, 153, ${alpha * p.opacity})`;
+          ctx.fill();
+        });
+
+        // 2. Project Vertices of the Polyhedron Core
+        const projected = baseVertices.map(([x, y, z]) => {
+          const [rx, ry, rz] = rotatePoint(x, y, z, tRotX, tRotY);
+          return project(rx, ry, rz);
+        });
+
+        // 3. Render Connecting Neon Edges
+        edges.forEach(([i, j]) => {
+          const p1 = projected[i];
+          const p2 = projected[j];
+          const avgZ = (p1.z + p2.z) / 2;
+          const alpha = Math.max(0.12, Math.min(0.65, (avgZ + scale * 2) / (scale * 3.8)));
+
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = `rgba(52, 211, 153, ${alpha})`;
+          ctx.lineWidth = Math.max(1, 1.8 * ((p1.scale + p2.scale) / 2));
+          ctx.stroke();
+        });
+
+        // 4. Render Core Nodes
+        projected.forEach(p => {
+          const alpha = Math.max(0.25, Math.min(1, (p.z + scale * 2) / (scale * 3.8)));
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 4.5 * p.scale, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(167, 243, 208, ${alpha})`;
+          ctx.shadowColor = '#34d399';
+          ctx.shadowBlur = 10;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+
+        // 5. Render Orbiting Satellite Financial Nodes
+        satelliteNodes.forEach(node => {
+          node.angle += node.speed;
+          const nx = Math.cos(node.angle) * node.r;
+          const ny = Math.sin(node.angle * 1.5) * (node.r * 0.35);
+          const nz = Math.sin(node.angle) * node.r;
+
+          const [rx, ry, rz] = rotatePoint(nx, ny, nz, tRotX, tRotY);
+          const pr = project(rx, ry, rz);
+          const alpha = Math.max(0.3, Math.min(1, (rz + scale * 2.5) / (scale * 4.5)));
+
+          // Laser line from center core to satellite node
+          ctx.beginPath();
+          ctx.moveTo(width / 2, height / 2);
+          ctx.lineTo(pr.x, pr.y);
+          ctx.strokeStyle = `rgba(52, 211, 153, ${alpha * 0.22})`;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Orbiting Node Dot with Glow
+          ctx.beginPath();
+          ctx.arc(pr.x, pr.y, 7 * pr.scale, 0, Math.PI * 2);
+          ctx.fillStyle = node.color;
+          ctx.shadowColor = node.color;
+          ctx.shadowBlur = 14;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Node Label Pill
+          if (pr.scale > 0.65) {
+            ctx.font = `600 ${Math.round(11 * pr.scale)}px 'Plus Jakarta Sans', sans-serif`;
+            const text = `${node.badge} ${node.label}`;
+            const textWidth = ctx.measureText(text).width;
+
+            ctx.fillStyle = `rgba(8, 23, 20, ${alpha * 0.88})`;
+            ctx.strokeStyle = `rgba(52, 211, 153, ${alpha * 0.4})`;
+            ctx.lineWidth = 1;
+
+            const padX = 7 * pr.scale;
+            const padY = 4 * pr.scale;
+            const boxX = pr.x + 10 * pr.scale;
+            const boxY = pr.y - 10 * pr.scale;
+
+            ctx.beginPath();
+            ctx.roundRect(boxX, boxY, textWidth + padX * 2, 18 * pr.scale + padY, 6 * pr.scale);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = `rgba(248, 250, 252, ${alpha})`;
+            ctx.fillText(text, boxX + padX, boxY + 13 * pr.scale);
+          }
+        });
+
+        animId = requestAnimationFrame(render);
+      }
+      render();
+    })();
+
+    // =========================================================================
+    // 2. 3D ISOMETRIC VIEW MODE SWITCHER & SPECULAR MOUSE TILT
+    // =========================================================================
+    const btnToggle3D = document.getElementById('btn-toggle-3d-view');
+    const heroPerspectiveWrap = document.getElementById('hero-perspective-wrap');
+    let isIsometric3D = false;
+
+    if (btnToggle3D && heroPerspectiveWrap) {
+      btnToggle3D.addEventListener('click', () => {
+        isIsometric3D = !isIsometric3D;
+        if (isIsometric3D) {
+          heroPerspectiveWrap.classList.add('is-isometric-3d');
+          btnToggle3D.innerHTML = '<span>◱ Mode Frontal (Reset)</span>';
+          btnToggle3D.classList.add('btn-primary');
+          btnToggle3D.classList.remove('btn-secondary');
+        } else {
+          heroPerspectiveWrap.classList.remove('is-isometric-3d');
+          btnToggle3D.innerHTML = '<span>◰ Mode Perspektif 3D</span>';
+          btnToggle3D.classList.remove('btn-primary');
+          btnToggle3D.classList.add('btn-secondary');
+        }
+      });
+    }
+
+    // Dynamic Specular Cursor Tracking on Hero Mockup & Vision Cards
+    const heroMockupEl = document.getElementById('hero-mockup');
+    if (heroMockupEl) {
+      heroMockupEl.addEventListener('mousemove', (e) => {
+        const rect = heroMockupEl.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        heroMockupEl.style.setProperty('--mouse-x', `${x}px`);
+        heroMockupEl.style.setProperty('--mouse-y', `${y}px`);
+      });
+    }
+
+    // 3D Perspective Tilt for Bento Cards
+    document.querySelectorAll('.bento-card, .vision-card').forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const rx = ((y - cy) / cy) * -4;
+        const ry = ((x - cx) / cx) * 4;
+        card.style.transform = `perspective(800px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateY(-4px)`;
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = '';
+      });
+    });
+
+    // =========================================================================
+    // 3. GHOST MODE & PRIVACY SHIELD
+    // =========================================================================
     let isGhost = false;
     const ghostBtn = document.getElementById('ghost-demo-toggle');
     const ghostBtnText = document.getElementById('ghost-btn-text');
@@ -2083,29 +2780,31 @@
     const debtEl = document.getElementById('stat-debt');
     const txEl = document.getElementById('stat-txs');
 
-    ghostBtn.addEventListener('click', () => {
-      isGhost = !isGhost;
-      if (isGhost) {
-        networthEl.classList.add('blur');
-        liquidEl.classList.add('blur');
-        debtEl.classList.add('blur');
-        if (txEl) txEl.classList.add('blur');
-        ghostBtnText.textContent = 'Ghost Mode: AKTIF (Saldo Disensor)';
-        ghostBtn.style.borderColor = 'var(--accent)';
-        ghostBtn.style.color = 'var(--accent)';
-      } else {
-        networthEl.classList.remove('blur');
-        liquidEl.classList.remove('blur');
-        debtEl.classList.remove('blur');
-        if (txEl) txEl.classList.remove('blur');
-        ghostBtnText.textContent = 'Ghost Mode (Klik untuk sensor saldo)';
-        ghostBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-        ghostBtn.style.color = 'var(--ink)';
-      }
-    });
+    if (ghostBtn) {
+      ghostBtn.addEventListener('click', () => {
+        isGhost = !isGhost;
+        if (isGhost) {
+          networthEl?.classList.add('blur');
+          liquidEl?.classList.add('blur');
+          debtEl?.classList.add('blur');
+          if (txEl) txEl.classList.add('blur');
+          ghostBtnText.textContent = 'Ghost Mode: AKTIF';
+          ghostBtn.style.borderColor = 'var(--accent)';
+          ghostBtn.style.color = 'var(--accent)';
+        } else {
+          networthEl?.classList.remove('blur');
+          liquidEl?.classList.remove('blur');
+          debtEl?.classList.remove('blur');
+          if (txEl) txEl.classList.remove('blur');
+          ghostBtnText.textContent = 'Ghost Mode';
+          ghostBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+          ghostBtn.style.color = 'var(--ink)';
+        }
+      });
+    }
 
     // =========================================================================
-    // DYNAMIC ROLLING NUMBERS & ANIMATION FOR INVEYS VAULT MOCKUP
+    // 4. DYNAMIC ROLLING NUMBERS & ANIMATION FOR INVEYS VAULT MOCKUP
     // =========================================================================
     let currentNetworth = 45080755;
     let currentLiquid = 34010091;
@@ -2120,7 +2819,6 @@
         if (!startTime) startTime = timestamp;
         const elapsed = timestamp - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        // Smooth easeOutCubic
         const ease = 1 - Math.pow(1 - progress, 3);
         const current = Math.round(start + (end - start) * ease);
         el.innerHTML = formatFn(current);
@@ -2154,7 +2852,6 @@
       });
     }
 
-    // Trigger animation via IntersectionObserver or DOMContentLoaded
     if ('IntersectionObserver' in window) {
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -2189,7 +2886,7 @@
     }, 5000);
 
     // =========================================================================
-    // PRICING BILLING SWITCHER & INTUITIVE SELECTION
+    // 5. PRICING BILLING SWITCHER & INTUITIVE SELECTION
     // =========================================================================
     let currentBillingCycle = 'monthly';
     function switchBilling(cycle) {
@@ -2208,7 +2905,7 @@
         cardUltra.style.display = 'none';
         cardLifetime.style.display = 'flex';
         cardLifetime.style.gridColumn = '1 / -1';
-        cardLifetime.style.maxWidth = '620px';
+        cardLifetime.style.maxWidth = '640px';
         cardLifetime.style.margin = '0 auto';
         selectCard('Self-Hosted Lifetime', 'Rp 499.000 Sekali Bayar', cardLifetime);
       } else {
@@ -2245,7 +2942,6 @@
       return 'Rp 499.000 Sekali Bayar';
     }
 
-    // Dynamic Card Selection: Highlights card, updates checkmark & CTA button with zero layout shift
     function selectCard(planName, planPrice, cardEl) {
       document.querySelectorAll('.pricing-card').forEach(c => {
         c.classList.remove('is-selected');
@@ -2303,7 +2999,9 @@
       }
     }
 
-    // Checkout Modal
+    // =========================================================================
+    // 6. CHECKOUT MODAL & BACKEND PAYMENT CONNECTORS
+    // =========================================================================
     const modal = document.getElementById('checkout-modal');
     let currentCheckoutPlan = 'pro';
     function openCheckout(planName, planPrice) {
