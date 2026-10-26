@@ -1350,12 +1350,14 @@ html[data-theme=dark] .sim-tab-btn.active{background:#2a2c32;color:#ffffff}
   color: #1b533a;
   background: linear-gradient(135deg, #1b533a 0%, #2f7a55 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 [data-theme="dark"] .big-number {
   color: #6ee7b7;
   background: linear-gradient(135deg, #a7f3d0 0%, #34d399 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
