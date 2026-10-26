@@ -744,6 +744,26 @@ test('capture page renders AI smart extract button and handles ai-extract-statem
   assert.ok(apiCalled);
   assert.match(app.html(),/Kopi Kenangan/);
   assert.match(app.html(),/280/);
+  assert.match(app.html(),/id="capture-provider"/);
+  assert.match(app.html(),/9Router Gateway/);
+});
+
+test('quick composer renders Vey cyber-vault mascot chatbot with animated SVG and status indicators', () => {
+  const app = boot();
+  // Expanded state
+  assert.match(app.html(), /vey-top-bar/);
+  assert.match(app.html(), /Cyber-Vault Guardian/);
+  assert.match(app.html(), /vey-mascot-svg/);
+  assert.match(app.html(), /vey-orbit-ring/);
+  assert.match(app.html(), /vey-levitate/);
+  assert.match(app.html(), /vey-live-badge/);
+
+  // Minimized state
+  app.outside();
+  assert.match(app.html(), /quick-launcher/);
+  assert.match(app.html(), /vey-launcher-avatar/);
+  assert.match(app.html(), /vey-mascot-svg/);
+  assert.match(app.html(), /<strong class="vey-name">Vey<\/strong>/);
 });
 
 

@@ -4602,6 +4602,276 @@ dialog.has-key-mgr > #modal-body {
   animation: sparkleSpin 2.5s infinite ease-in-out;
 }
 
+/* =========================================================================
+   VEY MASCOT & CHATBOT ENHANCEMENTS
+   ========================================================================= */
+.vey-mascot-svg {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 2px 8px rgba(52, 211, 153, 0.25));
+}
+.vey-levitate {
+  animation: veyFloat 3s ease-in-out infinite;
+  transform-origin: center center;
+}
+.vey-shadow {
+  animation: veyShadow 3s ease-in-out infinite;
+  transform-origin: center center;
+}
+@keyframes veyFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes veyShadow {
+  0%, 100% { transform: scale(1); opacity: 0.35; }
+  50% { transform: scale(0.8); opacity: 0.16; }
+}
+.vey-orbit-ring {
+  transform-origin: 50px 54px;
+  animation: veyOrbit 12s linear infinite;
+}
+.mood-thinking .vey-orbit-ring {
+  animation: veyOrbit 2.4s linear infinite;
+  stroke-width: 3.2px;
+}
+@keyframes veyOrbit {
+  from { transform: rotate(-14deg); }
+  to { transform: rotate(346deg); }
+}
+.vey-antenna-orb {
+  animation: veyPulse 2s ease-in-out infinite alternate;
+}
+@keyframes veyPulse {
+  0% { filter: drop-shadow(0 0 2px #38bdf8); opacity: 0.8; }
+  100% { filter: drop-shadow(0 0 6px #38bdf8); opacity: 1; }
+}
+.vey-eye-group {
+  animation: veyBlink 4.5s infinite;
+  transform-origin: 50px 51px;
+}
+@keyframes veyBlink {
+  0%, 45%, 49%, 100% { transform: scaleY(1); }
+  47% { transform: scaleY(0.08); }
+}
+.vey-eye-think {
+  animation: veyEyePulse 1s ease-in-out infinite alternate;
+}
+@keyframes veyEyePulse {
+  0% { transform: scale(0.9); }
+  100% { transform: scale(1.15); filter: drop-shadow(0 0 5px #38bdf8); }
+}
+.vey-eye-happy {
+  animation: veyHappyWiggle 1.8s ease-in-out infinite alternate;
+}
+@keyframes veyHappyWiggle {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-1px) scale(1.05); }
+}
+.vey-sparkle {
+  animation: veySparkleAnim 2s infinite ease-out;
+  transform-origin: center;
+}
+.vey-sparkle.s2 {
+  animation-delay: 0.9s;
+}
+@keyframes veySparkleAnim {
+  0% { opacity: 0; transform: translateY(0) scale(0.4); }
+  40% { opacity: 1; transform: translateY(-3px) scale(1.1); }
+  80%, 100% { opacity: 0; transform: translateY(-7px) scale(0.2); }
+}
+.vey-thruster {
+  animation: veyThrust 1.4s ease-in-out infinite alternate;
+}
+@keyframes veyThrust {
+  0% { opacity: 0.5; rx: 9; }
+  100% { opacity: 0.95; rx: 12; filter: drop-shadow(0 0 6px #34d399); }
+}
+
+/* Chatbot Dock Header */
+.vey-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.vey-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.vey-avatar-badge {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(52,211,153,0.15) 0%, transparent 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vey-avatar-badge.thinking {
+  background: radial-gradient(circle, rgba(56,189,248,0.22) 0%, transparent 70%);
+}
+.vey-avatar-badge.happy {
+  background: radial-gradient(circle, rgba(251,191,36,0.22) 0%, transparent 70%);
+}
+.vey-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.vey-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.vey-title {
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.vey-badge-role {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+.vey-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+}
+.vey-live-badge.busy {
+  color: #38bdf8;
+}
+.vey-live-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  animation: liveBlink 1.5s infinite;
+}
+@keyframes liveBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.vey-engine-chip {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.vey-bar-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.vey-tool-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.vey-tool-btn svg {
+  width: 15px;
+  height: 15px;
+}
+.vey-tool-btn:hover {
+  color: var(--green);
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 8%, var(--paper));
+}
+
+/* Minimized Launcher Styling with Vey */
+.quick-dock.minimized .quick-launcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 10px;
+  border-radius: 28px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 0 16px rgba(52,211,153,0.12);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.quick-dock.minimized .quick-launcher:hover {
+  transform: translateY(-2px);
+  border-color: var(--green);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.22), 0 0 24px rgba(52,211,153,0.24);
+}
+.vey-launcher-avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vey-launcher-label {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.25;
+}
+.vey-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.vey-sub {
+  font-size: 10px;
+  color: var(--muted);
+}
+.vey-ping-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  margin-left: 2px;
+}
+
+/* Assistant Message Vey Avatar */
+.ai-message.assistant .ai-message-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.ai-message.assistant .vey-msg-avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+/* Capture Engine Selector */
+.capture-engine-select {
+  border: 1px solid var(--green) !important;
+  background: color-mix(in srgb, var(--green) 8%, var(--paper)) !important;
+  font-weight: 600;
+  color: var(--ink) !important;
+}
+
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .capture-skeleton-card,
@@ -4610,7 +4880,16 @@ dialog.has-key-mgr > #modal-body {
   .skeleton-orb,
   .skeleton-row-card,
   .skeleton-chat-message,
-  .ai-avatar.skeleton-spin {
+  .ai-avatar.skeleton-spin,
+  .vey-levitate,
+  .vey-shadow,
+  .vey-orbit-ring,
+  .vey-antenna-orb,
+  .vey-eye-group,
+  .vey-eye-think,
+  .vey-eye-happy,
+  .vey-sparkle,
+  .vey-thruster {
     animation: none !important;
     transition: none !important;
   }

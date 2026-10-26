@@ -254,7 +254,7 @@ def extract_statement(data, extract):
  config = configuration()
  name = data.get('provider')
  if not name or name not in config or not config[name]['enabled']:
-  for candidate in ('gemini', 'openai', '9router', 'muse'):
+  for candidate in ('9router', 'gemini', 'openai', 'muse'):
    if config.get(candidate, {}).get('enabled'):
     name = candidate
     break
