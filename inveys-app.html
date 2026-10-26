@@ -4155,10 +4155,117 @@ dialog.has-key-mgr > #modal-body {
   .key-tab-dot.online,
   .key-status-pill.online,
   .key-btn.saving::after,
-  .key-radar-spinner {
+  .key-radar-spinner,
+  .seg-glider,
+  .tab-glider,
+  .ticker-rolling {
     animation: none !important;
+    transition: none !important;
   }
 }
+
+/* ==========================================================================
+   ULTRA-SMOOTH ANIMATIONS (Priority 1: Rolling Ticker & Sliding Active Pills)
+   ========================================================================== */
+
+/* 1. Rolling Number Ticker */
+.big-number,
+.metric-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.big-number .money,
+.metric-value .money {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), text-shadow 0.3s ease;
+}
+
+.ticker-rolling {
+  display: inline-block;
+  animation: tickerPulse 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tickerPulse {
+  0% {
+    transform: translateY(3px);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 2. Sliding Active Pill on Segmented Controls */
+.segmented,
+.monarch-segmented {
+  position: relative !important;
+  isolation: isolate;
+  user-select: none;
+}
+
+.segmented button,
+.monarch-seg-btn {
+  position: relative;
+  z-index: 2;
+  transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease !important;
+}
+
+.seg-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(23, 54, 35, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: left 0.26s cubic-bezier(0.16, 1, 0.3, 1), width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 1;
+  will-change: left, width;
+}
+
+[data-theme="dark"] .seg-glider {
+  background: #2a3d31;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* When the dynamic glider is active, make the individual active button's background transparent */
+.segmented:has(.seg-glider) button.active,
+.monarch-segmented:has(.seg-glider) .monarch-seg-btn.active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* 3. Sliding Tab Glider for Report Tabs & Investment Top Tabs */
+.report-tabs,
+.investment-top-tabs {
+  position: relative !important;
+}
+
+.tab-glider {
+  position: absolute;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--green);
+  transition: left 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 3;
+  will-change: left, width;
+}
+
+[data-theme="dark"] .tab-glider {
+  background: #4ade80;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.4);
+}
+
+.report-tabs:has(.tab-glider) button.active:after,
+.investment-top-tabs:has(.tab-glider)>button::after {
+  display: none !important;
+}
+
 
 
 
@@ -6790,6 +6897,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   const locale=()=>state.language==='id'?'id-ID':'en-US';
   const money = (n,compact=false,currency=state.currency) => new Intl.NumberFormat(locale(),{style:'currency',currency,maximumFractionDigits:0,notation:compact?'compact':'standard'}).format(n/100);
   const amount=(n,currency=state.currency,prefix='')=>`<span class="money">${prefix}${money(n,false,currency)}</span>`;
+  const tickerAmount=(n,currency=state.currency,prefix='')=>`<span class="money" data-ticker-cents="${n}" data-ticker-curr="${currency}">${prefix}${money(n,false,currency)}</span>`;
   const native=(row,field)=>`<span class="money">${new Intl.NumberFormat(locale(),{style:'currency',currency:row.currency||state.currency,maximumFractionDigits:2}).format(row[field]/100)}</span>`;
   const idr=(row,field)=>amount(E.convert(state,row[field],row.currency||state.currency,'IDR'),'IDR');
   const currencyField=(row)=>field('Currency','currency','','select',options(E.currencies,row?.currency||state.currency));
@@ -6846,7 +6954,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   function navigate(target){page=pages.some(p=>p[0]===target)||target==='settings'?target:'home';location.hash=page;render();setSidebarOpen(false);window.scrollTo({top:0,behavior:'instant'});}
   function header(title, subtitle, actions='', eyebrow='YOUR FINANCIAL LIFE, CONNECTED') {return `<div class="page-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${subtitle}</p></div><div class="heading-actions">${actions}</div></div>`;}
   function metric(label,value,foot,ic='accounts'){return `<div class="metric metric-${ic}"><div class="metric-label"><span>${label}</span><span class="metric-icon-wrap">${icon(ic)}</span></div><div class="metric-value">${value}</div><div class="metric-foot">${foot}</div></div>`;}
-  function metrics(){const p=E.position(viewState());return `<div class="metrics-grid">${metric('Total net worth',amount(p.netWorth),'<span class="trend">'+icon('shield')+'Financial position</span><span>Assets less liabilities</span>','shield')}${metric('Liquid funds',amount(p.liquid),`<span class="positive">${p.reserveMonths===null?'—':p.reserveMonths.toFixed(1)+' months'}</span><span>of planned outflows</span>`,'bank')}${metric('Monthly surplus',amount(p.surplus),'<span class="positive">Income − outflows</span><span>Before goal funding</span>','growth')}${metric('Goal allocations',amount(E.allocations(viewState())),`<span class="positive">${state.goals.length} active goals</span><span>Reserved within liquid funds</span>`,'goals')}</div>`;}
+  function metrics(){const p=E.position(viewState());return `<div class="metrics-grid">${metric('Total net worth',tickerAmount(p.netWorth),'<span class="trend">'+icon('shield')+'Financial position</span><span>Assets less liabilities</span>','shield')}${metric('Liquid funds',tickerAmount(p.liquid),`<span class="positive">${p.reserveMonths===null?'—':p.reserveMonths.toFixed(1)+' months'}</span><span>of planned outflows</span>`,'bank')}${metric('Monthly surplus',tickerAmount(p.surplus),'<span class="positive">Income − outflows</span><span>Before goal funding</span>','growth')}${metric('Goal allocations',tickerAmount(E.allocations(viewState())),`<span class="positive">${state.goals.length} active goals</span><span>Reserved within liquid funds</span>`,'goals')}</div>`;}
   function lineChart(values,labels,{second=null,secondName='Scenario',name='Net worth',width=660}={}) {
     if (!values.length) return '<div class="empty">Add financial records to start your picture.</div>';
     const all=second?[...values,...second]:values;let min=Math.min(...all),max=Math.max(...all);const pad=Math.max((max-min)*.25,100000);min-=pad;max+=pad;
@@ -6876,12 +6984,12 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   function upcomingBills(){const today=new Date(),day=today.getDate();return viewState().flows.filter(f=>f.kind==='expense').map(f=>{const d=new Date(today.getFullYear(),today.getMonth()+(f.day<day?1:0),f.day);return {...f,d};}).sort((a,b)=>a.d-b.d);}
   function home(){const p=E.position(viewState()),h=historyData();const highest=viewState().debts.slice().sort((a,b)=>b.apr-a.apr)[0];const insight=highest&&highest.apr>10?`Your ${escape(highest.name.toLowerCase())} carries ${highest.apr}% APR. Compare an extra payment with your other priorities.`:'Review your monthly plan and compare your next financial move with your goals.';
     return header(`${state.language==='id'?'Halo':'Hello'}, ${user((state.members[0]?.name||'Me').split(' ')[0])} <span style="font-size:24px">✳</span>`,'A little clarity today. More possibility tomorrow.',`<span class="date-button">${icon('calendar')}${new Date().toLocaleDateString(locale(),{month:'short',day:'numeric',year:'numeric'})}</span>${button('Add account','account-new','primary','plus')}`)+metrics()+
-    `<div class="middle-grid"><section class="panel panel-pad"><div class="panel-head"><div><h2 class="panel-title">Your financial picture</h2><p>A whole-life view of what you own and owe.</p></div><button class="icon-button" data-action="privacy" aria-label="${hideMoney?'Show':'Hide'} amounts">${icon('eye')}</button></div><div class="chart-top"><div><div class="big-number">${amount(p.netWorth)}</div><div class="number-sub"><span class="positive">${state.demo?'↑ '+money(p.netWorth-h.values[0])+' across sample history':'Current recorded position'}</span><span>${state.demo?'Illustrative demo snapshots':''}</span></div></div><div class="segmented" aria-label="History period"><button data-action="period:6" class="${period===6?'active':''}" aria-pressed="${period===6}">6M</button><button data-action="period:12" class="${period===12?'active':''}" aria-pressed="${period===12}">1Y</button></div></div><div class="chart-container">${lineChart(h.values,h.labels)}</div><div class="chart-note"><span></span>${state.demo?'Sample history · Latest point reflects your current records':'Manual position · Historical tracking will begin with your records'}</div></section>
+    `<div class="middle-grid"><section class="panel panel-pad"><div class="panel-head"><div><h2 class="panel-title">Your financial picture</h2><p>A whole-life view of what you own and owe.</p></div><button class="icon-button" data-action="privacy" aria-label="${hideMoney?'Show':'Hide'} amounts">${icon('eye')}</button></div><div class="chart-top"><div><div class="big-number">${tickerAmount(p.netWorth)}</div><div class="number-sub"><span class="positive">${state.demo?'↑ '+money(p.netWorth-h.values[0])+' across sample history':'Current recorded position'}</span><span>${state.demo?'Illustrative demo snapshots':''}</span></div></div><div class="segmented" aria-label="History period"><button data-action="period:6" class="${period===6?'active':''}" aria-pressed="${period===6}">6M</button><button data-action="period:12" class="${period===12?'active':''}" aria-pressed="${period===12}">1Y</button></div></div><div class="chart-container">${lineChart(h.values,h.labels)}</div><div class="chart-note"><span></span>${state.demo?'Sample history · Latest point reflects your current records':'Manual position · Historical tracking will begin with your records'}</div></section>
     <section class="panel insight-panel"><div class="insight-label">${icon('copilot')} A THOUGHTFUL NEXT STEP</div><h2>Your future,<br>in focus.</h2><p>${insight}</p><div class="insight-check"><span>✓</span>${p.available>=0?money(p.available)+' / month after planned goal funding':'Review '+money(-p.available)+' / month in unfunded commitments'}</div>${button('Explore your possibilities','open-scenario','lime','arrow')}<div class="insight-footer">Calculated from your records. Always your decision.</div></section></div>
     <div class="bottom-grid"><section class="panel panel-pad"><div class="panel-head"><h2 class="panel-title">Your accounts</h2>${link('View all','accounts')}</div><div class="account-list">${accountRows(4)}</div></section><section class="panel panel-pad"><div class="panel-head"><h2 class="panel-title">Goals in motion</h2>${link('View all','goals')}</div><div class="goal-list">${goalRows()}</div></section><section class="panel panel-pad"><div class="panel-head"><h2 class="panel-title">On the horizon</h2>${link('View all','cashflow')}</div><div class="bill-list">${upcomingBills().slice(0,3).map(f=>`<div class="bill-row"><span class="bill-date"><small>${f.d.toLocaleDateString(locale(),{month:'short'})}</small>${f.day}</span><div><b>${user(f.name)}</b><p>Planned · Monthly</p></div><span class="bill-amount">${native(f,'amount')}</span></div>`).join('')||'<div class="empty">No upcoming commitments yet.</div>'}</div></section></div>
     <div class="bottom-banner"><span>✧</span><span><b>Your finances have a story.</b> Ask your copilot to help you understand the next chapter.</span><button data-page="copilot">Let’s talk <span>↗</span></button></div>`;
   }
-  function accounts(){const p=E.position(viewState());return header('Everything you own. One clear view.','Maintain your financial inventory, with the source and owner of every balance.',button('Add account','account-new','primary','plus'),'ACCOUNTS & FINANCIAL POSITION')+accountSwitcher('accounts')+`<div class="metrics-grid">${metric('Recorded assets',amount(p.assets),'Sum of account balances','bank')}${metric('Recorded liabilities',amount(p.liabilities),'From your debt records','debt')}${metric('Net worth',amount(p.netWorth),'Assets − liabilities','shield')}${metric('Liquid accounts',String(viewState().accounts.filter(a=>['Cash','Savings','Checking'].includes(a.type)).length),'Checking, savings & cash','wallet')}</div><div class="content-grid">${viewState().accounts.map(a=>`<section class="panel panel-pad"><div class="panel-head"><span class="account-icon ${a.type.toLowerCase()}">${icon(iconType(a.type))}</span><span class="badge">Manual record</span></div><h2 style="margin-top:19px">${escape(a.name)}</h2><div class="card-stat">${native(a,'balance')}</div><div class="card-description">${escape(a.type)} · ${escape(a.owner)}</div><div class="details-list"><div class="detail-line"><span>Balance date</span><b>${escape(a.updated)}</b></div><div class="detail-line"><span>Source</span><b>User-entered snapshot</b></div></div><div class="card-actions">${button('Edit balance','account:'+a.id)}${button('Remove','account-delete:'+a.id,'danger')}</div></section>`).join('')||'<section class="panel empty full">Your financial picture starts with one account.</section>'}</div><div class="note">${t("Native amounts are preserved. Reporting totals use your saved exchange rates.")} ${L('Kurs referensi tersimpan; bukan kurs transaksi bank.','Saved reference rates; not bank transaction rates.')} ${user(state.fx.source)} · ${state.fx.date}</div>`;}
+  function accounts(){const p=E.position(viewState());return header('Everything you own. One clear view.','Maintain your financial inventory, with the source and owner of every balance.',button('Add account','account-new','primary','plus'),'ACCOUNTS & FINANCIAL POSITION')+accountSwitcher('accounts')+`<div class="metrics-grid">${metric('Recorded assets',tickerAmount(p.assets),'Sum of account balances','bank')}${metric('Recorded liabilities',tickerAmount(p.liabilities),'From your debt records','debt')}${metric('Net worth',tickerAmount(p.netWorth),'Assets − liabilities','shield')}${metric('Liquid accounts',String(viewState().accounts.filter(a=>['Cash','Savings','Checking'].includes(a.type)).length),'Checking, savings & cash','wallet')}</div><div class="content-grid">${viewState().accounts.map(a=>`<section class="panel panel-pad"><div class="panel-head"><span class="account-icon ${a.type.toLowerCase()}">${icon(iconType(a.type))}</span><span class="badge">Manual record</span></div><h2 style="margin-top:19px">${escape(a.name)}</h2><div class="card-stat">${native(a,'balance')}</div><div class="card-description">${escape(a.type)} · ${escape(a.owner)}</div><div class="details-list"><div class="detail-line"><span>Balance date</span><b>${escape(a.updated)}</b></div><div class="detail-line"><span>Source</span><b>User-entered snapshot</b></div></div><div class="card-actions">${button('Edit balance','account:'+a.id)}${button('Remove','account-delete:'+a.id,'danger')}</div></section>`).join('')||'<section class="panel empty full">Your financial picture starts with one account.</section>'}</div><div class="note">${t("Native amounts are preserved. Reporting totals use your saved exchange rates.")} ${L('Kurs referensi tersimpan; bukan kurs transaksi bank.','Saved reference rates; not bank transaction rates.')} ${user(state.fx.source)} · ${state.fx.date}</div>`;}
   let cashflowViewMonth = 'plan';
 
   function cashFlowSankeyPanel(flow) {
@@ -10991,8 +11099,8 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   document.addEventListener('change',event=>{const target=event.target,id=target.dataset.investmentBenchmark;if(id){if(target.checked)investmentSelected=[...new Set([...investmentSelected,id])];else investmentSelected=investmentSelected.filter(x=>x!==id);render();return;}const value=target.value;switch(target.id){case 'investment-account':if(value!=='all'&&!INV.selectedAccounts(state).some(a=>a.id===value))return;investmentAccount=value;break;case 'investment-currency':if(!['IDR','USD'].includes(value))return;investmentCurrency=value;break;case 'investment-range':if(value!=='custom')INV.period(value,date());investmentRange=value;break;case 'investment-mode':if(!['auto','actual','backtest'].includes(value))return;investmentMode=value;break;case 'investment-group':if(!INV.groupKeys.includes(value))return;investmentGroup=value;break;case 'investment-style':if(!['pie','breakdown'].includes(value))return;investmentStyle=value;break;case 'investment-gain-style':if(!['line','bars'].includes(value))return;investmentGainStyle=value;break;default:return;}render();});
   document.addEventListener('submit',event=>{if(event.target.id!=='investment-filter')return;event.preventDefault();try{const d=Object.fromEntries(new FormData(event.target));if((d.from&&!E.validDate(d.from))||(d.to&&!E.validDate(d.to))||(d.from&&d.to&&d.from>d.to)||!['IDR','USD'].includes(d.currency))throw Error(L('Filter periode tidak valid','Invalid period filters'));investmentFrom=d.from;investmentTo=d.to;investmentCurrency=d.currency;investmentRange='custom';render();}catch(e){toast(e.message);}});
 
-  function dashboardV4(){const p=E.position(viewState()),h=historyData(),widgets=state.dashboardWidgets;return header(`${L('Halo','Hello')}, ${user((state.members[0]?.name||'Me').split(' ')[0])} ✳`,L('Posisi hari ini, rencana esok, dan tanggung jawab bersama.','Today’s position, tomorrow’s plan, shared responsibilities.'),button(L('Atur dashboard','Customize dashboard'),'dashboard-edit')+button(t('Add transaction'),'transaction-new','primary','plus'),'FINANCIAL OPERATING SYSTEM')+(widgets.includes('position')?metrics():'')+`<div class="dashboard-panels">${widgets.includes('history')?`<section class="panel panel-pad dashboard-wide"><div class="panel-head"><div><h2>${L('Gambaran keuangan Anda','Your financial picture')}</h2><p>${escape(ownerName(state.activeView.owner))} · ${L('Aset dikurangi liabilitas','Assets minus liabilities')}</p></div>${link('Forecast','forecast')}</div><div class="big-number">${amount(p.netWorth)}</div><div class="chart-container">${lineChart(h.values,h.labels)}</div><p class="note">${h.illustrative?L('Riwayat contoh; titik terbaru memakai saldo saat ini.','Illustrative sample history; latest point uses current balances.'):L('Riwayat memakai snapshot tersimpan. Tanpa snapshot, hanya posisi saat ini ditampilkan.','History uses saved snapshots. With no snapshots, only the current position is shown.')}</p><div class="button-group">${button(L('Simpan snapshot hari ini','Save today’s snapshot'),'position-snapshot')}${link(L('Buka Reports','Open Reports'),'reports')}</div></section>`:''}${widgets.includes('accounts')?`<section class="panel panel-pad"><div class="panel-head"><h2>${L('Akun Anda','Your accounts')}</h2>${link(t('View all'),'accounts')}</div>${accountRows(6)}</section>`:''}${widgets.includes('goals')?`<section class="panel panel-pad"><div class="panel-head"><h2>${L('Tujuan dalam perjalanan','Goals in motion')}</h2>${link(t('View all'),'goals')}</div>${goalRows()}</section>`:''}${widgets.includes('bills')?`<section class="panel panel-pad dashboard-wide"><div class="panel-head"><h2>${L('Komitmen mendatang','Upcoming commitments')}</h2>${link(t('Cash flow'),'cashflow')}</div>${upcomingBills().slice(0,4).map(f=>`<div class="flow-item"><div><b>${user(f.name)}</b><small>${escape(ownerName(f.ownerId))} · ${f.d.toLocaleDateString(locale())}</small></div>${native(f,'amount')}</div>`).join('')||`<p class="empty">${L('Belum ada komitmen pada tampilan ini.','No commitments in this view.')}</p>`}</section>`:''}</div>${!widgets.length?`<section class="panel empty">${L('Pilih widget melalui Atur dashboard.','Select widgets with Customize dashboard.')}</section>`:''}`;}
-  function shared(){const p=E.position(viewState());return header(L('Milik saya, milik Anda, milik bersama.','Mine, yours, ours.'),L('Satu catatan keluarga, banyak perspektif. Atur kepemilikan tanpa menggandakan saldo.','One household ledger, multiple perspectives. Assign ownership without duplicating balances.'),button(L('Tambah anggota lokal','Add local member'),'member-new','primary'),'SHARED VIEWS')+sharedSwitcher('shared')+`<div class="metrics-grid">${metric(L('Kekayaan bersih tampilan','View net worth'),amount(p.netWorth),escape(ownerName(state.activeView.owner)),'shield')}${metric(L('Aset dalam tampilan','Assets in view'),amount(p.assets),L('Akun bersama dihitung sekali','Shared accounts counted once'),'bank')}${metric(L('Liabilitas tampilan','View liabilities'),amount(p.liabilities),L('Kepemilikan utang terpisah dari akun','Debt ownership is separate from accounts'),'debt')}${metric(L('Pendapatan rencana','Planned income'),amount(p.income),L('Bulanan sesuai perspektif','Monthly for this perspective'),'growth')}</div><div class="content-grid"><section class="panel panel-pad"><h2>${L('Tampilan tersimpan','Saved views')}</h2>${state.savedViews.map(v=>`<div class="saved-row"><div><b>${user(v.name)}</b><small>${escape(ownerName(v.view.owner))}${v.view.includeShared?' + '+L('Bersama','Shared'):''} · ${v.currency||state.currency}</small></div><button class="btn" data-action="view-load:${v.id}">${L('Buka','Open')}</button><button class="btn danger" data-action="view-delete:${v.id}" aria-label="${L('Hapus tampilan','Delete view')}">×</button></div>`).join('')||`<p class="empty">${L('Gunakan Simpan tampilan pada bilah perspektif.','Use Save view in the perspective bar.')}</p>`}<p class="note">${L('Tampilan ini adalah preferensi analisis, bukan kontrol privasi atau undangan akun. Login terpisah dan sinkronisasi lintas perangkat belum tersedia.','These views are analysis preferences, not privacy controls or invitations. Separate logins and cross-device sync are not available.')}</p></section><section class="panel panel-pad"><h2>${L('Anggota perencanaan','Planning members')}</h2>${state.members.map(m=>`<div class="saved-row"><span class="avatar">${escape(m.initials)}</span><div><b>${user(m.name)}</b><small>${escape(m.role)}</small></div><button class="btn" data-action="member-edit:${m.id}">${L('Edit','Edit')}</button></div>`).join('')}<p class="note">${L('ID anggota tetap ketika nama diubah. Kepemilikan lama tidak terputus.','Member IDs stay stable when names change. Existing ownership stays connected.')}</p></section></div><section class="panel panel-pad" style="margin-top:22px"><div class="panel-head"><h2>${L('Editor kepemilikan','Ownership editor')}</h2>${button(L('Edit transaksi massal','Bulk transaction ownership'),'owner-bulk')}</div><div class="table-wrap"><table><thead><tr><th>${L('Jenis','Type')}</th><th>${L('Catatan','Record')}</th><th>${L('Pemilik','Owner')}</th><th>${L('Atur','Manage')}</th></tr></thead><tbody>${['accounts','debts','goals','flows'].flatMap(key=>state[key].map(r=>`<tr><td>${escape(key)}</td><td>${user(r.name)}</td><td>${escape(ownerName(r.ownerId))}</td><td><button class="btn" data-action="ownership:${key}_${r.id}">${L('Ubah pemilik','Change owner')}</button></td></tr>`)).join('')||`<tr><td colspan="4" class="empty">${L('Tambahkan akun atau rencana terlebih dahulu.','Add accounts or plans first.')}</td></tr>`}</tbody></table></div><p class="note">${L('Transaksi dengan mode Ikuti akun mengikuti pemilik akun secara dinamis. Transaksi dengan owner eksplisit atau split tetap mempertahankan penetapannya.','Transactions in Follow account mode inherit account ownership dynamically. Explicit owners and split ownership retain their assignments.')}</p></section>`;}
+  function dashboardV4(){const p=E.position(viewState()),h=historyData(),widgets=state.dashboardWidgets;return header(`${L('Halo','Hello')}, ${user((state.members[0]?.name||'Me').split(' ')[0])} ✳`,L('Posisi hari ini, rencana esok, dan tanggung jawab bersama.','Today’s position, tomorrow’s plan, shared responsibilities.'),button(L('Atur dashboard','Customize dashboard'),'dashboard-edit')+button(t('Add transaction'),'transaction-new','primary','plus'),'FINANCIAL OPERATING SYSTEM')+(widgets.includes('position')?metrics():'')+`<div class="dashboard-panels">${widgets.includes('history')?`<section class="panel panel-pad dashboard-wide"><div class="panel-head"><div><h2>${L('Gambaran keuangan Anda','Your financial picture')}</h2><p>${escape(ownerName(state.activeView.owner))} · ${L('Aset dikurangi liabilitas','Assets minus liabilities')}</p></div>${link('Forecast','forecast')}</div><div class="big-number">${tickerAmount(p.netWorth)}</div><div class="chart-container">${lineChart(h.values,h.labels)}</div><p class="note">${h.illustrative?L('Riwayat contoh; titik terbaru memakai saldo saat ini.','Illustrative sample history; latest point uses current balances.'):L('Riwayat memakai snapshot tersimpan. Tanpa snapshot, hanya posisi saat ini ditampilkan.','History uses saved snapshots. With no snapshots, only the current position is shown.')}</p><div class="button-group">${button(L('Simpan snapshot hari ini','Save today’s snapshot'),'position-snapshot')}${link(L('Buka Reports','Open Reports'),'reports')}</div></section>`:''}${widgets.includes('accounts')?`<section class="panel panel-pad"><div class="panel-head"><h2>${L('Akun Anda','Your accounts')}</h2>${link(t('View all'),'accounts')}</div>${accountRows(6)}</section>`:''}${widgets.includes('goals')?`<section class="panel panel-pad"><div class="panel-head"><h2>${L('Tujuan dalam perjalanan','Goals in motion')}</h2>${link(t('View all'),'goals')}</div>${goalRows()}</section>`:''}${widgets.includes('bills')?`<section class="panel panel-pad dashboard-wide"><div class="panel-head"><h2>${L('Komitmen mendatang','Upcoming commitments')}</h2>${link(t('Cash flow'),'cashflow')}</div>${upcomingBills().slice(0,4).map(f=>`<div class="flow-item"><div><b>${user(f.name)}</b><small>${escape(ownerName(f.ownerId))} · ${f.d.toLocaleDateString(locale())}</small></div>${native(f,'amount')}</div>`).join('')||`<p class="empty">${L('Belum ada komitmen pada tampilan ini.','No commitments in this view.')}</p>`}</section>`:''}</div>${!widgets.length?`<section class="panel empty">${L('Pilih widget melalui Atur dashboard.','Select widgets with Customize dashboard.')}</section>`:''}`;}
+  function shared(){const p=E.position(viewState());return header(L('Milik saya, milik Anda, milik bersama.','Mine, yours, ours.'),L('Satu catatan keluarga, banyak perspektif. Atur kepemilikan tanpa menggandakan saldo.','One household ledger, multiple perspectives. Assign ownership without duplicating balances.'),button(L('Tambah anggota lokal','Add local member'),'member-new','primary'),'SHARED VIEWS')+sharedSwitcher('shared')+`<div class="metrics-grid">${metric(L('Kekayaan bersih tampilan','View net worth'),tickerAmount(p.netWorth),escape(ownerName(state.activeView.owner)),'shield')}${metric(L('Aset dalam tampilan','Assets in view'),tickerAmount(p.assets),L('Akun bersama dihitung sekali','Shared accounts counted once'),'bank')}${metric(L('Liabilitas tampilan','View liabilities'),tickerAmount(p.liabilities),L('Kepemilikan utang terpisah dari akun','Debt ownership is separate from accounts'),'debt')}${metric(L('Pendapatan rencana','Planned income'),tickerAmount(p.income),L('Bulanan sesuai perspektif','Monthly for this perspective'),'growth')}</div><div class="content-grid"><section class="panel panel-pad"><h2>${L('Tampilan tersimpan','Saved views')}</h2>${state.savedViews.map(v=>`<div class="saved-row"><div><b>${user(v.name)}</b><small>${escape(ownerName(v.view.owner))}${v.view.includeShared?' + '+L('Bersama','Shared'):''} · ${v.currency||state.currency}</small></div><button class="btn" data-action="view-load:${v.id}">${L('Buka','Open')}</button><button class="btn danger" data-action="view-delete:${v.id}" aria-label="${L('Hapus tampilan','Delete view')}">×</button></div>`).join('')||`<p class="empty">${L('Gunakan Simpan tampilan pada bilah perspektif.','Use Save view in the perspective bar.')}</p>`}<p class="note">${L('Tampilan ini adalah preferensi analisis, bukan kontrol privasi atau undangan akun. Login terpisah dan sinkronisasi lintas perangkat belum tersedia.','These views are analysis preferences, not privacy controls or invitations. Separate logins and cross-device sync are not available.')}</p></section><section class="panel panel-pad"><h2>${L('Anggota perencanaan','Planning members')}</h2>${state.members.map(m=>`<div class="saved-row"><span class="avatar">${escape(m.initials)}</span><div><b>${user(m.name)}</b><small>${escape(m.role)}</small></div><button class="btn" data-action="member-edit:${m.id}">${L('Edit','Edit')}</button></div>`).join('')}<p class="note">${L('ID anggota tetap ketika nama diubah. Kepemilikan lama tidak terputus.','Member IDs stay stable when names change. Existing ownership stays connected.')}</p></section></div><section class="panel panel-pad" style="margin-top:22px"><div class="panel-head"><h2>${L('Editor kepemilikan','Ownership editor')}</h2>${button(L('Edit transaksi massal','Bulk transaction ownership'),'owner-bulk')}</div><div class="table-wrap"><table><thead><tr><th>${L('Jenis','Type')}</th><th>${L('Catatan','Record')}</th><th>${L('Pemilik','Owner')}</th><th>${L('Atur','Manage')}</th></tr></thead><tbody>${['accounts','debts','goals','flows'].flatMap(key=>state[key].map(r=>`<tr><td>${escape(key)}</td><td>${user(r.name)}</td><td>${escape(ownerName(r.ownerId))}</td><td><button class="btn" data-action="ownership:${key}_${r.id}">${L('Ubah pemilik','Change owner')}</button></td></tr>`)).join('')||`<tr><td colspan="4" class="empty">${L('Tambahkan akun atau rencana terlebih dahulu.','Add accounts or plans first.')}</td></tr>`}</tbody></table></div><p class="note">${L('Transaksi dengan mode Ikuti akun mengikuti pemilik akun secara dinamis. Transaksi dengan owner eksplisit atau split tetap mempertahankan penetapannya.','Transactions in Follow account mode inherit account ownership dynamically. Explicit owners and split ownership retain their assignments.')}</p></section>`;}
   function reportLabel(key){return reportFilter.group==='owner'?ownerName(key):reportFilter.group==='account'?(getAccount(key)?.name||key):key;}
   function reportRows(r){if(reportDrill===null)return r.rows;return r.rows.flatMap(t=>{const key=reportFilter.group==='category'?t.category:reportFilter.group==='merchant'?t.name:reportFilter.group==='account'?t.accountId:reportFilter.group==='month'?t.date.slice(0,7):F.transactionOwner(state,t);if(reportFilter.group==='owner'&&t.splits?.length){const p=F.reportParts(state,t).find(p=>p.ownerId===reportDrill);return p?[{...t,amount:p.amount,reportingAmount:p.value}]:[];}return key===reportDrill?[t]:[];});}
   function reportFilters(ledger,categories){return `<form id="report-form" class="report-toolbar"><div class="report-filter-tools"><details class="report-popover"><summary>${icon('calendar')}${L('Tanggal','Date')} <span>${reportFilter.from} → ${reportFilter.to}</span></summary><div class="report-popover-body"><div class="capture-controls">${field(L('Dari','From'),'from',reportFilter.from,'date','required')}${field(L('Sampai','To'),'to',reportFilter.to,'date','required')}</div><div class="button-group">${button(L('30 hari','30 days'),'report-period:30')}${button(L('Tahun ini','This year'),'report-period:year')}${button(L('Semua tanggal','All dates'),'report-period:all')}</div><button class="btn primary" type="submit">${L('Terapkan tanggal','Apply dates')}</button></div></details><details class="report-popover"><summary>${icon('reports')}${L('Filter','Filters')}</summary><div class="report-popover-body"><div class="capture-controls">${field(L('Akun','Account'),'account','','select',`<option value="all">${L('Semua akun','All accounts')}</option>`+state.accounts.map(a=>`<option value="${a.id}" ${a.id===reportFilter.account?'selected':''}>${escape(a.name)}</option>`).join(''))}${field(L('Kategori','Category'),'category','','select',`<option value="all">${L('Semua kategori','All categories')}</option>`+categories.map(c=>`<option value="${escape(c)}" ${c===reportFilter.category?'selected':''}>${escape(c)}</option>`).join(''))}${field(L('Cari deskripsi','Search descriptions'),'search',reportFilter.search,'text','maxlength="200"')}</div><div class="button-group"><button class="btn primary" type="submit">${L('Terapkan filter','Apply filters')}</button>${button(L('Reset filter','Reset filters'),'report-reset')}</div></div></details></div><span class="report-scope-caption">${escape(ownerName(state.activeView.owner))} · ${state.currency}</span><p id="report-error" role="alert"></p></form>`;}
@@ -12025,7 +12133,108 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   }
 
   function settings(){return header('Your information. Your control.','Manage your local workspace and take your records with you.','','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
-  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();save();syncPreferences();localize();}
+  const prevTickerValues=new Map();
+  function updateRollingTickers(){
+    if(typeof window==='undefined'||typeof requestAnimationFrame==='undefined')return;
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    if(hideMoney)return;
+    const els=$$('.big-number .money[data-ticker-cents], .metric-value .money[data-ticker-cents]');
+    els.forEach((el,idx)=>{
+      const targetCents=Number(el.dataset.tickerCents);
+      if(!Number.isFinite(targetCents))return;
+      const curr=el.dataset.tickerCurr||state.currency;
+      const key=(el.closest('.metric')?.className||'bignum')+':'+idx;
+      const hasPrev=prevTickerValues.has(key);
+      const prevCents=hasPrev?prevTickerValues.get(key):(Math.abs(targetCents)>100000?Math.round(targetCents*0.7):0);
+      prevTickerValues.set(key,targetCents);
+      if(hasPrev&&prevCents===targetCents)return;
+      el.classList.add('ticker-rolling');
+      const startVal=prevCents;
+      const diff=targetCents-startVal;
+      const duration=600;
+      const startTime=performance.now();
+      function step(now){
+        const elapsed=now-startTime;
+        const progress=Math.min(1,elapsed/duration);
+        const ease=progress===1?1:1-Math.pow(2,-10*progress);
+        const currentCents=Math.round(startVal+diff*ease);
+        el.textContent=money(currentCents,false,curr);
+        if(progress<1){
+          requestAnimationFrame(step);
+        }else{
+          el.textContent=money(targetCents,false,curr);
+          setTimeout(()=>el.classList.remove('ticker-rolling'),200);
+        }
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  const prevPillPositions=new Map();
+  function updateSlidingPills(){
+    if(typeof window==='undefined'||typeof document==='undefined')return;
+    const segs=$$('.segmented, .monarch-segmented');
+    segs.forEach((container,idx)=>{
+      const activeBtn=container.querySelector('button.active, .monarch-seg-btn.active');
+      if(!activeBtn)return;
+      let glider=container.querySelector('.seg-glider');
+      const isNew=!glider;
+      if(isNew){
+        glider=document.createElement('div');
+        glider.className='seg-glider';
+        container.prepend(glider);
+      }
+      const cRect=container.getBoundingClientRect?.();
+      const bRect=activeBtn.getBoundingClientRect?.();
+      if(!cRect||!bRect||cRect.width===0||bRect.width===0)return;
+      const left=bRect.left-cRect.left;
+      const width=bRect.width;
+      const key='seg:'+(container.id||idx);
+      if(isNew&&prevPillPositions.has(key)){
+        const prev=prevPillPositions.get(key);
+        glider.style.transition='none';
+        glider.style.left=prev.left+'px';
+        glider.style.width=prev.width+'px';
+        void glider.offsetWidth;
+        glider.style.transition='';
+      }
+      prevPillPositions.set(key,{left,width});
+      glider.style.left=left+'px';
+      glider.style.width=width+'px';
+    });
+
+    const tabs=$$('.report-tabs, .investment-top-tabs');
+    tabs.forEach((container,idx)=>{
+      const activeBtn=container.querySelector('button.active');
+      if(!activeBtn)return;
+      let glider=container.querySelector('.tab-glider');
+      const isNew=!glider;
+      if(isNew){
+        glider=document.createElement('div');
+        glider.className='tab-glider';
+        container.appendChild(glider);
+      }
+      const cRect=container.getBoundingClientRect?.();
+      const bRect=activeBtn.getBoundingClientRect?.();
+      if(!cRect||!bRect||cRect.width===0||bRect.width===0)return;
+      const left=bRect.left-cRect.left;
+      const width=bRect.width;
+      const key='tab:'+(container.id||idx);
+      if(isNew&&prevPillPositions.has(key)){
+        const prev=prevPillPositions.get(key);
+        glider.style.transition='none';
+        glider.style.left=prev.left+'px';
+        glider.style.width=prev.width+'px';
+        void glider.offsetWidth;
+        glider.style.transition='';
+      }
+      prevPillPositions.set(key,{left,width});
+      glider.style.left=left+'px';
+      glider.style.width=width+'px';
+    });
+  }
+
+  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
   function refreshCharts(){
     if(page==='scenarios'){updateScenario();localize();return;}
     if(page==='montecarlo'){if(mcResult&&$('#mc-chart'))$('#mc-chart').innerHTML=mcChart();return;}
@@ -12034,7 +12243,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     if(page==='home'){const h=historyData();chart.innerHTML=lineChart(h.values,h.labels,{width});}
     if(page==='cashflow'){const f=E.forecast(viewState());chart.innerHTML=lineChart(f.map(v=>v.balance),forecastLabels(),{name:'Liquid funds',width});}
   }
-  window.addEventListener('resize',refreshCharts);
+  window.addEventListener('resize',()=>{refreshCharts();updateSlidingPills();});
   function field(label,name,value='',type='text',opts=''){return `<div class="field"><label for="field-${name}">${label}</label>${type==='select'?`<select name="${name}" id="field-${name}">${opts}</select>`:`<input id="field-${name}" name="${name}" type="${type}" value="${escape(value)}" ${type==='number'?'step="0.01"':''} ${opts}>`}</div>`;}
   const options=(values,selected)=>values.map(v=>`<option value="${escape(v)}" ${v===selected?'selected':''}>${escape(v)}</option>`).join('');
   function openModal(title,body,handler=null){$('#modal-title').textContent=title;$('#modal-body').innerHTML=body;$('#modal').classList.toggle('has-monarch-tx',body.includes('monarch-tx-form'));$('#modal').classList.toggle('has-key-mgr',body.includes('key-mgr-dialog'));if(!$('#modal').open)$('#modal').showModal();localize();const form=$('form',$('#modal'));if(form&&handler)form.addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form));try{handler(data);$('#modal').close();render();}catch(err){const errEl=$('#form-error',form)||$('#form-error');if(errEl)errEl.textContent=t(err.message);else toast(err.message);}});}

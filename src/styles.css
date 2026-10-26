@@ -4142,10 +4142,117 @@ dialog.has-key-mgr > #modal-body {
   .key-tab-dot.online,
   .key-status-pill.online,
   .key-btn.saving::after,
-  .key-radar-spinner {
+  .key-radar-spinner,
+  .seg-glider,
+  .tab-glider,
+  .ticker-rolling {
     animation: none !important;
+    transition: none !important;
   }
 }
+
+/* ==========================================================================
+   ULTRA-SMOOTH ANIMATIONS (Priority 1: Rolling Ticker & Sliding Active Pills)
+   ========================================================================== */
+
+/* 1. Rolling Number Ticker */
+.big-number,
+.metric-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.big-number .money,
+.metric-value .money {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), text-shadow 0.3s ease;
+}
+
+.ticker-rolling {
+  display: inline-block;
+  animation: tickerPulse 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tickerPulse {
+  0% {
+    transform: translateY(3px);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 2. Sliding Active Pill on Segmented Controls */
+.segmented,
+.monarch-segmented {
+  position: relative !important;
+  isolation: isolate;
+  user-select: none;
+}
+
+.segmented button,
+.monarch-seg-btn {
+  position: relative;
+  z-index: 2;
+  transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease !important;
+}
+
+.seg-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(23, 54, 35, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: left 0.26s cubic-bezier(0.16, 1, 0.3, 1), width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 1;
+  will-change: left, width;
+}
+
+[data-theme="dark"] .seg-glider {
+  background: #2a3d31;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* When the dynamic glider is active, make the individual active button's background transparent */
+.segmented:has(.seg-glider) button.active,
+.monarch-segmented:has(.seg-glider) .monarch-seg-btn.active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* 3. Sliding Tab Glider for Report Tabs & Investment Top Tabs */
+.report-tabs,
+.investment-top-tabs {
+  position: relative !important;
+}
+
+.tab-glider {
+  position: absolute;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--green);
+  transition: left 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 3;
+  will-change: left, width;
+}
+
+[data-theme="dark"] .tab-glider {
+  background: #4ade80;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.4);
+}
+
+.report-tabs:has(.tab-glider) button.active:after,
+.investment-top-tabs:has(.tab-glider)>button::after {
+  display: none !important;
+}
+
 
 
 
