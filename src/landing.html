@@ -10,8 +10,8 @@
   <!-- Primary SEO Meta Tags -->
   <title>INVEYS — Financial OS & Aplikasi Keuangan Pribadi Terbaik Indonesia | Alternatif Monarch Money</title>
   <meta name="title" content="INVEYS — Financial OS & Aplikasi Keuangan Pribadi Terbaik Indonesia | Alternatif Monarch Money">
-  <meta name="description" content="Aplikasi pengelola keuangan pribadi & keluarga terbaik di Indonesia dengan privasi 100% lokal. Otomatisasi mutasi 14+ bank (BCA, Mandiri, BRI, BNI), AI e-statement extractor, diagram arus kas Sankey, dan tabungan emas tanpa password m-Banking.">
-  <meta name="keywords" content="aplikasi keuangan pribadi, alternatif monarch money indonesia, pencatat keuangan otomatis, e-statement bca mandiri, brankas keuangan keluarga, personal finance app indonesia, aplikasi pencatat uang aman, diagram sankey arus kas">
+  <meta name="description" content="Aplikasi pengelola keuangan pribadi & keluarga terbaik di Indonesia dengan privasi 100% lokal. Otomatisasi mutasi semua bank di Indonesia (BCA, Mandiri, BRI, BNI, BSI, Bank Digital), AI e-statement extractor, diagram arus kas Sankey, dan tabungan emas tanpa password m-Banking.">
+  <meta name="keywords" content="aplikasi keuangan pribadi, alternatif monarch money indonesia, pencatat keuangan otomatis, e-statement bca mandiri, brankas keuangan keluarga, personal finance app indonesia, aplikasi pencatat uang aman, diagram sankey arus kas, semua bank indonesia">
   <meta name="author" content="INVEYS Team">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://inveys.io/">
@@ -21,7 +21,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://inveys.io/">
   <meta property="og:title" content="INVEYS — Financial OS & Brankas Keuangan Pribadi Berdaulat">
-  <meta property="og:description" content="Kendalikan seluruh rekening bank, kartu kredit, dan aset keluarga dalam satu platform estetik dengan AI statement parser, diagram arus kas Sankey, dan privasi 100% lokal.">
+  <meta property="og:description" content="Kendalikan seluruh rekening bank, kartu kredit, dan aset keluarga dalam satu platform estetik dengan AI statement parser semua bank Indonesia, diagram arus kas Sankey, dan privasi 100% lokal.">
   <meta property="og:site_name" content="INVEYS Financial OS">
   <meta property="og:locale" content="id_ID">
 
@@ -29,7 +29,7 @@
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="https://inveys.io/">
   <meta property="twitter:title" content="INVEYS — Financial OS & Brankas Keuangan Pribadi Berdaulat">
-  <meta property="twitter:description" content="Solusi cerdas kelola arus kas keluarga di Indonesia. AI e-statement parser 14 bank, simulasi pensiun Monte Carlo, dan privasi tanpa kredensial m-Banking.">
+  <meta property="twitter:description" content="Solusi cerdas kelola arus kas keluarga di Indonesia. AI e-statement parser semua bank di Indonesia, simulasi pensiun Monte Carlo, dan privasi tanpa kredensial m-Banking.">
 
   <!-- JSON-LD Structured Data for Search Engines -->
   <script type="application/ld+json">
@@ -39,7 +39,7 @@
     "name": "INVEYS Financial OS",
     "operatingSystem": "Web Browser, macOS, Windows, Linux, Docker, Self-Hosted",
     "applicationCategory": "FinanceApplication",
-    "description": "Sistem operasi finansial dan brankas kekayaan pribadi berdaulat dengan AI e-statement extractor untuk 14 bank Indonesia, diagram arus kas Sankey, dan privasi 100% lokal.",
+    "description": "Sistem operasi finansial dan brankas kekayaan pribadi berdaulat dengan AI e-statement extractor untuk semua bank di Indonesia, diagram arus kas Sankey, dan privasi 100% lokal.",
     "url": "https://inveys.io/",
     "offers": {
       "@type": "Offer",
@@ -50,7 +50,7 @@
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "4.9",
-      "ratingCount": "428"
+      "ratingCount": "432"
     }
   }
   </script>
@@ -196,10 +196,10 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      padding: 13px 26px;
+      gap: 8px;
+      padding: 12px 24px;
       font-family: var(--font-display);
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 600;
       border-radius: var(--radius-full);
       cursor: pointer;
@@ -264,11 +264,6 @@
       border-color: rgba(251, 191, 36, 0.3);
       color: #fcd34d;
     }
-    .pill-cyan {
-      background: rgba(56, 189, 248, 0.1);
-      border-color: rgba(56, 189, 248, 0.3);
-      color: #38bdf8;
-    }
 
     /* Section Head Standard */
     .section-head {
@@ -290,29 +285,35 @@
       margin: 0 auto;
     }
 
-    /* Navbar */
+    /* =========================================================================
+       1. NAVBAR (STRICT SINGLE HORIZONTAL LINE, NO MULTI-LINE WRAPPING)
+       ========================================================================= */
     .navbar {
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(4, 13, 11, 0.88);
+      background: rgba(4, 13, 11, 0.9);
       backdrop-filter: blur(18px);
       border-bottom: 1px solid var(--border);
-      padding: 14px 0;
+      padding: 12px 0;
     }
     .navbar .container {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: nowrap;
+      gap: 16px;
     }
     .nav-brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 1.3rem;
+      font-size: 1.25rem;
       font-weight: 800;
       font-family: var(--font-display);
       letter-spacing: -0.03em;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .nav-brand-symbol {
       width: 32px;
@@ -333,36 +334,77 @@
       border-radius: 4px;
       background: rgba(255, 255, 255, 0.08);
       color: var(--ink-muted);
-      margin-left: 6px;
+      margin-left: 4px;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       font-weight: 600;
+      white-space: nowrap;
     }
     .nav-menu {
       display: flex;
       align-items: center;
-      gap: 28px;
+      gap: 22px;
       list-style: none;
+      margin: 0;
+      padding: 0;
+      flex-shrink: 1;
+      flex-wrap: nowrap;
     }
     .nav-link {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 500;
       color: var(--ink-muted);
+      white-space: nowrap;
+      transition: color 0.2s ease;
     }
     .nav-link:hover { color: var(--accent); }
     .nav-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .nav-actions .btn {
+      padding: 9px 18px;
+      font-size: 0.86rem;
     }
 
     /* =========================================================================
-       HERO SECTION & DEDICATED 3D GEODESIC VAULT SHOWCASE
+       2. HERO SECTION & LARGE 3D POLYHEDRON GEODESIC BACKGROUND CANVAS
        ========================================================================= */
     .hero {
-      padding: 72px 0 68px;
+      padding: 68px 0 60px;
       text-align: center;
       position: relative;
+      overflow: hidden;
+    }
+
+    /* Grand Enlarged Ambient 3D Polyhedron Background Canvas */
+    .hero-bg-canvas-wrap {
+      position: absolute;
+      top: 36%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      max-width: 1350px;
+      height: 760px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.48;
+      overflow: hidden;
+      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 75%);
+      -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 75%);
+    }
+    #vault-3d-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
     }
 
     .hero h1 {
@@ -374,8 +416,8 @@
       -webkit-text-fill-color: transparent;
     }
     .hero p.lead {
-      max-width: 760px;
-      margin: 0 auto 34px;
+      max-width: 780px;
+      margin: 0 auto 32px;
     }
     .hero-actions {
       display: flex;
@@ -383,7 +425,7 @@
       justify-content: center;
       gap: 16px;
       flex-wrap: wrap;
-      margin-bottom: 26px;
+      margin-bottom: 24px;
     }
     .trust-checks {
       display: flex;
@@ -393,130 +435,10 @@
       flex-wrap: wrap;
       color: var(--ink-subtle);
       font-size: 0.85rem;
-      margin-bottom: 46px;
+      margin-bottom: 40px;
     }
     .trust-checks span { display: inline-flex; align-items: center; gap: 7px; }
     .trust-checks svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
-
-    /* =========================================================================
-       DEDICATED 3D GEODESIC VAULT CORE CARD (CLEAN, FOCUSED & NON-CLASHING)
-       ========================================================================= */
-    .vault-3d-stage-wrap {
-      max-width: 840px;
-      margin: 0 auto 48px;
-      position: relative;
-      z-index: 2;
-    }
-    .vault-3d-card {
-      background: rgba(8, 22, 18, 0.72);
-      border: 1px solid rgba(52, 211, 153, 0.28);
-      border-radius: var(--radius-xl);
-      padding: 18px 24px;
-      backdrop-filter: blur(20px);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 35px rgba(52, 211, 153, 0.12);
-      position: relative;
-      overflow: hidden;
-      transition: border-color 0.3s ease;
-    }
-    .vault-3d-card:hover {
-      border-color: rgba(52, 211, 153, 0.45);
-    }
-    .vault-3d-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      padding-bottom: 12px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .vault-3d-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: #a7f3d0;
-      font-size: 0.82rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-    .vault-3d-tags {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .vault-tag {
-      font-size: 0.7rem;
-      font-weight: 600;
-      padding: 3px 9px;
-      border-radius: var(--radius-full);
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--ink-muted);
-    }
-    .vault-tag.tag-secure {
-      background: rgba(52, 211, 153, 0.1);
-      border-color: rgba(52, 211, 153, 0.25);
-      color: #34d399;
-    }
-
-    /* Calibrated Canvas Dimensions */
-    .vault-canvas-container {
-      width: 100%;
-      height: 310px;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #vault-3d-canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      cursor: grab;
-      touch-action: none;
-    }
-    #vault-3d-canvas:active {
-      cursor: grabbing;
-    }
-
-    .vault-3d-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding-top: 12px;
-      margin-top: 8px;
-      font-size: 0.78rem;
-      color: var(--ink-subtle);
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .vault-instruction {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--ink-muted);
-    }
-    .vault-instruction svg { color: var(--accent); }
-    .vault-status-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: #34d399;
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-    }
-    .pulse-indicator {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #34d399;
-      box-shadow: 0 0 8px #34d399;
-      animation: pulse-dot 1.8s infinite;
-    }
 
     /* =========================================================================
        3D PERSPECTIVE VIEWPORT FOR FINANCIAL COCKPIT
@@ -964,7 +886,7 @@
        VISION & PHILOSOPHY SECTION (3 SOVEREIGN PILLARS)
        ========================================================================= */
     .vision-section {
-      padding: 92px 0 76px;
+      padding: 88px 0 72px;
       position: relative;
     }
     .vision-grid {
@@ -1069,7 +991,7 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      max-width: 1140px;
+      max-width: 1160px;
       margin: 0 auto;
     }
     .bank-chip {
@@ -1091,6 +1013,12 @@
       color: var(--accent);
       transform: translateY(-2px);
       box-shadow: 0 4px 15px rgba(52, 211, 153, 0.18);
+    }
+    .bank-chip.chip-highlight {
+      background: rgba(52, 211, 153, 0.12);
+      border-color: rgba(52, 211, 153, 0.35);
+      color: #34d399;
+      font-weight: 700;
     }
 
     /* Bento Grid Feature Showcase */
@@ -1310,7 +1238,9 @@
       }
     }
 
-    /* Pricing Section */
+    /* =========================================================================
+       3. PRICING SECTION (PIXEL-PERFECT ALIGNMENT & UNIFORM INFORMATION)
+       ========================================================================= */
     .pricing-section {
       padding: 96px 0;
       position: relative;
@@ -1352,10 +1282,11 @@
       box-shadow: 0 4px 16px var(--accent-glow);
     }
 
+    /* Strict Equal Height & Symmetrical Grid */
     .pricing-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 22px;
+      gap: 20px;
       max-width: 1220px;
       margin: 0 auto;
       align-items: stretch;
@@ -1365,7 +1296,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
-      padding: 28px 24px 24px;
+      padding: 26px 22px 24px;
       text-align: left;
       display: flex;
       flex-direction: column;
@@ -1407,10 +1338,11 @@
       );
     }
 
+    /* Uniform Slot 1: Badge */
     .card-top-slot {
-      height: 32px;
-      min-height: 32px;
-      max-height: 32px;
+      height: 28px;
+      min-height: 28px;
+      max-height: 28px;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
@@ -1421,13 +1353,14 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      padding: 5px 12px;
+      padding: 5px 11px;
       border-radius: var(--radius-full);
       line-height: 1;
+      white-space: nowrap;
     }
     .badge-basic {
       background: rgba(255, 255, 255, 0.06);
@@ -1450,56 +1383,80 @@
       border: 1px solid rgba(251, 191, 36, 0.35);
     }
 
+    /* Uniform Slot 2: Title */
     .pricing-card h3 {
       font-size: 1.4rem;
+      font-weight: 800;
       margin-bottom: 6px;
+      height: 30px;
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      color: var(--ink);
     }
+
+    /* Uniform Slot 3: Description (Exact 44px min-height) */
     .plan-desc {
       font-size: 0.85rem;
       color: var(--ink-muted);
-      margin-bottom: 18px;
-      min-height: 42px;
-      line-height: 1.5;
+      margin-bottom: 16px;
+      min-height: 44px;
+      max-height: 44px;
+      line-height: 1.45;
+      overflow: hidden;
     }
+
+    /* Uniform Slot 4: Price & Baseline Separator */
     .plan-price-wrap {
-      margin-bottom: 22px;
+      height: 56px;
+      min-height: 56px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
       display: flex;
       align-items: baseline;
-      gap: 8px;
+      gap: 6px;
     }
     .plan-price {
-      font-size: 2rem;
+      font-size: 1.85rem;
       font-weight: 800;
       font-family: var(--font-display);
       color: var(--ink);
+      line-height: 1;
     }
     .plan-cycle {
-      font-size: 0.84rem;
+      font-size: 0.82rem;
       color: var(--ink-muted);
+      font-weight: 500;
     }
 
+    /* Uniform Slot 5: 5 Feature Items per Plan */
     .plan-features {
       list-style: none;
-      margin-bottom: 28px;
       display: flex;
       flex-direction: column;
-      gap: 11px;
-      font-size: 0.86rem;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-grow: 1;
     }
     .plan-features li {
       display: flex;
       align-items: flex-start;
       gap: 10px;
+      font-size: 0.85rem;
       color: #cbd5e1;
-      line-height: 1.45;
+      line-height: 1.4;
+      min-height: 36px;
     }
     .plan-features svg {
-      width: 16px;
-      height: 16px;
+      width: 15px;
+      height: 15px;
       color: var(--accent);
       flex-shrink: 0;
       margin-top: 3px;
     }
+
+    /* Uniform Slot 6: CTA Button at Bottom */
     .plan-cta-wrap {
       margin-top: auto;
     }
@@ -1693,21 +1650,19 @@
         grid-template-columns: 1fr;
         max-width: 440px;
       }
-      .hero { padding: 54px 0 40px; }
+      .hero { padding: 50px 0 36px; }
       .preview-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .vault-canvas-container { height: 260px; }
+      .hero-bg-canvas-wrap { height: 500px; }
       .card-ai-extractor { display: none; }
     }
     @media (max-width: 520px) {
       .preview-stats-grid { grid-template-columns: 1fr; }
-      .vault-3d-header { flex-direction: column; align-items: flex-start; }
-      .vault-3d-footer { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Top Navigation Bar -->
+  <!-- Top Navigation Bar (Strictly 1 Single Clean Line) -->
   <header class="navbar">
     <div class="container">
       <a href="#" class="nav-brand" aria-label="INVEYS Home">
@@ -1717,11 +1672,11 @@
       </a>
 
       <ul class="nav-menu">
-        <li><a href="#visi" class="nav-link">Visi & Kedaulatan</a></li>
+        <li><a href="#visi" class="nav-link">Visi</a></li>
         <li><a href="#fitur" class="nav-link">Fitur Unggulan</a></li>
-        <li><a href="#ekosistem" class="nav-link">14+ Bank Indonesia</a></li>
-        <li><a href="#privasi" class="nav-link">Zero-Knowledge</a></li>
-        <li><a href="#pricing" class="nav-link">Pilihan Paket</a></li>
+        <li><a href="#ekosistem" class="nav-link">Semua Bank</a></li>
+        <li><a href="#privasi" class="nav-link">Keamanan</a></li>
+        <li><a href="#pricing" class="nav-link">Paket Harga</a></li>
         <li><a href="#faq" class="nav-link">FAQ</a></li>
       </ul>
 
@@ -1736,15 +1691,20 @@
     </div>
   </header>
 
-  <!-- Hero Section -->
+  <!-- Hero Section with Grand 3D Polyhedron Background -->
   <main>
     <section class="hero">
-      <div class="container">
+      <!-- Grand Enlarged 3D Polyhedron Geodesic Background Canvas -->
+      <div class="hero-bg-canvas-wrap" id="canvas-bg-container">
+        <canvas id="vault-3d-canvas" aria-hidden="true"></canvas>
+      </div>
+
+      <div class="container hero-content">
         <!-- Badge -->
         <div class="pill">
           <span>⚡ Versi 0.23.0 Rilis</span>
           <span>·</span>
-          <span>Sistem Operasi Finansial & Brankas Kekayaan Pribadi Indonesia</span>
+          <span>Dukungan Penuh Semua Bank & Kartu Kredit di Indonesia</span>
         </div>
 
         <!-- SEO-Optimized H1 Headline -->
@@ -1752,7 +1712,7 @@
 
         <!-- Accessible, Persuasive Value Proposition -->
         <p class="lead">
-          Alternatif modern untuk Monarch Money & Excel di Indonesia. Rekonsiliasi mutasi 14+ bank (BCA, Mandiri, BRI, BNI), tagihan kartu kredit, hingga tabungan emas Pegadaian secara otomatis lewat AI — data 100% tersimpan aman di perangkat Anda tanpa pernah meminta password m-Banking.
+          Alternatif modern untuk Monarch Money & Excel di Indonesia. Rekonsiliasi mutasi semua bank di Indonesia (BCA, Mandiri, BRI, BNI, BSI, Bank Digital, hingga BPR), tagihan kartu kredit, hingga tabungan emas Pegadaian secara otomatis lewat AI — data 100% tersimpan aman di perangkat Anda tanpa pernah meminta password m-Banking.
         </p>
 
         <!-- Call to Action Buttons -->
@@ -1783,40 +1743,7 @@
         </div>
 
         <!-- =========================================================================
-             DEDICATED 3D GEODESIC VAULT CORE CARD
-             ========================================================================= -->
-        <div class="vault-3d-stage-wrap">
-          <div class="vault-3d-card" id="vault-3d-stage">
-            <div class="vault-3d-header">
-              <div class="vault-3d-badge">
-                <span class="live-dot"></span>
-                <span>INTI BRANKAS 3D BERDAULAT (GEODESIC VAULT CORE)</span>
-              </div>
-              <div class="vault-3d-tags">
-                <span class="vault-tag">5 Node Finansial Terhubung</span>
-                <span class="vault-tag tag-secure">🔒 Zero-Knowledge Core</span>
-              </div>
-            </div>
-            
-            <div class="vault-canvas-container">
-              <canvas id="vault-3d-canvas" title="Gerakkan atau sentuh untuk memutar model 3D Geodesic Vault Core"></canvas>
-            </div>
-
-            <div class="vault-3d-footer">
-              <div class="vault-instruction">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20M7 7l10 10M17 7L7 17"/></svg>
-                <span>Sentuh atau gerakkan kursor untuk memutar bola brankas 3D secara interaktif</span>
-              </div>
-              <div class="vault-status-indicator">
-                <span class="pulse-indicator"></span>
-                <span>STATUS: LIVE ENCRYPTED</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- =========================================================================
-             3D PERSPECTIVE VIEWPORT FOR FINANCIAL COCKPIT
+             3D PERSPECTIVE VIEWPORT FOR FINANCIAL COCKPIT (NO EXCESSIVE SCROLLING)
              ========================================================================= -->
         <div class="hero-perspective-viewport">
           <div class="hero-perspective-wrap" id="hero-perspective-wrap">
@@ -1892,7 +1819,7 @@
                 <div class="preview-stat-card" id="card-stat-liquid">
                   <div class="preview-stat-label">
                     <span class="preview-stat-title" title="Saldo Kas & Bank">Saldo Kas & Bank</span>
-                    <span class="preview-stat-badge badge-blue">11 Bank</span>
+                    <span class="preview-stat-badge badge-blue">Semua Bank</span>
                   </div>
                   <div class="preview-stat-val" id="stat-liquid">Rp 34.010.091</div>
                   <div class="preview-stat-growth" style="color: #38bdf8;">✓ 6.8 Bulan Cadangan Kas</div>
@@ -1965,10 +1892,10 @@
           <!-- Pillar 2 -->
           <div class="vision-card">
             <div class="vision-icon-wrap">⚡</div>
-            <h3>2. Ekosistem Indonesia & Ekstraksi AI</h3>
-            <p>Dibangun khusus untuk sistem perbankan Indonesia. Cukup unggah berkas PDF rekening koran e-statement (termasuk yang diproteksi sandi tanggal lahir) atau billing tagihan, AI INVEYS otomatis mengekstrak mutasi dan membuat akun bank yang belum ada.</p>
+            <h3>2. Semua Bank & Ekstraksi AI Cerdas</h3>
+            <p>Dibangun khusus untuk seluruh sistem perbankan di Indonesia. Cukup unggah berkas PDF e-statement rekening koran (termasuk yang diproteksi sandi tanggal lahir) atau billing tagihan, AI INVEYS otomatis mengekstrak mutasi dan membuat akun bank yang belum ada.</p>
             <ul class="vision-features-list">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kompatibel 14+ Bank & Kartu Kredit Indonesia</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kompatibel semua bank di Indonesia (BUMN, Swasta & Digital)</li>
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Pembuatan akun bank otomatis (Auto-create)</li>
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tabungan Emas Pegadaian dengan live spot rate</li>
             </ul>
@@ -1992,8 +1919,9 @@
     <!-- Bank & Fintech Ecosystem -->
     <section class="ecosystem-section" id="ekosistem">
       <div class="container">
-        <h2 class="ecosystem-title">Dirancang Khusus untuk Ekosistem Perbankan & Investasi Indonesia</h2>
+        <h2 class="ecosystem-title">Dirancang Khusus untuk Semua Bank & Ekosistem Finansial Indonesia</h2>
         <div class="bank-chips">
+          <div class="bank-chip chip-highlight"><span>🇮🇩</span> Semua Bank di Indonesia</div>
           <div class="bank-chip"><span>🏦</span> Bank Central Asia (BCA)</div>
           <div class="bank-chip"><span>🏦</span> Bank Mandiri</div>
           <div class="bank-chip"><span>🏦</span> Bank Rakyat Indonesia (BRI)</div>
@@ -2029,7 +1957,7 @@
             <div class="bento-header">
               <div class="bento-icon">⚡</div>
               <h3>Ekstraksi Multimodal AI untuk PDF e-Statement & Struk</h3>
-              <p>Tinggalkan input transaksi manual yang melelahkan. Cukup unggah berkas PDF e-statement rekening koran atau foto struk belanja, AI INVEYS (bertenaga Google Gemini / OpenAI) langsung membuka proteksi tanggal lahir, mengekstrak debit/kredit, mengenali transfer antar-rekening, dan secara otomatis membuat akun bank jika belum terdaftar di vault Anda.</p>
+              <p>Tinggalkan input transaksi manual yang melelahkan. Cukup unggah berkas PDF e-statement rekening koran dari bank mana pun di Indonesia, AI INVEYS (bertenaga Google Gemini / OpenAI) langsung membuka proteksi tanggal lahir, mengekstrak debit/kredit, mengenali transfer antar-rekening, dan secara otomatis membuat akun bank jika belum terdaftar di vault Anda.</p>
             </div>
             
             <div class="bento-visual">
@@ -2169,11 +2097,11 @@
             </thead>
             <tbody>
               <tr>
-                <td><strong>14+ Bank & Kartu Kredit RI</strong></td>
+                <td><strong>Semua Bank & Kartu Kredit RI</strong></td>
                 <td class="comp-highlight">
                   <div class="comp-cell">
                     <span class="comp-icon check">✓</span>
-                    <span class="comp-text">BCA, Mandiri, BRI, BNI, Jago, dll.</span>
+                    <span class="comp-text">Semua Bank BUMN, Swasta & Digital</span>
                   </div>
                 </td>
                 <td>
@@ -2363,7 +2291,7 @@
       </div>
     </section>
 
-    <!-- Pricing Section -->
+    <!-- Pricing Section (Pixel-Perfect Aligned Cards) -->
     <section class="pricing-section" id="pricing">
       <div class="container">
         <div class="section-head">
@@ -2387,16 +2315,17 @@
               <span class="plan-badge badge-basic">Pemula & Esensial</span>
             </div>
             <h3>Plus</h3>
-            <p class="plan-desc">Untuk individu yang ingin mencatat keuangan harian rapi tanpa ribet.</p>
+            <p class="plan-desc">Untuk individu yang ingin pencatatan mutasi kas dan bank praktis tanpa ribet.</p>
             <div class="plan-price-wrap">
               <span class="plan-price" id="price-plus">Rp 49.000</span>
               <span class="plan-cycle" id="cycle-plus">/ bulan</span>
             </div>
             <ul class="plan-features">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Akun Bank & Kartu Tanpa Batas</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Diagram Arus Kas Bulanan</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ekstraksi e-Statement Manual (CSV)</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Privasi 100% Offline di Browser</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Akun bank & kartu kredit tanpa batas</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ringkasan saldo & kekayaan real-time</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Import mutasi manual via berkas CSV</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Diagram alur kas bulanan interaktif</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Penyimpanan data 100% lokal di browser</li>
             </ul>
             <div class="plan-cta-wrap">
               <button class="btn btn-secondary plan-cta" onclick="event.stopPropagation(); openCheckout('Plus', getPlanPriceText('Plus'))">Pilih Paket Plus</button>
@@ -2409,17 +2338,17 @@
               <span class="plan-badge badge-pop">Paling Diminati</span>
             </div>
             <h3>Pro</h3>
-            <p class="plan-desc">Otomasi penuh AI untuk profesional dengan beragam kartu kredit & investasi.</p>
+            <p class="plan-desc">Otomasi penuh kecerdasan buatan untuk profesional & multi-rekening bank.</p>
             <div class="plan-price-wrap">
               <span class="plan-price" id="price-pro">Rp 129.000</span>
               <span class="plan-cycle" id="cycle-pro">/ bulan</span>
             </div>
             <ul class="plan-features">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua Fitur Plus</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua kemampuan pada paket Plus</strong></li>
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> AI e-Statement Scanner (PDF ber-password)</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Diagram Arus Kas Sankey Multi-Tier</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bot Telegram Asisten Pencatatan 2-Arah</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tabungan Emas Pegadaian Live Rate</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Diagram arus kas Sankey multi-tier lengkap</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Asisten Bot Telegram dua arah (catat & saldo)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tabungan Emas Pegadaian live spot rate</li>
             </ul>
             <div class="plan-cta-wrap">
               <button class="btn btn-primary plan-cta" onclick="event.stopPropagation(); openCheckout('Pro', getPlanPriceText('Pro'))">✓ Paket Terpilih — Lanjutkan</button>
@@ -2432,17 +2361,17 @@
               <span class="plan-badge badge-vip">Keluarga & HNW</span>
             </div>
             <h3>Ultra</h3>
-            <p class="plan-desc">Solusi komprehensif bagi keluarga dan investor multi-aset generasi mendatang.</p>
+            <p class="plan-desc">Brankas kekayaan komprehensif bagi keluarga dan investor multi-aset.</p>
             <div class="plan-price-wrap">
               <span class="plan-price" id="price-ultra">Rp 299.000</span>
               <span class="plan-cycle" id="cycle-ultra">/ bulan</span>
             </div>
             <ul class="plan-features">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua Fitur Pro</strong></li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Simulasi Pensiun Monte Carlo 40 Tahun</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Multi-User Family & Split Budgeting</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kuota AI Token Ekstraksi Tak Terbatas</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Prioritas Dukungan Setup & Konsultasi</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Semua kemampuan pada paket Pro</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Simulasi pensiun Monte Carlo 40 tahun</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Multi-user keluarga & split budgeting rumah</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kuota ekstraksi AI token tanpa batas</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Dukungan prioritas konsultasi setup vault</li>
             </ul>
             <div class="plan-cta-wrap">
               <button class="btn btn-secondary plan-cta" onclick="event.stopPropagation(); openCheckout('Ultra', getPlanPriceText('Ultra'))">Pilih Paket Ultra</button>
@@ -2455,17 +2384,17 @@
               <span class="plan-badge badge-lt">Self-Hosted Bebas Abadi</span>
             </div>
             <h3>Self-Hosted Lifetime</h3>
-            <p class="plan-desc">Pasang di VPS Hostinger, Synology NAS, atau PC lokal Anda sendiri. Sekali bayar selamanya.</p>
+            <p class="plan-desc">Pasang di VPS Hostinger, Synology NAS, atau laptop sendiri selamanya.</p>
             <div class="plan-price-wrap">
               <span class="plan-price" id="price-lifetime" style="color: #fbbf24;">Rp 499.000</span>
               <span class="plan-cycle" id="cycle-lifetime">sekali bayar</span>
             </div>
             <ul class="plan-features">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Lisensi Akses Penuh Selamanya (Lifetime)</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Container Docker Siap Pakai & VPS Updater</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kunci Kedaulatan Data Finansial 100%</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Integrasi API Key Pribadi (Gemini/OpenAI)</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bebas Biaya Berlangganan Bulanan</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <strong>Lisensi kepemilikan seumur hidup (Lifetime)</strong></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Container Docker mandiri & 1-click VPS update</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kunci kedaulatan data finansial 100% lokal</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Integrasi kunci API pribadi (Gemini / OpenAI)</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bebas biaya langganan bulanan selamanya</li>
             </ul>
             <div class="plan-cta-wrap">
               <button class="btn btn-gold plan-cta" onclick="event.stopPropagation(); openCheckout('Self-Hosted Lifetime', 'Rp 499.000 Sekali Bayar')">Beli Lisensi Lifetime</button>
@@ -2485,6 +2414,16 @@
         </div>
 
         <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Apakah INVEYS mendukung semua bank di Indonesia?</span>
+              <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer" style="display: none;">
+              <strong>Ya, mendukung seluruh bank di Indonesia.</strong> Baik bank BUMN (BCA, Mandiri, BRI, BNI, BTN), bank swasta nasional (CIMB Niaga, Danamon, Permata, OCBC, Panin), bank syariah (BSI, Muamalat), bank digital (Jenius, Blu BCA, SeaBank, Bank Jago, Aladin, Neo), hingga BPR dan kartu kredit. Anda dapat mengunggah berkas e-statement rekening koran PDF atau mutasi CSV dari bank mana pun.
+            </div>
+          </div>
+
           <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)">
               <span>Apakah INVEYS meminta username atau password m-Banking saya?</span>
@@ -2616,7 +2555,7 @@
       <div class="footer-links">
         <a href="/app">Buka Aplikasi</a>
         <a href="#fitur">Fitur Lengkap</a>
-        <a href="#ekosistem">14+ Bank Indonesia</a>
+        <a href="#ekosistem">Semua Bank</a>
         <a href="#pricing">Paket Harga</a>
         <a href="https://github.com/cilostoc/inveys" target="_blank" rel="noopener">GitHub Repository</a>
         <a href="#faq">Bantuan & FAQ</a>
@@ -2627,26 +2566,26 @@
   </footer>
 
   <!-- =========================================================================
-       SCRIPTS: 3D VAULT ENGINE, 3D CARD TILT, ROLLING COUNTERS, CHECKOUT
+       SCRIPTS: ENLARGED 3D BACKGROUND VAULT ENGINE, 3D CARD TILT, ROLLING COUNTERS, CHECKOUT
        ========================================================================= -->
   <script>
     // =========================================================================
-    // 1. REFINED 3D GEOMETRIC FINANCIAL VAULT CORE CANVAS ENGINE
+    // 1. GRAND ENLARGED 3D GEOMETRIC BACKGROUND VAULT CANVAS ENGINE
     // =========================================================================
-    (function init3DVaultCore() {
+    (function init3DBackgroundVault() {
       const canvas = document.getElementById('vault-3d-canvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
 
-      let width = 760;
-      let height = 310;
+      let width = 1200;
+      let height = 760;
       let dpr = 1;
 
       function resize() {
         dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
-        width = rect.width || 760;
-        height = rect.height || 310;
+        width = rect.width || 1200;
+        height = rect.height || 760;
         canvas.width = Math.round(width * dpr);
         canvas.height = Math.round(height * dpr);
         ctx.scale(dpr, dpr);
@@ -2654,27 +2593,24 @@
       resize();
       window.addEventListener('resize', resize);
 
-      // 3D Geometry: Calibrated Polyhedron Geodesic Core
-      const phi = (1 + Math.sqrt(5)) / 2;
-      
-      // Dynamic scaling: proportional to canvas size so nodes never clip
+      // Grand Enlarged Scale for majestic background presence
       function getCoreScale() {
-        return Math.max(52, Math.min(84, width * 0.13, height * 0.28));
+        return Math.max(100, Math.min(180, width * 0.16, height * 0.32));
       }
 
+      // 3D Geometry: Geodesic Polyhedron Core
+      const phi = (1 + Math.sqrt(5)) / 2;
       const rawVertices = [
         [-1,  phi, 0], [ 1,  phi, 0], [-1, -phi, 0], [ 1, -phi, 0],
         [0, -1,  phi], [0,  1,  phi], [0, -1, -phi], [0,  1, -phi],
         [ phi, 0, -1], [ phi, 0,  1], [-phi, 0, -1], [-phi, 0,  1]
       ];
 
-      // Calculate unit vertices
       const unitVertices = rawVertices.map(([x, y, z]) => {
         const len = Math.hypot(x, y, z);
         return [ x / len, y / len, z / len ];
       });
 
-      // Connections between vertices
       const edges = [];
       for (let i = 0; i < unitVertices.length; i++) {
         for (let j = i + 1; j < unitVertices.length; j++) {
@@ -2688,87 +2624,43 @@
         }
       }
 
-      // Satellite Orbiting Financial Nodes (Proportional Radii)
+      // Orbiting Satellite Financial Nodes (Enlarged background orbits)
       const satelliteNodes = [
-        { label: 'BCA & Mandiri', angle: 0, rFactor: 1.78, speed: 0.0075, color: '#34d399', badge: '🏦' },
-        { label: '24K Emas Galeri 24', angle: (Math.PI * 2) / 5, rFactor: 1.95, speed: 0.0055, color: '#fbbf24', badge: '✨' },
-        { label: 'Gemini AI Extractor', angle: (Math.PI * 4) / 5, rFactor: 1.72, speed: 0.0085, color: '#38bdf8', badge: '⚡' },
-        { label: 'Zero-Knowledge Key', angle: (Math.PI * 6) / 5, rFactor: 2.05, speed: 0.0048, color: '#a78bfa', badge: '🛡️' },
-        { label: 'Monarch Cash Flow', angle: (Math.PI * 8) / 5, rFactor: 1.86, speed: 0.0068, color: '#34d399', badge: '🌊' }
+        { label: 'Semua Bank Indonesia', angle: 0, rFactor: 1.82, speed: 0.0065, color: '#34d399', badge: '🏦' },
+        { label: '24K Emas Galeri 24', angle: (Math.PI * 2) / 5, rFactor: 2.05, speed: 0.0048, color: '#fbbf24', badge: '✨' },
+        { label: 'Gemini & DeepSeek AI', angle: (Math.PI * 4) / 5, rFactor: 1.76, speed: 0.0075, color: '#38bdf8', badge: '⚡' },
+        { label: 'Zero-Knowledge Vault', angle: (Math.PI * 6) / 5, rFactor: 2.15, speed: 0.0042, color: '#a78bfa', badge: '🛡️' },
+        { label: 'Monarch Cash Flow', angle: (Math.PI * 8) / 5, rFactor: 1.92, speed: 0.0058, color: '#34d399', badge: '🌊' }
       ];
 
       // Ambient Wealth Dust Particles in 3D Space
       const particles = [];
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 50; i++) {
         particles.push({
-          x: (Math.random() - 0.5) * 4.2,
-          y: (Math.random() - 0.5) * 4.2,
-          z: (Math.random() - 0.5) * 4.2,
-          size: Math.random() * 1.8 + 1,
+          x: (Math.random() - 0.5) * 4.6,
+          y: (Math.random() - 0.5) * 4.6,
+          z: (Math.random() - 0.5) * 4.6,
+          size: Math.random() * 2 + 1,
           opacity: Math.random() * 0.65 + 0.25
         });
       }
 
-      // 3D Rotation State with Inertia Damping
-      let rotX = 0.18;
+      // 3D Rotation State with Spring Damping
+      let rotX = 0.15;
       let rotY = 0;
-      let targetRotX = 0.18;
+      let targetRotX = 0.15;
       let targetRotY = 0;
-      let isDragging = false;
-      let lastX = 0;
-      let lastY = 0;
 
-      // Mouse tracking over canvas
-      canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const cx = rect.width / 2;
-        const cy = rect.height / 2;
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-        if (!isDragging) {
-          targetRotY = ((mx - cx) / cx) * 0.65;
-          targetRotX = ((my - cy) / cy) * -0.45;
-        } else {
-          const dx = e.clientX - lastX;
-          const dy = e.clientY - lastY;
-          rotY += dx * 0.007;
-          rotX += dy * 0.007;
-          lastX = e.clientX;
-          lastY = e.clientY;
-        }
+      // Mouse pointer movement anywhere over hero tilts the 3D background
+      window.addEventListener('mousemove', (e) => {
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        targetRotY = ((e.clientX - cx) / cx) * 0.75;
+        targetRotX = ((e.clientY - cy) / cy) * -0.55;
       });
 
-      canvas.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
-      });
-      window.addEventListener('mouseup', () => { isDragging = false; });
-
-      // Touch events for mobile/tablet devices
-      canvas.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-          isDragging = true;
-          lastX = e.touches[0].clientX;
-          lastY = e.touches[0].clientY;
-        }
-      }, { passive: true });
-
-      canvas.addEventListener('touchmove', (e) => {
-        if (isDragging && e.touches.length === 1) {
-          const dx = e.touches[0].clientX - lastX;
-          const dy = e.touches[0].clientY - lastY;
-          rotY += dx * 0.008;
-          rotX += dy * 0.008;
-          lastX = e.touches[0].clientX;
-          lastY = e.touches[0].clientY;
-        }
-      }, { passive: true });
-
-      canvas.addEventListener('touchend', () => { isDragging = false; });
-
-      // 3D Projection Math
-      const fov = 380;
+      // 3D Math Helper
+      const fov = 440;
       function project(x, y, z, curScale) {
         const factor = fov / (fov + z + curScale * 2);
         return {
@@ -2780,13 +2672,11 @@
       }
 
       function rotatePoint(x, y, z, rx, ry) {
-        // Rotate around Y
         const cosY = Math.cos(ry);
         const sinY = Math.sin(ry);
         const x1 = x * cosY - z * sinY;
         const z1 = z * cosY + x * sinY;
 
-        // Rotate around X
         const cosX = Math.cos(rx);
         const sinX = Math.sin(rx);
         const y2 = y * cosX - z1 * sinX;
@@ -2800,20 +2690,18 @@
         const curScale = getCoreScale();
 
         // Spring damping interpolation
-        if (!isDragging) {
-          rotX += (targetRotX - rotX) * 0.04;
-          rotY += (targetRotY - rotY) * 0.04;
-        }
+        rotX += (targetRotX - rotX) * 0.035;
+        rotY += (targetRotY - rotY) * 0.035;
 
-        // Continuous subtle rotation
-        const tRotY = rotY + performance.now() * 0.00035;
-        const tRotX = rotX + Math.sin(performance.now() * 0.0005) * 0.06;
+        // Continuous slow celestial rotation
+        const tRotY = rotY + performance.now() * 0.0003;
+        const tRotX = rotX + Math.sin(performance.now() * 0.00045) * 0.05;
 
-        // Center ambient core glow
-        const glowRad = curScale * 1.35;
+        // Ambient Core Glow
+        const glowRad = curScale * 1.45;
         const radialGlow = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, glowRad);
-        radialGlow.addColorStop(0, 'rgba(52, 211, 153, 0.16)');
-        radialGlow.addColorStop(0.5, 'rgba(56, 189, 248, 0.06)');
+        radialGlow.addColorStop(0, 'rgba(52, 211, 153, 0.18)');
+        radialGlow.addColorStop(0.5, 'rgba(56, 189, 248, 0.07)');
         radialGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = radialGlow;
         ctx.beginPath();
@@ -2860,10 +2748,10 @@
         projected.forEach(p => {
           const alpha = Math.max(0.3, Math.min(1, (p.z + curScale * 1.8) / (curScale * 3.6)));
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 4.2 * p.scale, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, 4.5 * p.scale, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(167, 243, 208, ${alpha})`;
           ctx.shadowColor = '#34d399';
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = 9;
           ctx.fill();
           ctx.shadowBlur = 0;
         });
@@ -2873,18 +2761,18 @@
           node.angle += node.speed;
           const r = curScale * node.rFactor;
           const nx = Math.cos(node.angle) * r;
-          const ny = Math.sin(node.angle * 1.4) * (r * 0.32);
+          const ny = Math.sin(node.angle * 1.4) * (r * 0.35);
           const nz = Math.sin(node.angle) * r;
 
           const [rx, ry, rz] = rotatePoint(nx, ny, nz, tRotX, tRotY);
           const pr = project(rx, ry, rz, curScale);
-          const alpha = Math.max(0.3, Math.min(1, (rz + curScale * 2.2) / (curScale * 4.4)));
+          const alpha = Math.max(0.32, Math.min(1, (rz + curScale * 2.2) / (curScale * 4.4)));
 
           // Laser dotted ray from center core to satellite
           ctx.beginPath();
           ctx.moveTo(width / 2, height / 2);
           ctx.lineTo(pr.x, pr.y);
-          ctx.strokeStyle = `rgba(52, 211, 153, ${alpha * 0.22})`;
+          ctx.strokeStyle = `rgba(52, 211, 153, ${alpha * 0.24})`;
           ctx.lineWidth = 1;
           ctx.setLineDash([3, 5]);
           ctx.stroke();
@@ -2892,7 +2780,7 @@
 
           // Orbiting Node Dot with Glow
           ctx.beginPath();
-          ctx.arc(pr.x, pr.y, 6.5 * pr.scale, 0, Math.PI * 2);
+          ctx.arc(pr.x, pr.y, 7 * pr.scale, 0, Math.PI * 2);
           ctx.fillStyle = node.color;
           ctx.shadowColor = node.color;
           ctx.shadowBlur = 12;
@@ -2900,27 +2788,27 @@
           ctx.shadowBlur = 0;
 
           // Node Label Pill
-          if (pr.scale > 0.65) {
+          if (pr.scale > 0.6) {
             ctx.font = `600 ${Math.round(11 * pr.scale)}px 'Plus Jakarta Sans', sans-serif`;
             const text = `${node.badge} ${node.label}`;
             const textWidth = ctx.measureText(text).width;
 
-            ctx.fillStyle = `rgba(6, 18, 15, ${alpha * 0.9})`;
-            ctx.strokeStyle = `rgba(52, 211, 153, ${alpha * 0.4})`;
+            ctx.fillStyle = `rgba(6, 18, 15, ${alpha * 0.92})`;
+            ctx.strokeStyle = `rgba(52, 211, 153, ${alpha * 0.42})`;
             ctx.lineWidth = 1;
 
-            const padX = 7 * pr.scale;
+            const padX = 8 * pr.scale;
             const padY = 4 * pr.scale;
-            const boxX = pr.x + 9 * pr.scale;
+            const boxX = pr.x + 10 * pr.scale;
             const boxY = pr.y - 10 * pr.scale;
 
             ctx.beginPath();
-            ctx.roundRect(boxX, boxY, textWidth + padX * 2, 17 * pr.scale + padY, 5 * pr.scale);
+            ctx.roundRect(boxX, boxY, textWidth + padX * 2, 18 * pr.scale + padY, 5 * pr.scale);
             ctx.fill();
             ctx.stroke();
 
             ctx.fillStyle = `rgba(248, 250, 252, ${alpha})`;
-            ctx.fillText(text, boxX + padX, boxY + 12 * pr.scale);
+            ctx.fillText(text, boxX + padX, boxY + 13 * pr.scale);
           }
         });
 
@@ -3099,7 +2987,7 @@
     }, 5000);
 
     // =========================================================================
-    // 5. PRICING BILLING SWITCHER & INTUITIVE SELECTION
+    // 5. PRICING BILLING SWITCHER & INTUITIVE SELECTION (ALIGNED & SYMMETRICAL)
     // =========================================================================
     let currentBillingCycle = 'monthly';
     function switchBilling(cycle) {
