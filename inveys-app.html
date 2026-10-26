@@ -4396,6 +4396,236 @@ dialog.has-key-mgr > #modal-body {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   PRIORITY 3: Ultra-Smooth Shimmer Skeleton Wave for AI Processing
+   ========================================================================== */
+
+.capture-skeleton-card {
+  border: 1px solid color-mix(in srgb, var(--green) 30%, var(--line)) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--green) 4%, var(--paper)), var(--paper)) !important;
+  box-shadow: 0 4px 24px rgba(23, 54, 35, 0.06);
+  position: relative;
+  overflow: hidden;
+  animation: skeletonCardEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes skeletonCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.skeleton-header {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--green) 12%, var(--paper));
+  border: 1px solid color-mix(in srgb, var(--green) 28%, var(--line));
+  width: fit-content;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.1);
+}
+
+.skeleton-orb {
+  font-size: 14px;
+  color: var(--green);
+  display: inline-block;
+  animation: sparkleSpin 2.5s infinite ease-in-out;
+}
+
+.skeleton-status-text {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--green);
+  letter-spacing: -0.2px;
+}
+
+.skeleton-wave-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--green) 14%, var(--line));
+  overflow: hidden;
+  position: relative;
+}
+
+.skeleton-wave-shimmer {
+  width: 45%;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--green), #34d399, #a7f3d0);
+  animation: shimmerProgress 1.4s infinite ease-in-out;
+}
+
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-row-card {
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: skeletonRowIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes skeletonRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.skeleton-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.skeleton-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .skeleton-fields-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.skeleton-field-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Core Shimmer Wave Effect */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--line) 80%, transparent) 0%,
+    color-mix(in srgb, var(--green) 20%, var(--paper)) 50%,
+    color-mix(in srgb, var(--line) 80%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonSweep 1.6s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 6px;
+  will-change: background-position;
+}
+
+[data-theme="dark"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(74, 222, 128, 0.16) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes skeletonSweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-box-check {
+  width: 110px;
+  height: 16px;
+}
+
+.skeleton-box-badge {
+  width: 70px;
+  height: 16px;
+  border-radius: 12px;
+}
+
+.skeleton-box-tag {
+  width: 90px;
+  height: 16px;
+  border-radius: 12px;
+}
+
+.skeleton-box-label {
+  width: 55px;
+  height: 11px;
+}
+
+.skeleton-box-input {
+  width: 100%;
+  height: 38px;
+  border-radius: 7px;
+}
+
+/* Copilot Chat Message Skeleton */
+.skeleton-chat-message {
+  animation: aiBubbleSlideIn 0.25s ease-out forwards;
+}
+
+.skeleton-chat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.skeleton-chat-line {
+  height: 14px;
+  border-radius: 4px;
+}
+
+.skeleton-chat-sub {
+  font-size: 10px;
+  color: var(--green);
+  font-weight: 650;
+  margin-top: 4px;
+}
+
+.ai-avatar.skeleton-spin {
+  animation: sparkleSpin 2.5s infinite ease-in-out;
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .capture-skeleton-card,
+  .skeleton-shimmer,
+  .skeleton-wave-shimmer,
+  .skeleton-orb,
+  .skeleton-row-card,
+  .skeleton-chat-message,
+  .ai-avatar.skeleton-spin {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -7489,7 +7719,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     return text;
   }
   function ask(q){quickMinimized=false;quickSend(q,quickAccount);$('#chat-question').value='';}
-  function renderMessages(){if(!$('#chat-messages'))return;const history=CHAT.history(state);$('#chat-messages').innerHTML=`<div class="chat-message assistant"><span class="ai-avatar">✧</span><div><p>${L('Tanya atau catat melalui asisten INVEYS. Draft selalu ditinjau sebelum disimpan.','Ask or record with INVEYS. Drafts always require review before saving.')}</p><small>${escape(aiProviderName(state.assistant.provider))}</small></div></div>`+history.map((m,idx)=>{const isLatestAssistant=m.role==='assistant'&&idx===history.length-1&&streamState.active;const textToShow=isLatestAssistant?streamState.displayedText:m.text;return m.role==='user'?`<div class="chat-message user">${escape(m.text)}</div>`:`<div class="chat-message assistant ${isLatestAssistant?'typing-streaming':''}" onclick="skipStreaming()"><span class="ai-avatar">✧</span><div><div class="ai-content">${aiRichText(textToShow)}${isLatestAssistant?'<span class="ai-typing-cursor"></span>':''}</div><small>${escape(aiProviderName(m.provider))} · ${escape(m.date)}</small></div></div>`;}).join('');$('#chat-messages').scrollTop=$('#chat-messages').scrollHeight;}
+  function renderMessages(){if(!$('#chat-messages'))return;const history=CHAT.history(state);$('#chat-messages').innerHTML=`<div class="chat-message assistant"><span class="ai-avatar">✧</span><div><p>${L('Tanya atau catat melalui asisten INVEYS. Draft selalu ditinjau sebelum disimpan.','Ask or record with INVEYS. Drafts always require review before saving.')}</p><small>${escape(aiProviderName(state.assistant.provider))}</small></div></div>`+history.map((m,idx)=>{const isLatestAssistant=m.role==='assistant'&&idx===history.length-1&&streamState.active;const textToShow=isLatestAssistant?streamState.displayedText:m.text;return m.role==='user'?`<div class="chat-message user">${escape(m.text)}</div>`:`<div class="chat-message assistant ${isLatestAssistant?'typing-streaming':''}" onclick="skipStreaming()"><span class="ai-avatar">✧</span><div><div class="ai-content">${aiRichText(textToShow)}${isLatestAssistant?'<span class="ai-typing-cursor"></span>':''}</div><small>${escape(aiProviderName(m.provider))} · ${escape(m.date)}</small></div></div>`;}).join('')+(aiBusy?`<div class="chat-message assistant skeleton-chat-message" role="status" aria-busy="true"><span class="ai-avatar skeleton-spin">✧</span><div class="skeleton-chat-body"><div class="skeleton-shimmer skeleton-chat-line" style="width:75%"></div><div class="skeleton-shimmer skeleton-chat-line" style="width:90%"></div><div class="skeleton-shimmer skeleton-chat-line" style="width:45%"></div><small class="skeleton-chat-sub">${escape(aiThinkingStatusText())}</small></div></div>`:'');$('#chat-messages').scrollTop=$('#chat-messages').scrollHeight;}
   let mcResult=null,mcConfig=null;
   function syncPreferences(){
     document.documentElement?.setAttribute('lang',state.language);
@@ -8198,7 +8428,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   const L=(id,en)=>state.language==='id'?id:en;
   let captureAccount='',captureKind='receipt';
   let quickAccount='',quickText='',quickReply='';
-  let drafts=[],captureText='',captureStatus='',service={},telegramItems=[],museAnswer='',fxBusy=false,recorder=null,voiceRecognition=null;
+  let drafts=[],captureText='',captureStatus='',captureBusy=false,service={},telegramItems=[],museAnswer='',fxBusy=false,recorder=null,voiceRecognition=null;
   const releases=window.InveysReleases;
   state.fx.auto ??= true;
   async function api(path,data){
@@ -8215,8 +8445,51 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   function capture(){
     const activeProvider = (state.assistant && state.assistant.provider !== 'local') ? state.assistant.provider : null;
     const providerLabel = activeProvider ? aiProviderName(activeProvider) : L('AI Terhubung', 'Connected AI');
-    return header(L('Catat lebih cepat, tetap dalam kendali.','Capture faster. Stay in control.'),L('OCR, suara, dan statement menghasilkan draft. Periksa nominal, mata uang, tanggal, dan akun sebelum menyimpan.','OCR, voice and statements create drafts. Review amount, currency, date and account before saving.'),'','CAPTURE')+transactionSwitcher('capture')+`<section class="panel panel-pad"><div class="capture-controls"><label>${L('Akun pencatatan','Recording account')}<select id="capture-account">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===captureAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></label><label>${L('Jenis sumber','Source type')}<select id="capture-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk / suara','Receipt / voice')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank (historis)','Bank statement (historical)')}</option></select></label><label>${L('Gambar struk / PDF / CSV / audio (maks. 8 MB)','Receipt image / PDF / CSV / audio (max. 8 MB)')}<input id="capture-file" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,text/csv,text/plain,.csv,audio/*"></label></div><p class="note">${L('⚡ Ekstraksi Cerdas AI mendukung dokumen PDF e-statement multi-halaman, file CSV mutasi rekening, dan struk belanja multi-item. AI otomatis merapikan merchant, mendeteksi transfer antar akun, dan menetapkan kategori.','⚡ AI Smart Extract supports multi-page PDF bank statements, bank CSV exports, and multi-item receipts. AI automatically normalizes merchants, detects inter-account transfers, and assigns categories.')} ${activeProvider ? `<span class="badge blue">Model: ${escape(providerLabel)}</span>` : ''}</p><label for="capture-text">${L('Teks hasil ekstraksi / transkrip / CSV (dapat dikoreksi)','Extracted text / transcript / CSV (editable)')}</label><textarea id="capture-text" rows="6" maxlength="100000" placeholder="2026-10-03 Coffee 25000 DR&#10;2026-10-03 Salary 5000000 CR">${escape(captureText)}</textarea><div class="button-group">${button(L('⚡ Ekstrak Cerdas AI (PDF/CSV)','⚡ AI Smart Extract (PDF/CSV)'),'capture-ai-extract','primary')}${button(L('Buat draft','Create drafts'),'capture-parse')}${button(L('OCR file lokal','Extract local OCR'),'capture-extract')}${button(L('Input suara','Voice input'),'capture-voice')}${button(L('Hentikan suara','Stop voice'),'capture-stop')}${button(L('Transkripsi audio dengan Muse','Transcribe audio with Muse'),'capture-audio')}</div><p role="status" class="note">${escape(captureStatus)}</p><p class="note">${L('AI Lokal mendeteksi otomatis e-statement bank (Bank BRI, BRI Kartu Kredit, Bank Mandiri, SeaBank, BCA, Bank Jago) dan struk pembelian (Indomaret, Alfamart, SPBU, Cafe/Restoran). CR/Masuk = pemasukan; D/DB/Keluar = pengeluaran.','Local AI automatically detects bank e-statements (Bank BRI, BRI Credit Card, Bank Mandiri, SeaBank, BCA, Bank Jago) and purchase receipts (Indomaret, Alfamart, Gas Stations, Cafes/Restaurants). CR/Inflow = income; D/DB/Outflow = expense.')}</p></section>${draftPanel()}`;}
-  function draftPanel(){if(!drafts.length)return '';return `<section class="panel panel-pad" style="margin-top:24px"><h2>${L('Tinjau draft','Review drafts')} · ${drafts.length}</h2><p class="note">${L('Duplikasi potensial harus dikonfirmasi dengan alasan. Statement historis secara default hanya dicatat ke jurnal agar saldo snapshot tidak dihitung dua kali.','Potential duplicates need confirmation with a reason. Historical statements default to journal-only to avoid counting snapshot balances twice.')}</p><div class="draft-batch-bar"><span class="draft-batch-title">${L('Pilihan cepat:','Quick select:')}</span><button type="button" class="btn-subtle" data-action="capture-select-clean" title="${L('Centang baris yang bukan duplikat','Select only non-duplicate rows')}">🛡️ ${L('Pilih yang Aman','Clean only')}</button><button type="button" class="btn-subtle" data-action="capture-select-all">☑️ ${L('Pilih Semua','All')}</button><button type="button" class="btn-subtle" data-action="capture-deselect-all">⬜ ${L('Batal Semua','None')}</button></div>${drafts.map((d,i)=>{const matches=R.duplicates(state,d);return `<div class="draft-row"><label><input type="checkbox" data-draft="${i}" data-key="selected" ${d.selected?'checked':''}> ${L('Simpan baris','Save row')} ${i+1}</label>${OPS.receiptMatches(state,d).length?button(L('Cocokkan struk','Match receipt'),'ops-receipt:'+i):''}${matches.length?`<span class="badge ${matches.some(m=>m.type==='transfer_counterpart')?'blue':'orange'}" title="${escape(matches.map(m=>m.reason).join('; '))}">${matches.some(m=>m.type==='transfer_counterpart')?L('Pasangan transfer terdeteksi','Transfer counterpart detected'):L('Potensi duplikasi','Potential duplicate')} · ${matches.length}</span>`:''}${d.kind==='transfer'?`<span class="badge blue">⇄ Transfer</span>`:''}<div class="capture-controls"><label>${L('Deskripsi','Description')}<input data-draft="${i}" data-key="name" value="${escape(d.name)}" maxlength="120"></label><label>${L('Tanggal','Date')}<input type="date" data-draft="${i}" data-key="date" value="${escape(d.date)}"></label><label>${L('Nominal','Amount')} · ${escape(d.currency)}<input type="number" min="0.01" step="0.01" data-draft="${i}" data-key="amount" class="${d.kind==='expense'?'expense-amount':''}" value="${d.amount/100}"></label><label>${L('Akun','Account')}<select data-draft="${i}" data-key="accountId">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===d.accountId?'selected':''}>${escape(a.name)} (${a.currency})</option>`).join('')}</select></label><label>${L('Jenis','Type')}<select data-draft="${i}" data-key="kind"><option value="expense" ${d.kind==='expense'?'selected':''}>${L('Pengeluaran','Expense')}</option><option value="income" ${d.kind==='income'?'selected':''}>${L('Pemasukan','Income')}</option><option value="transfer" ${d.kind==='transfer'?'selected':''}>${L('Transfer Antar Akun','Transfer')}</option></select></label>${d.kind==='transfer'?`<label>${L('Akun tujuan','Destination account')}<select data-draft="${i}" data-key="targetId">${state.accounts.filter(a=>a.id!==d.accountId).map(a=>`<option value="${a.id}" ${a.id===d.targetId?'selected':''}>${escape(a.name)} (${a.currency})</option>`).join('')}</select></label>`:''}</div><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><label><input type="checkbox" data-draft="${i}" data-key="affectBalance" ${d.affectBalance?'checked':''}> ${L('Perbarui saldo akun','Update account balance')}</label>${d.kind!=='transfer'?`<label class="draft-rule-toggle" title="${L('Simpan sebagai aturan otomatis di Operations agar transaksi serupa otomatis bersih','Save as auto-rule in Operations so future transactions are automatically cleaned')}"><input type="checkbox" data-draft="${i}" data-key="saveAsRule" ${d.saveAsRule?'checked':''}> <span>⚡ ${L('Ingat aturan ini','Remember rule')}</span></label>`:''}</div><label>${L('Alasan menyimpan jika terindikasi duplikat','Reason to save if flagged as a duplicate')}<input data-draft="${i}" data-key="duplicateReason" value="${escape(d.duplicateReason||'')}" maxlength="200"></label></div>`;}).join('')}<div class="button-group">${button(L('Periksa duplikasi lagi','Recheck duplicates'),'capture-review')}${drafts.length>1?button(L('⚡ Pasangkan Transfer Otomatis','⚡ Auto-Pair Transfers'),'capture-pair-transfers'):''}${button(L('Simpan yang dipilih','Save selected'),'capture-save','primary')}${button(L('Buang draft','Discard drafts'),'capture-clear')}</div></section>`;}
+    return header(L('Catat lebih cepat, tetap dalam kendali.','Capture faster. Stay in control.'),L('OCR, suara, dan statement menghasilkan draft. Periksa nominal, mata uang, tanggal, dan akun sebelum menyimpan.','OCR, voice and statements create drafts. Review amount, currency, date and account before saving.'),'','CAPTURE')+transactionSwitcher('capture')+`<section class="panel panel-pad"><div class="capture-controls"><label>${L('Akun pencatatan','Recording account')}<select id="capture-account">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===captureAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></label><label>${L('Jenis sumber','Source type')}<select id="capture-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk / suara','Receipt / voice')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank (historis)','Bank statement (historical)')}</option></select></label><label>${L('Gambar struk / PDF / CSV / audio (maks. 8 MB)','Receipt image / PDF / CSV / audio (max. 8 MB)')}<input id="capture-file" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,text/csv,text/plain,.csv,audio/*"></label></div><p class="note">${L('⚡ Ekstraksi Cerdas AI mendukung dokumen PDF e-statement multi-halaman, file CSV mutasi rekening, dan struk belanja multi-item. AI otomatis merapikan merchant, mendeteksi transfer antar akun, dan menetapkan kategori.','⚡ AI Smart Extract supports multi-page PDF bank statements, bank CSV exports, and multi-item receipts. AI automatically normalizes merchants, detects inter-account transfers, and assigns categories.')} ${activeProvider ? `<span class="badge blue">Model: ${escape(providerLabel)}</span>` : ''}</p><label for="capture-text">${L('Teks hasil ekstraksi / transkrip / CSV (dapat dikoreksi)','Extracted text / transcript / CSV (editable)')}</label><textarea id="capture-text" rows="6" maxlength="100000" placeholder="2026-10-03 Coffee 25000 DR&#10;2026-10-03 Salary 5000000 CR">${escape(captureText)}</textarea><div class="button-group">${button(captureBusy?L('⚡ Mengekstrak…','⚡ Extracting…'):L('⚡ Ekstrak Cerdas AI (PDF/CSV)','⚡ AI Smart Extract (PDF/CSV)'),'capture-ai-extract','primary')}${button(L('Buat draft','Create drafts'),'capture-parse')}${button(L('OCR file lokal','Extract local OCR'),'capture-extract')}${button(L('Input suara','Voice input'),'capture-voice')}${button(L('Hentikan suara','Stop voice'),'capture-stop')}${button(L('Transkripsi audio dengan Muse','Transcribe audio with Muse'),'capture-audio')}</div><p role="status" class="note">${escape(captureStatus)}</p><p class="note">${L('AI Lokal mendeteksi otomatis e-statement bank (Bank BRI, BRI Kartu Kredit, Bank Mandiri, SeaBank, BCA, Bank Jago) dan struk pembelian (Indomaret, Alfamart, SPBU, Cafe/Restoran). CR/Masuk = pemasukan; D/DB/Keluar = pengeluaran.','Local AI automatically detects bank e-statements (Bank BRI, BRI Credit Card, Bank Mandiri, SeaBank, BCA, Bank Jago) and purchase receipts (Indomaret, Alfamart, Gas Stations, Cafes/Restaurants). CR/Inflow = income; D/DB/Outflow = expense.')}</p></section>${draftPanel()}`;}
+  function draftSkeletonWave(){
+    const label=captureStatus||L('AI sedang menganalisis dokumen dan mendeteksi transaksi…','AI is analyzing document and detecting transactions…');
+    return `<section class="panel panel-pad capture-skeleton-card" style="margin-top:24px" role="status" aria-busy="true" aria-live="polite" aria-label="${escape(label)}">
+      <div class="skeleton-header">
+        <div class="skeleton-pill">
+          <span class="skeleton-orb">✧</span>
+          <span class="skeleton-status-text">${escape(label)}</span>
+        </div>
+        <div class="skeleton-wave-bar">
+          <div class="skeleton-wave-shimmer"></div>
+        </div>
+      </div>
+      <div class="skeleton-rows">
+        ${[1,2,3].map(i=>`
+          <div class="skeleton-row-card" style="animation-delay:${i*0.12}s">
+            <div class="skeleton-row-meta">
+              <div class="skeleton-shimmer skeleton-box-check"></div>
+              <div class="skeleton-shimmer skeleton-box-badge"></div>
+              <div class="skeleton-shimmer skeleton-box-tag"></div>
+            </div>
+            <div class="skeleton-fields-grid">
+              <div class="skeleton-field-item">
+                <div class="skeleton-shimmer skeleton-box-label"></div>
+                <div class="skeleton-shimmer skeleton-box-input"></div>
+              </div>
+              <div class="skeleton-field-item">
+                <div class="skeleton-shimmer skeleton-box-label"></div>
+                <div class="skeleton-shimmer skeleton-box-input"></div>
+              </div>
+              <div class="skeleton-field-item">
+                <div class="skeleton-shimmer skeleton-box-label"></div>
+                <div class="skeleton-shimmer skeleton-box-input"></div>
+              </div>
+              <div class="skeleton-field-item">
+                <div class="skeleton-shimmer skeleton-box-label"></div>
+                <div class="skeleton-shimmer skeleton-box-input"></div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>`;
+  }
+  function draftPanel(){if(captureBusy||quickFileBusy)return draftSkeletonWave();if(!drafts.length)return '';return `<section class="panel panel-pad" style="margin-top:24px"><h2>${L('Tinjau draft','Review drafts')} · ${drafts.length}</h2><p class="note">${L('Duplikasi potensial harus dikonfirmasi dengan alasan. Statement historis secara default hanya dicatat ke jurnal agar saldo snapshot tidak dihitung dua kali.','Potential duplicates need confirmation with a reason. Historical statements default to journal-only to avoid counting snapshot balances twice.')}</p><div class="draft-batch-bar"><span class="draft-batch-title">${L('Pilihan cepat:','Quick select:')}</span><button type="button" class="btn-subtle" data-action="capture-select-clean" title="${L('Centang baris yang bukan duplikat','Select only non-duplicate rows')}">🛡️ ${L('Pilih yang Aman','Clean only')}</button><button type="button" class="btn-subtle" data-action="capture-select-all">☑️ ${L('Pilih Semua','All')}</button><button type="button" class="btn-subtle" data-action="capture-deselect-all">⬜ ${L('Batal Semua','None')}</button></div>${drafts.map((d,i)=>{const matches=R.duplicates(state,d);return `<div class="draft-row"><label><input type="checkbox" data-draft="${i}" data-key="selected" ${d.selected?'checked':''}> ${L('Simpan baris','Save row')} ${i+1}</label>${OPS.receiptMatches(state,d).length?button(L('Cocokkan struk','Match receipt'),'ops-receipt:'+i):''}${matches.length?`<span class="badge ${matches.some(m=>m.type==='transfer_counterpart')?'blue':'orange'}" title="${escape(matches.map(m=>m.reason).join('; '))}">${matches.some(m=>m.type==='transfer_counterpart')?L('Pasangan transfer terdeteksi','Transfer counterpart detected'):L('Potensi duplikasi','Potential duplicate')} · ${matches.length}</span>`:''}${d.kind==='transfer'?`<span class="badge blue">⇄ Transfer</span>`:''}<div class="capture-controls"><label>${L('Deskripsi','Description')}<input data-draft="${i}" data-key="name" value="${escape(d.name)}" maxlength="120"></label><label>${L('Tanggal','Date')}<input type="date" data-draft="${i}" data-key="date" value="${escape(d.date)}"></label><label>${L('Nominal','Amount')} · ${escape(d.currency)}<input type="number" min="0.01" step="0.01" data-draft="${i}" data-key="amount" class="${d.kind==='expense'?'expense-amount':''}" value="${d.amount/100}"></label><label>${L('Akun','Account')}<select data-draft="${i}" data-key="accountId">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===d.accountId?'selected':''}>${escape(a.name)} (${a.currency})</option>`).join('')}</select></label><label>${L('Jenis','Type')}<select data-draft="${i}" data-key="kind"><option value="expense" ${d.kind==='expense'?'selected':''}>${L('Pengeluaran','Expense')}</option><option value="income" ${d.kind==='income'?'selected':''}>${L('Pemasukan','Income')}</option><option value="transfer" ${d.kind==='transfer'?'selected':''}>${L('Transfer Antar Akun','Transfer')}</option></select></label>${d.kind==='transfer'?`<label>${L('Akun tujuan','Destination account')}<select data-draft="${i}" data-key="targetId">${state.accounts.filter(a=>a.id!==d.accountId).map(a=>`<option value="${a.id}" ${a.id===d.targetId?'selected':''}>${escape(a.name)} (${a.currency})</option>`).join('')}</select></label>`:''}</div><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><label><input type="checkbox" data-draft="${i}" data-key="affectBalance" ${d.affectBalance?'checked':''}> ${L('Perbarui saldo akun','Update account balance')}</label>${d.kind!=='transfer'?`<label class="draft-rule-toggle" title="${L('Simpan sebagai aturan otomatis di Operations agar transaksi serupa otomatis bersih','Save as auto-rule in Operations so future transactions are automatically cleaned')}"><input type="checkbox" data-draft="${i}" data-key="saveAsRule" ${d.saveAsRule?'checked':''}> <span>⚡ ${L('Ingat aturan ini','Remember rule')}</span></label>`:''}</div><label>${L('Alasan menyimpan jika terindikasi duplikat','Reason to save if flagged as a duplicate')}<input data-draft="${i}" data-key="duplicateReason" value="${escape(d.duplicateReason||'')}" maxlength="200"></label></div>`;}).join('')}<div class="button-group">${button(L('Periksa duplikasi lagi','Recheck duplicates'),'capture-review')}${drafts.length>1?button(L('⚡ Pasangkan Transfer Otomatis','⚡ Auto-Pair Transfers'),'capture-pair-transfers'):''}${button(L('Simpan yang dipilih','Save selected'),'capture-save','primary')}${button(L('Buang draft','Discard drafts'),'capture-clear')}</div></section>`;}
   function draftText(text,source='text',inboxId=null,context=null){const a=context?getAccount(context.accountId):getAccount($('#capture-account')?.value)||state.accounts[0];if(!a)throw Error(L('Tambahkan akun terlebih dahulu','Add an account first'));const historical=context?context.historical:$('#capture-kind')?.value==='statement';const detected=R.detectBankStatement?R.detectBankStatement(text):null;let parsed=R.parse(text,a.currency,date()).slice(0,500).map((d,i)=>({...d,accountId:a.id,source,inboxId,sourceKey:inboxId?'telegram-'+inboxId+'-'+i:undefined,category:d.category||'Imported',affectBalance:!historical}));if(R.pairTransferDrafts&&parsed.length>1)parsed=R.pairTransferDrafts(parsed,state.accounts);drafts=parsed.map(d=>({...d,selected:!R.duplicates(state,d).length}));captureText=text;if(drafts.length){captureStatus=detected?L(`⚡ Terdeteksi: ${detected.bank} · ${drafts.length} transaksi siap ditinjau.`,`⚡ Detected: ${detected.bank} · ${drafts.length} transactions ready for review.`):L(`${drafts.length} draft siap ditinjau.`,`${drafts.length} drafts ready for review.`);}else{captureStatus=L('Nominal tidak ditemukan. Koreksi teks atau catat manual.','No amount found. Correct the text or record manually.');}navigate('capture');}
   async function fileData(selectedFile){const f=selectedFile||$('#capture-file')?.files?.[0]||quickAttachment;if(!f||f.size>8*1024*1024)throw Error(L('Pilih file maksimal 8 MB','Choose a file up to 8 MB'));const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(f);});const mime=f.type||(f.name?.endsWith('.csv')?'text/csv':(f.name?.endsWith('.txt')?'text/plain':'application/octet-stream'));return {data,type:mime,name:f.name||'document'};}
   function commitDrafts(){const chosen=drafts.filter(d=>d.selected);if(!chosen.length)throw Error(L('Pilih minimal satu draft','Select at least one draft'));const next=structuredClone(state);let rulesCount=0;for(const d of chosen){if(d.saveAsRule&&d.name&&d.category&&d.kind!=='transfer'){const kw=(d.originalName||d.name).trim().split(/[\s-_/]+/).filter(w=>w.length>=3)[0]||d.name.trim();if(kw&&!next.operations.rules.some(r=>r.conditions.contains?.toLowerCase()===kw.toLowerCase())){next.operations.rules.unshift({id:uid(),name:`Auto: ${d.name.trim()}`,enabled:true,conditions:{contains:kw},actions:{name:d.name.trim(),category:d.category.trim()}});rulesCount++;}}const a=next.accounts.find(a=>a.id===d.accountId);if(!a||d.currency!==a.currency)throw Error(L('Mata uang draft harus sama dengan akun. Koreksi nominal saat mengganti akun.','Draft currency must match the account. Correct the amount when changing accounts.'));if(!E.validDate(d.date)||!Number.isSafeInteger(d.amount)||d.amount<=0||!String(d.name).trim())throw Error('Invalid draft');if(d.kind==='transfer'){if(!d.targetId||d.targetId===d.accountId)throw Error(L('Pilih akun tujuan yang berbeda untuk transfer','Select a different destination account for transfer'));}if(d.sourceKey&&next.transactions.some(t=>t.sourceKey===d.sourceKey))throw Error(L('Baris sumber ini sudah disimpan','This source row has already been saved'));const dup=R.duplicates(next,d);if(dup.length&&!String(d.duplicateReason||'').trim())throw Error(L('Duplikasi potensial: masukkan alasan sebelum menyimpan','Potential duplicate: enter a reason before saving'));const tx={id:uid(),name:d.name.trim().slice(0,120),date:d.date,kind:d.kind,amount:d.amount,accountId:d.accountId,currency:d.currency,category:d.kind==='transfer'?'Transfer':d.category,source:d.source,sourceKey:d.sourceKey,balanceApplied:d.affectBalance,duplicateReason:d.duplicateReason||''};if(d.kind==='transfer')tx.targetId=d.targetId;E.applyTransaction(next,tx);}
@@ -8593,6 +8866,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     }
     case 'capture-save':commitDrafts();break;
     case 'capture-ai-extract':{
+      if(captureBusy){toast(L('Tunggu ekstraksi selesai.','Wait for extraction to finish.'));break;}
       const a=getAccount($('#capture-account')?.value)||state.accounts[0];
       if(!a)throw Error(L('Tambahkan akun terlebih dahulu','Add an account first'));
       let file=null;
@@ -8606,6 +8880,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
       const activeProvider = (state.assistant && state.assistant.provider !== 'local') ? state.assistant.provider : undefined;
       const providerLabel = activeProvider ? aiProviderName(activeProvider) : L('AI terhubung', 'connected AI');
       captureStatus=L(`Menganalisis dokumen dengan ${providerLabel}…`,`Analyzing document with ${providerLabel}…`);
+      captureBusy=true;
       toast(captureStatus);
       render();
       try{
@@ -8621,7 +8896,6 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
         if(!result.drafts||!result.drafts.length){
           captureStatus=L('AI tidak menemukan transaksi pada dokumen ini.','AI found no transactions in this document.');
           toast(captureStatus);
-          render();
           break;
         }
 
@@ -8703,15 +8977,34 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
         drafts=parsed.map(d=>({...d,selected:!R.duplicates(state,d).length}));
         captureStatus=L(`⚡ AI (${result.provider}) berhasil mengekstrak ${drafts.length} transaksi dari ${result.bank||'dokumen'}${createdAccountNotice}${createdCardNotice}.`,`⚡ AI (${result.provider}) extracted ${drafts.length} transactions from ${result.bank||'document'}${createdAccountNotice}${createdCardNotice}.`);
         toast(captureStatus);
-        render();
       }catch(err){
         captureStatus=L('Ekstraksi AI gagal: ','AI extraction failed: ')+(err.message||err);
         toast(captureStatus);
+      }finally{
+        captureBusy=false;
         render();
       }
       break;
     }
-    case 'capture-extract':{captureStatus=L('Mengekstrak file…','Extracting file…');toast(captureStatus);const file=await fileData();const result=await api('extract',file);draftText(result.text,'document');break;}
+    case 'capture-extract':{
+      if(captureBusy){toast(L('Tunggu ekstraksi selesai.','Wait for extraction to finish.'));break;}
+      captureStatus=L('Mengekstrak file…','Extracting file…');
+      captureBusy=true;
+      toast(captureStatus);
+      render();
+      try{
+        const file=await fileData();
+        const result=await api('extract',file);
+        draftText(result.text,'document');
+      }catch(err){
+        captureStatus=err.message;
+        toast(err.message);
+      }finally{
+        captureBusy=false;
+        render();
+      }
+      break;
+    }
     case 'capture-audio':{const file=await fileData();if(!file.type.startsWith('audio/'))throw Error('Choose an audio file');confirmAction(L('Kirim audio ke Muse?','Send audio to Muse?'),L('File audio terpilih dikirim ke Meta untuk transkripsi (maks. 120 detik). Hasilnya menjadi draft lokal.','Selected audio is sent to Meta for transcription (max. 120 seconds). Results become local drafts.'),()=>{api('transcribe',file).then(r=>draftText(r.text,'voice')).catch(e=>toast(e.message));},L('Kirim untuk transkripsi','Send for transcription'));break;}
     case 'capture-voice':{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)throw Error(L('Browser ini belum mendukung pengenalan suara. Unggah file audio lalu pilih transkripsi Muse.','This browser does not support speech recognition. Upload audio and select Muse transcription.'));confirmAction(L('Mulai pengenalan suara?','Start speech recognition?'),L('Browser dapat mengirim suara ke layanan pengenalan suara browser. Hasil tidak langsung dicatat.','The browser may send audio to its speech-recognition service. Results are not recorded automatically.'),()=>{voiceRecognition=new Speech();voiceRecognition.lang=state.language==='id'?'id-ID':'en-US';voiceRecognition.onresult=e=>draftText(e.results[0][0].transcript,'voice');voiceRecognition.onerror=()=>toast(L('Suara tidak dikenali; gunakan teks atau file audio.','Voice unavailable; use text or an audio file.'));voiceRecognition.start();toast(L('Silakan bicara lalu hentikan suara','Speak, then stop voice input'));},L('Mulai','Start'));break;}
     case 'capture-stop':voiceRecognition?.stop();break;
@@ -11732,7 +12025,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   function safeForecast(){try{return forecast();}catch(e){return header(L('Periksa asumsi Forecast','Review Forecast assumptions'),L('Proyeksi tidak dapat dihitung dengan nilai saat ini. Catatan aktual tetap tersedia.','The current assumptions cannot be projected. Actual records remain available.'),'','FORECAST')+`<section class="panel panel-pad"><p role="alert">${escape(e.message)}</p><p class="note">${L('Ekspor backup sebelum mereset rencana simulasi. Reset hanya menghapus kejadian/asumsi rencana terpilih.','Export a backup before resetting the simulation plan. Reset only clears the selected plan’s events and assumptions.')}</p>${button(L('Ekspor backup','Export backup'),'export')}${button(L('Reset rencana terpilih','Reset selected plan'),'forecast-recover','danger')}</section>`;}}
   function eventTypeName(type){return {expenseOnce:L('Pembelian / biaya satu kali','One-time purchase / expense'),expenseMonthly:L('Biaya rutin / pendidikan','Recurring expense / education'),incomeMonthly:L('Tambahan income / pekerjaan baru','Additional income / new job'),retirement:L('Pensiun: pengganti income','Retirement: replacement income'),careerBreak:L('Jeda karier: pengganti income','Career break: replacement income'),home:L('Beli rumah + pembiayaan','Home purchase + financing')}[type];}
   function forecastMCPanel(){return `<section class="panel panel-pad" style="margin-top:22px"><div class="panel-head"><h2>${L('Monte Carlo rencana terpilih','Selected plan Monte Carlo')}</h2><span class="badge">${forecastMC.paths} paths · seed ${forecastMC.seed}</span></div><div class="chart-container">${lineChart(forecastMC.bands.map(b=>b.p50),forecastMC.bands.map(b=>String(b.year)),{name:'P50',second:forecastMC.bands.map(b=>b.p10),secondName:'P10'})}</div><p>${L('Peluang memenuhi target akhir','Probability of meeting ending target')}: <b>${(forecastMC.success*100).toFixed(1)}%</b> · ${L('Peluang shortfall dalam periode','Probability of shortfall during horizon')}: <b>${(forecastMC.shortfalls*100).toFixed(1)}%</b></p><div class="table-wrap"><table><thead><tr><th>${L('Tahun','Year')}</th><th>P10</th><th>P50</th><th>P90</th></tr></thead><tbody>${forecastMC.bands.map(b=>`<tr><td>${b.year}</td><td>${amount(b.p10)}</td><td>${amount(b.p50)}</td><td>${amount(b.p90)}</td></tr>`).join('')}</tbody></table></div><p class="note">${L('Nilai disesuaikan inflasi. Menggunakan akun, utang, kejadian, dan aturan penarikan dari rencana terpilih. Return investasi lognormal; akun investasi memakai guncangan pasar yang sama (korelasi 1). Tidak menyimulasikan pajak atau risiko kurs.','Values are inflation adjusted. Uses accounts, debt, events and withdrawal rules from the selected plan. Investment returns are lognormal; investment accounts share the same market shock (correlation 1). Taxes and FX risk are not simulated.')}</p></section>`;}
-  function resetFinancialSession(){cardImageGeneration++;cardImageId=null;txEdit=null;txQuery='';txKind='all';if(recorder?.state==='recording')recorder.stop();aiGeneration++;aiBusy=false;quickMinimized=false;quickAttachment=null;quickAttachmentGeneration++;quickFileBusy=false;investmentFrom='';investmentTo='';investmentAccount='all';investmentMain='holdings';investmentTab='market';investmentGroup='assetClass';investmentRange='all';investmentMode='auto';investmentMetric='return';investmentHolding='all';investmentChartState=null;investmentSelected=['sp500'];rebalanceNewCash=0;cashflowViewMonth='plan';quickAccount='';quickText='';quickReply='';reportFilter=F.defaultFilter(date());reportDrill=null;forecastSelected='base';forecastSetup=null;forecastTableTab='accounts';forecastMC=null;forecastResult=null;}
+  function resetFinancialSession(){cardImageGeneration++;cardImageId=null;txEdit=null;txQuery='';txKind='all';if(recorder?.state==='recording')recorder.stop();aiGeneration++;aiBusy=false;captureBusy=false;quickMinimized=false;quickAttachment=null;quickAttachmentGeneration++;quickFileBusy=false;investmentFrom='';investmentTo='';investmentAccount='all';investmentMain='holdings';investmentTab='market';investmentGroup='assetClass';investmentRange='all';investmentMode='auto';investmentMetric='return';investmentHolding='all';investmentChartState=null;investmentSelected=['sp500'];rebalanceNewCash=0;cashflowViewMonth='plan';quickAccount='';quickText='';quickReply='';reportFilter=F.defaultFilter(date());reportDrill=null;forecastSelected='base';forecastSetup=null;forecastTableTab='accounts';forecastMC=null;forecastResult=null;}
   function saveView(){openModal(L('Simpan perspektif','Save perspective'),form(field(L('Nama tampilan','View name'),'name',ownerName(state.activeView.owner),'text','required maxlength="120"')),d=>{if(state.savedViews.length>=100)throw Error('Maximum 100 views');state.savedViews.push({id:uid(),name:requireText(d.name),view:structuredClone(state.activeView),currency:state.currency});});}
   function editMember(id){const m=state.members.find(m=>m.id===id);openModal(L('Anggota perencanaan lokal','Local planning member'),form(field(L('Nama','Name'),'name',m?.name||'','text','required maxlength="80"')+field(L('Peran / label','Role / label'),'role',m?.role||L('Anggota keluarga','Household member'),'text','required maxlength="80"'),'Save',L('Tidak mengirim undangan atau membuat login.','Does not send invitations or create a login.')),d=>{const name=requireText(d.name),role=requireText(d.role);if(m){m.name=name;m.role=role;m.initials=name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase();for(const a of state.accounts.filter(a=>a.ownerId===id))a.owner=name;}else state.members.push({id:uid(),name,role,initials:name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()});});}
   function editOwnership(payload){const n=payload.indexOf('_'),key=payload.slice(0,n),id=payload.slice(n+1);if(!['accounts','debts','goals','flows'].includes(key))return;const row=state[key].find(r=>r.id===id);if(!row)return;openModal(L('Kepemilikan: ','Ownership: ')+row.name,form(ownerField(row),'Save',L('Kepemilikan adalah atribusi analisis, bukan perubahan kepemilikan hukum.','Ownership is an analysis attribution, not a legal ownership change.')),d=>{if(!F.matchOwner||!['shared',...state.members.map(m=>m.id)].includes(d.ownerId))throw Error('Unknown owner');row.ownerId=d.ownerId;if(key==='accounts')row.owner=ownerName(d.ownerId);forecastMC=null;});}
