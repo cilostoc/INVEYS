@@ -37,12 +37,15 @@ def transport(url,payload,key,google=False,retries=2):
     import time
     time.sleep(0.5*(attempt+1))
     continue
+   msg=None
    try:
     detail=json.loads(error.read().decode('utf-8',errors='replace'))
     msg=detail.get('error',{}).get('message') or error.reason
+   except Exception:
+    msg=None
+   if msg:
     raise ValueError(f'AI provider rejected the request ({error.code}): {msg}') from None
-   except (ValueError,KeyError,AttributeError):
-    raise ValueError(f'AI provider rejected the request ({error.code}); check key, model access, quota and attachment support.') from None
+   raise ValueError(f'AI provider rejected the request ({error.code}); check key, model access, quota and attachment support.') from None
   except (urllib.error.URLError,TimeoutError,json.JSONDecodeError) as err:
    last_err=err
    if attempt < retries:
