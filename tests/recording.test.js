@@ -303,3 +303,58 @@ Kantong Utama
  assert.equal(parsed[5].category,'Hadiah & Cashback');
 });
 
+test('Indonesian E-Wallet statement detection and parsing for GoPay, OVO, DANA, and ShopeePay', () => {
+  // 1. GoPay statement
+  const gopayText = `Riwayat Transaksi GoPay
+25 Okt 2026 14:32 GoFood - Mie Gacoan -Rp 35.000 Berhasil
+24 Okt 2026 10:15 Top up via BCA OneKlik +Rp 100.000 Selesai
+23 Okt 2026 GoCar Perjalanan Kantor -Rp 24.000`;
+  const gopayRes = R.parse(gopayText, 'IDR', '2026-10-27');
+  assert.equal(gopayRes.length, 3);
+  assert.equal(gopayRes[0].kind, 'expense');
+  assert.equal(gopayRes[0].amount, 3500000);
+  assert.equal(gopayRes[0].date, '2026-10-25');
+  assert.equal(gopayRes[1].kind, 'income');
+  assert.equal(gopayRes[1].amount, 10000000);
+  assert.equal(R.detectBankStatement(gopayText).type, 'gopay');
+
+  // 2. OVO statement
+  const ovoText = `Riwayat Transaksi OVO Cash
+25/10/2026 12:15 GrabFood - HokBen -Rp 48.000 Berhasil
+24/10/2026 Top Up BCA OneKlik +Rp 200.000
+23/10/2026 Pembayaran QRIS Kopi Kenangan -Rp 18.000`;
+  const ovoRes = R.parse(ovoText, 'IDR', '2026-10-27');
+  assert.equal(ovoRes.length, 3);
+  assert.equal(ovoRes[0].amount, 4800000);
+  assert.equal(ovoRes[0].kind, 'expense');
+  assert.equal(ovoRes[1].amount, 20000000);
+  assert.equal(ovoRes[1].kind, 'income');
+  assert.equal(R.detectBankStatement(ovoText).type, 'ovo');
+
+  // 3. DANA statement
+  const danaText = `Dompet Digital DANA - Riwayat Transaksi
+25 Okt 2026 18:20 Kirim Uang ke BCA -Rp 150.000 Berhasil
+24 Okt 2026 Isi Saldo dari Mandiri +Rp 250.000 Selesai
+23 Okt 2026 Tagihan Listrik PLN -Rp 100.000`;
+  const danaRes = R.parse(danaText, 'IDR', '2026-10-27');
+  assert.equal(danaRes.length, 3);
+  assert.equal(danaRes[0].amount, 15000000);
+  assert.equal(danaRes[0].kind, 'expense');
+  assert.equal(danaRes[1].amount, 25000000);
+  assert.equal(danaRes[1].kind, 'income');
+  assert.equal(R.detectBankStatement(danaText).type, 'dana');
+
+  // 4. ShopeePay statement
+  const spayText = `ShopeePay - Transaksi ShopeePay
+25-10-2026 13:40 Pembayaran Pesanan Shopee -Rp 88.000 Selesai
+24-10-2026 Top Up Saldo SeaBank +Rp 300.000 Berhasil
+23-10-2026 Pengembalian Dana Shopee +Rp 45.000`;
+  const spayRes = R.parse(spayText, 'IDR', '2026-10-27');
+  assert.equal(spayRes.length, 3);
+  assert.equal(spayRes[0].amount, 8800000);
+  assert.equal(spayRes[0].kind, 'expense');
+  assert.equal(spayRes[1].amount, 30000000);
+  assert.equal(spayRes[1].kind, 'income');
+  assert.equal(R.detectBankStatement(spayText).type, 'shopeepay');
+});
+

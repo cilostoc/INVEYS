@@ -840,5 +840,30 @@ test('native PWA install experience and biometric vault lock security render and
   assert.match(pinModalBody, /new-pin-input/);
 });
 
+test('reports and settings render Indonesian DJP Online Tax recap button and modal opens properly', () => {
+  const app = boot();
+  
+  // 1. Check reports page has Rekap SPT Pajak button
+  app.click({page: 'reports'});
+  assert.match(app.html(), /tax-djp-modal/);
+  assert.match(app.html(), /Rekap SPT Pajak DJP|DJP Tax Assets Report/);
+
+  // 2. Check settings page has Rekap SPT Pajak row
+  app.click({page: 'settings'});
+  assert.match(app.html(), /tax-djp-modal/);
+  assert.match(app.html(), /Rekap Harta SPT Tahunan \(DJP Online\)|Annual Tax Asset Recap/);
+
+  // 3. Open Tax DJP Modal
+  app.click({action: 'tax-djp-modal'});
+  const modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /tax-djp-modal-wrap/);
+  assert.match(modalBody, /SPT 1770|Indonesian Tax Return/);
+  assert.match(modalBody, /Bagian B: Daftar Harta|Part B: Year-End Asset Registry/);
+  assert.match(modalBody, /Bagian C: Daftar Kewajiban|Part C: Year-End Liabilities Registry/);
+  assert.match(modalBody, /tax-djp-copy-btn/);
+  assert.match(modalBody, /tax-djp-csv-btn/);
+  assert.match(modalBody, /tax-djp-year-select/);
+});
+
 
 

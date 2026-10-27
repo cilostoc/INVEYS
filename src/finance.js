@@ -321,5 +321,215 @@ function monarchCashFlowSankey(s, options = {}) {
   };
 }
 
-const api={categoryCatalog,categoryIcon,monarchCashFlowSankey,deleteTransaction,editTransaction,cashFlowGraph,reported,reportParts,apportion,splitPercent,snapshot,history,migrate,validate,matchOwner,matches,scope,transactionOwner,visibleAmount,scopedTransactions,validateView,validateSplits,setTransactionOwnership,defaultFilter,validateReportFilter,reports,baseline,loanPayment,validatePlan,forecast,monteCarlo};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysFinance=api;
+function buildDjpTaxAssetsReport(s, options = {}) {
+  const taxYear = String(options.year || (new Date().toISOString().slice(0, 4)));
+  const filterOwner = options.ownerId || 'all';
+
+  const assets = [];
+  const liabilities = [];
+
+  // 1. Process Accounts
+  const accounts = (s.accounts || []).filter(a => filterOwner === 'all' || a.ownerId === filterOwner || a.ownerId === 'shared');
+  for (const a of accounts) {
+    const balIdr = Math.round(E.convert(s, a.balance, a.currency || s.currency, 'IDR') / 100);
+    const lower = (a.name || '').toLowerCase();
+    const acYear = (a.updated || taxYear).slice(0, 4);
+
+    let code = '012';
+    let category = 'Kas & Setara Kas';
+    let codeName = 'Tabungan';
+
+    if (/gopay|go-pay|gojek|ovo|dana|shopeepay|spay|linkaja|dompet digital|e-wallet|ewallet/i.test(lower)) {
+      code = '015';
+      codeName = 'Uang Elektronik / Dompet Digital';
+    } else if (a.type === 'Cash' || /kas|tunai|cash|dompet/i.test(lower)) {
+      code = '011';
+      codeName = 'Uang Tunai';
+    } else if (/giro/i.test(lower)) {
+      code = '013';
+      codeName = 'Giro';
+    } else if (/deposito|time deposit/i.test(lower)) {
+      code = '014';
+      codeName = 'Deposito';
+    } else if (a.type === 'Property' || /rumah|tanah|apartemen|properti|ruko/i.test(lower)) {
+      code = '061';
+      category = 'Harta Tidak Bergerak';
+      codeName = 'Tanah & Bangunan Tempat Tinggal';
+    } else if (/motor|pcx|nmax|vario|beat|vespa|aerox/i.test(lower)) {
+      code = '041';
+      category = 'Alat Transportasi';
+      codeName = 'Sepeda Motor';
+    } else if (/mobil|avanza|brio|innova|fortuner|pajero|honda|toyota/i.test(lower)) {
+      code = '042';
+      category = 'Alat Transportasi';
+      codeName = 'Mobil';
+    } else if (a.type === 'Investment') {
+      const hasHoldings = (s.holdings || []).some(h => h.accountId === a.id);
+      if (hasHoldings) {
+        code = '012';
+        codeName = 'Rekening Dana Nasabah (RDN)';
+      } else {
+        category = 'Investasi / Surat Berharga';
+        if (/saham|stock|equity/i.test(lower)) { code = '031'; codeName = 'Saham Yang Diperdagangkan di BEI'; }
+        else if (/kripto|crypto|bitcoin|btc|eth|binance|tokocrypto/i.test(lower)) { code = '039'; codeName = 'Investasi Lainnya (Kripto)'; }
+        else if (/emas|gold|galeri24|antam/i.test(lower)) { code = '051'; category = 'Harta Bergerak Lainnya'; codeName = 'Logam Mulia (Emas)'; }
+        else { code = '038'; codeName = 'Reksa Dana'; }
+      }
+    }
+
+    if (balIdr > 0 || a.type === 'Property') {
+      assets.push({
+        id: a.id,
+        sourceType: 'account',
+        code,
+        codeName,
+        category,
+        name: a.name,
+        year: acYear,
+        valueIdr: Math.max(0, balIdr),
+        desc: `${a.type} · ${a.currency} (${a.owner || 'Me'})`,
+        ownerId: a.ownerId || 'm1'
+      });
+    }
+  }
+
+  // 2. Process Holdings (Stocks, Crypto, Gold, Mutual Funds, Bonds)
+  const holdings = (s.holdings || []).filter(h => filterOwner === 'all' || h.ownerId === filterOwner || h.ownerId === 'shared');
+  for (const h of holdings) {
+    const qty = h.quantity ?? h.shares ?? 0;
+    const price = h.price ?? h.currentPrice ?? 0;
+    const valCents = h.value ?? Math.round(qty * price * 100);
+    const valIdr = Math.round(E.convert(s, valCents, h.currency || 'IDR', 'IDR') / 100);
+    const lower = (h.name + ' ' + (h.symbol || '')).toLowerCase();
+    const hYear = (h.quoteDate || h.updated || taxYear).slice(0, 4);
+    const aType = (h.assetClass || h.assetType || h.type || '').toLowerCase();
+
+    let code = '038';
+    let category = 'Investasi / Surat Berharga';
+    let codeName = 'Reksa Dana';
+
+    if (aType === 'gold' || /\b(emas|gold|galeri24|antam)\b/i.test(lower)) {
+      code = '051';
+      category = 'Harta Bergerak Lainnya';
+      codeName = 'Logam Mulia (Emas Batangan)';
+    } else if (aType === 'crypto' || /\b(crypto|kripto|btc|eth|sol|usdt|bnb)\b/i.test(lower)) {
+      code = '039';
+      category = 'Investasi / Surat Berharga';
+      codeName = 'Investasi Lainnya (Aset Kripto)';
+    } else if (aType === 'bond' || /\b(sbn|sukuk|obligasi)\b|\bori\d+|\bpbs\d+/i.test(lower)) {
+      code = '034';
+      category = 'Investasi / Surat Berharga';
+      codeName = 'Obligasi Pemerintah Indonesia';
+    } else if (aType === 'stock' || /\b(saham|equity)\b|\btbk\b|\bidx\b|\bbei\b/i.test(lower)) {
+      code = '031';
+      category = 'Investasi / Surat Berharga';
+      codeName = 'Saham Yang Diperdagangkan di BEI';
+    } else if (aType === 'fund' || /\b(reksa\s*dana|reksadana|rdpu|rdpt|rdsu|mutual\s*fund)\b/i.test(lower)) {
+      code = '038';
+      category = 'Investasi / Surat Berharga';
+      codeName = 'Reksa Dana';
+    }
+
+    if (valIdr > 0) {
+      assets.push({
+        id: h.id,
+        sourceType: 'holding',
+        code,
+        codeName,
+        category,
+        name: (h.symbol && !h.name.includes(h.symbol)) ? `${h.name} (${h.symbol})` : h.name,
+        year: hYear,
+        valueIdr: valIdr,
+        desc: `${qty} unit ${h.symbol ? '(' + h.symbol + ')' : ''} @ Rp ${Math.round(price || 0).toLocaleString('id-ID')}`,
+        ownerId: h.ownerId || 'm1'
+      });
+    }
+  }
+
+  // 3. Process Debts & Liabilities
+  const debts = (s.debts || []).filter(d => filterOwner === 'all' || d.ownerId === filterOwner || d.ownerId === 'shared');
+  for (const d of debts) {
+    const balIdr = Math.round(E.convert(s, d.balance, d.currency || s.currency, 'IDR') / 100);
+    const lower = (d.name || '').toLowerCase();
+    const isCard = (s.cards || []).some(c => c.debtId === d.id) || /kartu kredit|credit card|visa|mastercard|bri kk|\bcard\b|\bkartu\b/i.test(lower);
+
+    let code = '101';
+    let category = 'Kewajiban / Utang';
+    let codeName = 'Utang Bank / Lembaga Keuangan';
+
+    if (isCard) {
+      code = '102';
+      codeName = 'Utang Kartu Kredit';
+    } else if (/paylater|spaylater|gopaylater|kredivo|akulaku|indodana/i.test(lower)) {
+      code = '104';
+      codeName = 'Utang Lainnya (Paylater / Fintech)';
+    }
+
+    if (balIdr > 0) {
+      liabilities.push({
+        id: d.id,
+        sourceType: 'debt',
+        code,
+        codeName,
+        category,
+        name: d.name,
+        year: taxYear,
+        valueIdr: balIdr,
+        desc: `${codeName} · APR ${d.apr}%`,
+        ownerId: d.ownerId || 'm1'
+      });
+    }
+  }
+
+  const totalAssetsIdr = assets.reduce((sum, a) => sum + a.valueIdr, 0);
+  const totalLiabilitiesIdr = liabilities.reduce((sum, l) => sum + l.valueIdr, 0);
+  const netWealthIdr = totalAssetsIdr - totalLiabilitiesIdr;
+
+  const categories = {
+    '01': { code: '01', name: 'Kas & Setara Kas', items: [] },
+    '02': { code: '02', name: 'Piutang', items: [] },
+    '03': { code: '03', name: 'Investasi & Surat Berharga', items: [] },
+    '04': { code: '04', name: 'Alat Transportasi', items: [] },
+    '05': { code: '05', name: 'Harta Bergerak Lainnya', items: [] },
+    '06': { code: '06', name: 'Harta Tidak Bergerak', items: [] },
+    '10': { code: '10', name: 'Kewajiban / Utang', items: [] }
+  };
+
+  assets.forEach(a => {
+    const prefix = a.code.slice(0, 2);
+    if (categories[prefix]) categories[prefix].items.push(a);
+  });
+  liabilities.forEach(l => {
+    categories['10'].items.push(l);
+  });
+
+  const tsvHeader = 'Kode Harta\tNama Harta\tTahun Perolehan\tHarga Perolehan\tKeterangan\n';
+  const tsvAssetRows = assets.map(a => `${a.code}\t${a.name}\t${a.year}\t${a.valueIdr}\t${a.desc}`).join('\n');
+  const tsvLiabHeader = '\n\nKode Utang\tNama Pemberi Pinjaman\tTahun Peminjaman\tJumlah Sisa Utang\tKeterangan\n';
+  const tsvLiabRows = liabilities.map(l => `${l.code}\t${l.name}\t${l.year}\t${l.valueIdr}\t${l.desc}`).join('\n');
+  const tsvText = tsvHeader + tsvAssetRows + tsvLiabHeader + tsvLiabRows;
+
+  const csvEscape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csvLines = [
+    ['Tipe', 'Kode DJP', 'Kategori Harta/Utang', 'Nama Harta / Kewajiban', 'Tahun Perolehan', 'Nilai / Saldo Akhir (IDR)', 'Keterangan'],
+    ...assets.map(a => ['HARTA', a.code, a.codeName, a.name, a.year, a.valueIdr, a.desc]),
+    ...liabilities.map(l => ['UTANG', l.code, l.codeName, l.name, l.year, l.valueIdr, l.desc])
+  ];
+  const csvText = csvLines.map(r => r.map(csvEscape).join(',')).join('\r\n');
+
+  return {
+    year: taxYear,
+    filterOwner,
+    assets,
+    liabilities,
+    totalAssetsIdr,
+    totalLiabilitiesIdr,
+    netWealthIdr,
+    categories,
+    tsvText,
+    csvText
+  };
+}
+
+const api={categoryCatalog,categoryIcon,monarchCashFlowSankey,buildDjpTaxAssetsReport,deleteTransaction,editTransaction,cashFlowGraph,reported,reportParts,apportion,splitPercent,snapshot,history,migrate,validate,matchOwner,matches,scope,transactionOwner,visibleAmount,scopedTransactions,validateView,validateSplits,setTransactionOwnership,defaultFilter,validateReportFilter,reports,baseline,loanPayment,validatePlan,forecast,monteCarlo};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysFinance=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

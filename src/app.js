@@ -4818,6 +4818,168 @@
       </div>
     </div>`;
   }
+
+  function openDjpTaxModal(selectedYear, selectedOwnerId) {
+    const curYear = new Date().toISOString().slice(0, 4);
+    const yr = selectedYear || curYear;
+    const own = selectedOwnerId || 'all';
+
+    const rep = F.buildDjpTaxAssetsReport(state, { year: yr, ownerId: own });
+
+    const yearsList = [curYear, String(Number(curYear) - 1), String(Number(curYear) - 2)];
+    const yearOpts = yearsList.map(y => `<option value="${y}" ${y === String(yr) ? 'selected' : ''}>Tahun Pajak ${y} ${y === curYear ? '(' + L('Berjalan', 'Current') + ')' : ''}</option>`).join('');
+
+    const membersList = [{ id: 'all', name: L('Seluruh Keluarga (Gabungan)', 'Whole Household (Combined)') }, ...(state.members || [])];
+    const ownerOpts = membersList.map(m => `<option value="${m.id}" ${m.id === own ? 'selected' : ''}>${escape(m.name)}</option>`).join('');
+
+    const formatIdr = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+
+    const assetRows = rep.assets.map(a => `
+      <tr>
+        <td style="font-family:ui-monospace,SFMono-Regular,monospace;font-weight:700;color:var(--accent,#34d399);">${escape(a.code)}</td>
+        <td><b>${escape(a.name)}</b></td>
+        <td><small class="badge">${escape(a.codeName)}</small></td>
+        <td style="text-align:center;">${escape(a.year)}</td>
+        <td style="text-align:right;font-weight:600;">${formatIdr(a.valueIdr)}</td>
+        <td><small style="color:var(--muted);">${escape(a.desc)}</small></td>
+      </tr>
+    `).join('') || `<tr><td colspan="6" class="empty">${L('Tidak ada harta tercatat', 'No assets recorded')}</td></tr>`;
+
+    const liabRows = rep.liabilities.map(l => `
+      <tr>
+        <td style="font-family:ui-monospace,SFMono-Regular,monospace;font-weight:700;color:#ef4444;">${escape(l.code)}</td>
+        <td><b>${escape(l.name)}</b></td>
+        <td><small class="badge">${escape(l.codeName)}</small></td>
+        <td style="text-align:center;">${escape(l.year)}</td>
+        <td style="text-align:right;font-weight:600;color:#ef4444;">${formatIdr(l.valueIdr)}</td>
+        <td><small style="color:var(--muted);">${escape(l.desc)}</small></td>
+      </tr>
+    `).join('') || `<tr><td colspan="6" class="empty">${L('Tidak ada utang tercatat', 'No debts recorded')}</td></tr>`;
+
+    const bodyHtml = `
+      <div class="tax-djp-modal-wrap" style="max-width:880px;margin:0 auto;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="font-size:24px;">🇮🇩</span>
+          <div>
+            <b style="font-size:15px;display:block;">${L('Formulir SPT 1770 / 1770 S · DJP Online', 'Indonesian Tax Return (SPT 1770 / 1770 S)')}</b>
+            <small style="color:var(--muted);">${L('Rekapitulasi resmi daftar harta & utang akhir tahun pajak dengan Kode Harta DJP.', 'Official end-of-year tax assets & liabilities recap matching DJP tax codes.')}</small>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;background:var(--bg-hover,#f8fafc);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+          <div style="flex:1;min-width:180px;">
+            <label for="tax-djp-year-select" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Tahun Pajak', 'Tax Year')}</label>
+            <select id="tax-djp-year-select" style="width:100%;">${yearOpts}</select>
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <label for="tax-djp-owner-select" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Wajib Pajak / Pemilik', 'Taxpayer / Owner')}</label>
+            <select id="tax-djp-owner-select" style="width:100%;">${ownerOpts}</select>
+          </div>
+        </div>
+
+        <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:18px;">
+          <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
+            <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Total Harta (Aset)', 'Total Assets')}</span>
+            <b style="font-size:18px;display:block;color:var(--accent,#34d399);margin-top:4px;">${formatIdr(rep.totalAssetsIdr)}</b>
+            <small style="color:var(--muted);font-size:11px;">${rep.assets.length} ${L('item harta', 'asset items')}</small>
+          </div>
+          <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
+            <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Total Utang (Kewajiban)', 'Total Liabilities')}</span>
+            <b style="font-size:18px;display:block;color:#ef4444;margin-top:4px;">${formatIdr(rep.totalLiabilitiesIdr)}</b>
+            <small style="color:var(--muted);font-size:11px;">${rep.liabilities.length} ${L('item utang', 'debt items')}</small>
+          </div>
+          <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
+            <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Kekayaan Bersih Fiskal', 'Fiscal Net Wealth')}</span>
+            <b style="font-size:18px;display:block;color:var(--ink);margin-top:4px;">${formatIdr(rep.netWealthIdr)}</b>
+            <small style="color:var(--muted);font-size:11px;">${L('Harta dikurangi Utang', 'Assets minus Liabilities')}</small>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:center;">
+          <b style="font-size:13px;">📋 ${L('Bagian B: Daftar Harta Akhir Tahun', 'Part B: Year-End Asset Registry')} (${rep.assets.length})</b>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn primary" id="tax-djp-copy-btn" title="${L('Salin format tabel untuk di-paste langsung di DJP Online atau Excel', 'Copy table to paste directly into DJP Online or Excel')}">
+              📋 ${L('Salin Format Tabel DJP', 'Copy DJP Table')}
+            </button>
+            <button type="button" class="btn" id="tax-djp-csv-btn" title="${L('Unduh file CSV format DJP', 'Download CSV in DJP format')}">
+              📥 ${L('Unduh CSV', 'Download CSV')}
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:20px;">
+          <table style="width:100%;font-size:12px;">
+            <thead>
+              <tr style="position:sticky;top:0;background:var(--card-subtle,#f1f5f9);z-index:1;">
+                <th style="width:70px;">${L('Kode', 'Code')}</th>
+                <th>${L('Nama Harta', 'Asset Name')}</th>
+                <th>${L('Kategori DJP', 'Category')}</th>
+                <th style="text-align:center;width:70px;">${L('Tahun', 'Year')}</th>
+                <th style="text-align:right;width:130px;">${L('Nilai (IDR)', 'Value (IDR)')}</th>
+                <th>${L('Keterangan', 'Note')}</th>
+              </tr>
+            </thead>
+            <tbody>${assetRows}</tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:center;">
+          <b style="font-size:13px;">💳 ${L('Bagian C: Daftar Kewajiban / Utang Akhir Tahun', 'Part C: Year-End Liabilities Registry')} (${rep.liabilities.length})</b>
+        </div>
+
+        <div class="table-wrap" style="max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:18px;">
+          <table style="width:100%;font-size:12px;">
+            <thead>
+              <tr style="position:sticky;top:0;background:var(--card-subtle,#f1f5f9);z-index:1;">
+                <th style="width:70px;">${L('Kode', 'Code')}</th>
+                <th>${L('Nama Pemberi Pinjaman', 'Lender Name')}</th>
+                <th>${L('Kategori DJP', 'Category')}</th>
+                <th style="text-align:center;width:70px;">${L('Tahun', 'Year')}</th>
+                <th style="text-align:right;width:130px;">${L('Sisa Utang (IDR)', 'Balance (IDR)')}</th>
+                <th>${L('Keterangan', 'Note')}</th>
+              </tr>
+            </thead>
+            <tbody>${liabRows}</tbody>
+          </table>
+        </div>
+
+        <p class="note" style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.5;">
+          ${L('💡 <b>Tips DJP Online:</b> Klik tombol <b>"Salin Format Tabel DJP"</b> di atas, lalu buka portal DJP Online atau lembar kerja e-Form, dan langsung tekan <b>Paste (Ctrl+V / Cmd+V)</b>. Seluruh kolom Kode, Nama, Tahun, dan Nilai akan terisi secara otomatis.', '💡 <b>DJP Online Tip:</b> Click <b>"Copy DJP Table"</b> above, then open DJP Online portal or e-Form spreadsheet, and press <b>Paste (Ctrl+V / Cmd+V)</b>. All code, name, year, and value columns will be populated automatically.')}
+        </p>
+
+        <div class="form-actions" style="margin-top:16px;">
+          <button type="button" class="btn" data-action="modal-close">${L('Tutup', 'Close')}</button>
+        </div>
+      </div>
+    `;
+
+    openModal(L('🇮🇩 Rekap Harta SPT Tahunan DJP Online', '🇮🇩 DJP Online Tax Assets Recap'), bodyHtml);
+
+    setTimeout(() => {
+      $('#tax-djp-year-select')?.addEventListener('change', e => {
+        openDjpTaxModal(e.target.value, $('#tax-djp-owner-select')?.value || own);
+      });
+      $('#tax-djp-owner-select')?.addEventListener('change', e => {
+        openDjpTaxModal($('#tax-djp-year-select')?.value || yr, e.target.value);
+      });
+      $('#tax-djp-copy-btn')?.addEventListener('click', () => {
+        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(rep.tsvText).then(() => {
+            toast('📋 ' + L('Format tabel DJP berhasil disalin! Silakan paste langsung ke portal DJP Online atau Excel.', 'DJP table copied! Paste directly into DJP Online or Excel.'));
+          }).catch(() => {
+            toast('⚠️ ' + L('Gagal menyalin otomatis. Silakan unduh CSV.', 'Failed to copy. Please download CSV.'));
+          });
+        } else {
+          toast('📋 ' + L('Teks tabel siap diunduh via tombol CSV.', 'Table text ready via CSV button.'));
+        }
+      });
+      $('#tax-djp-csv-btn')?.addEventListener('click', () => {
+        download(`rekap-harta-spt-djp-${rep.year}.csv`, rep.csvText, 'text/csv');
+        toast('📥 ' + L('File CSV SPT Pajak DJP berhasil diunduh.', 'DJP Tax CSV downloaded.'));
+      });
+    }, 40);
+  }
+
   function reports(){
     const tabs=[['cashflow',L('Arus kas','Cash flow')],['spending',L('Pengeluaran','Spending')],['income',L('Pendapatan','Income')],['networth',L('Kekayaan bersih','Net worth')],['debt',L('Utang','Debt')],['cards',L('Kartu kredit','Credit cards')]];
     const categories=[...new Set(state.transactions.map(t=>t.category))];
@@ -4825,7 +4987,7 @@
     const ledger=['cashflow','spending','income'].includes(reportFilter.tab);
     const chart=reportFilter.chart==='sankey'&&reportFilter.tab==='cashflow'?sankey(r):reportFilter.chart==='pie'?donutChart(r):['heatmap','treemap'].includes(reportFilter.chart)?heatmap(r):bars(r);
     const currentRows=reportRows(r);
-    return header(L('Laporan','Reports'),L('Pahami aliran uang dan kebiasaan keuangan Anda secara mendalam.','Understand your money flow, spending habits, and income sources.'),button(L('Simpan laporan','Save report'),'report-save')+button(L('Ekspor CSV','Export CSV'),'report-export'),'REPORTS')+
+    return header(L('Laporan','Reports'),L('Pahami aliran uang dan kebiasaan keuangan Anda secara mendalam.','Understand your money flow, spending habits, and income sources.'),button(L('🇮🇩 Rekap SPT Pajak DJP','🇮🇩 DJP Tax Assets Report'),'tax-djp-modal','primary')+button(L('Simpan laporan','Save report'),'report-save')+button(L('Ekspor CSV','Export CSV'),'report-export'),'REPORTS')+
       `<nav class="report-tabs" aria-label="${L('Jenis laporan','Report type')}">${tabs.map(([id,label])=>`<button class="${reportFilter.tab===id?'active':''}" data-action="report-tab:${id}" aria-pressed="${reportFilter.tab===id}">${icon('report-'+id)}${label}</button>`).join('')}</nav>
       ${reportFilters(ledger,categories)}
       ${ledger?`${monarchReportMetrics(r)}
@@ -6921,7 +7083,7 @@
     `;
   }
 
-  function settings(){return header(L('Pengaturan & Kedaulatan Data', 'Your information. Your control.'),L('Kelola preferensi, keamanan brankas, kunci biometrik, PWA, dan portabilitas data finansial.','Manage your workspace, biometric security, PWA, and take your records with you.'),'','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+vaultSecuritySettings()+pwaSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
+  function settings(){return header(L('Pengaturan & Kedaulatan Data', 'Your information. Your control.'),L('Kelola preferensi, keamanan brankas, kunci biometrik, PWA, dan portabilitas data finansial.','Manage your workspace, biometric security, PWA, and take your records with you.'),'','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+vaultSecuritySettings()+pwaSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>${L('Rekap Harta SPT Tahunan (DJP Online)','Annual Tax Asset Recap (DJP Online)')}</b><p>${L('Klasifikasi otomatis harta & utang ke kode resmi DJP (012, 031, 051, 101, dll.) dengan fitur salin tabel e-Form atau unduh CSV.','Automate asset & liability mapping into official DJP Online codes (012, 031, 051, 101, etc.) with 1-click table copy or CSV download.')}</p></div>${button(L('🇮🇩 Rekap SPT Pajak','🇮🇩 Tax Recap DJP'),'tax-djp-modal','secondary')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
   const prevTickerValues=new Map();
   function updateRollingTickers(){
     if(typeof window==='undefined'||typeof requestAnimationFrame==='undefined')return;
@@ -7586,6 +7748,7 @@
   function importFile(file){if(!file)return;if(file.size>5000000){toast('Choose a JSON file smaller than 5 MB.');return;}file.text().then(text=>{const candidate=E.validate(JSON.parse(text));const p=E.position(candidate);confirmAction('Restore this workspace?',`${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, ${candidate.goals.length} goals. Reporting currency: ${escape(candidate.currency)}. This replaces all current local records. Export your current workspace first if needed.`,()=>{state=candidate;resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;save();toast('Workspace restored.');},'Replace workspace');}).catch(error=>toast('Import failed: '+error.message));}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
   function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+    case 'tax-djp-modal':openDjpTaxModal(id);break;
     case 'pwa-install':triggerPwaInstall();break;
     case 'lock-vault-now':lockVault();break;
     case 'setup-biometric':toggleBiometricSetup();break;

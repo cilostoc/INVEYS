@@ -112,12 +112,20 @@ function suggestCategory(name,kind){
 }
 function detectBankStatement(text){
  const s=String(text);
+ if(/Transaksi ShopeePay|Saldo ShopeePay|AirPay International|ShopeePay\s*-\s*Transaksi/i.test(s)||(/^ShopeePay\b/im.test(s)&&!/REKENING KORAN.*SeaBank/i.test(s)))return {bank:'ShopeePay (Dompet Digital)',type:'shopeepay'};
+ if(/Riwayat Transaksi GoPay|Dompet Anak Bangsa|Order ID:?\s*RB-|^GoPay\b/im.test(s))return {bank:'GoPay (Dompet Digital)',type:'gopay'};
+ if(/Riwayat Transaksi OVO|OVO Cash|Visionet Internasional|^OVO\b/im.test(s))return {bank:'OVO (Dompet Digital)',type:'ovo'};
+ if(/Dompet Digital DANA|Transaksi DANA|Espay Debit Indonesia Koe|^DANA\b/im.test(s))return {bank:'DANA (Dompet Digital)',type:'dana'};
  if(/SeaBank|S01-260930|cs@seabank\.co\.id/i.test(s)||(/REKENING KORAN/i.test(s)&&/\b(JAN|FEB|MAR|APR|MEI|MAY|JUN|JUL|AGU|AGT|AUG|SEP|OKT|OCT|NOV|DES|DEC)\b/i.test(s)&&/TABUNGAN/i.test(s)))return {bank:'SeaBank',type:'seabank'};
  if(/BRI\s*Kartu\s*Kredit|Lembar\s*Penagihan|Billing\s*Statement|5475-82XX|PAYMENT_ICSS|BIAYA ADMIN BRING/i.test(s))return {bank:'Bank BRI Kartu Kredit',type:'bri_kk'};
  if(/BRIMCRDT|BRIMDBT|BRImo|Britama|bankbri|LAPORAN TRANSAKSI FINANSIAL/i.test(s))return {bank:'Bank BRI',type:'bri'};
  if(/bankmandiri|mandiricare|Livin\'poin|MANDIRI TABUNGAN NOW|MCM InhouseTrf/i.test(s)||(/Rekening Koran/i.test(s)&&/Mandiri/i.test(s)))return {bank:'Bank Mandiri',type:'mandiri'};
  if(/BCA|Tahapan|KlikBCA/i.test(s)&&/\b(DB|CR)\b/.test(s))return {bank:'Bank BCA',type:'bca'};
  if(/Bank Jago|jago\.com|ID Kantong|Laporan Keuangan Bulanan.*Jago|Pindah uang antar Kantong/i.test(s))return {bank:'Bank Jago',type:'jago'};
+ if(/ShopeePay/i.test(s))return {bank:'ShopeePay (Dompet Digital)',type:'shopeepay'};
+ if(/GoPay|Gojek/i.test(s))return {bank:'GoPay (Dompet Digital)',type:'gopay'};
+ if(/OVO/i.test(s))return {bank:'OVO (Dompet Digital)',type:'ovo'};
+ if(/DANA/i.test(s))return {bank:'DANA (Dompet Digital)',type:'dana'};
  return null;
 }
 function parseMandiriStatement(lines,year,currency){
@@ -333,6 +341,137 @@ function parseJagoStatement(lines,currency='IDR'){
  if(pending&&pending.amountStr)commit(pending);
  return rows;
 }
+
+function parseIndoDate(str, fallbackYear = new Date().getFullYear()) {
+ if(!str)return null;
+ const s=String(str).trim();
+ const iso=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+ if(iso)return `${iso[1]}-${iso[2]}-${iso[3]}`;
+ const slash=s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+ if(slash){
+  let yr=slash[3];
+  if(yr.length===2)yr='20'+yr;
+  return `${yr}-${slash[2].padStart(2,'0')}-${slash[1].padStart(2,'0')}`;
+ }
+ const dmNoYear=s.match(/^(\d{1,2})[/-](\d{1,2})$/);
+ if(dmNoYear){
+  return `${fallbackYear}-${dmNoYear[2].padStart(2,'0')}-${dmNoYear[1].padStart(2,'0')}`;
+ }
+ const word=s.match(/^(\d{1,2})\s+([A-Za-z]{3,4})(?:\s+(\d{2,4}))?/);
+ if(word){
+  const day=word[1].padStart(2,'0');
+  const mon=MONTH_MAP[word[2].toLowerCase().slice(0,3)]||'01';
+  let yr=word[3]||String(fallbackYear);
+  if(yr.length===2)yr='20'+yr;
+  return `${yr}-${mon}-${day}`;
+ }
+ return null;
+}
+
+function parseGopayStatement(lines, year = new Date().getFullYear(), currency = 'IDR') {
+ const rows = [];
+ for (let i = 0; i < lines.length; i++) {
+  const line = lines[i].trim();
+  if (!line || (!/\d{1,2}[\s/-]/.test(line) && /Riwayat Transaksi|GoPay|Saldo Awal|Saldo Akhir|Total Pemasukan|Total Pengeluaran|Status|Nomor Pesanan|Order ID/i.test(line))) continue;
+
+  const m = line.match(/^(\d{1,2}(?:[\s/-][A-Za-z]{3,4}[\s/-]|\/\d{1,2}\/|\s+[A-Za-z]{3,4}\s+)(?:\d{2,4})?)(?:\s+\d{1,2}[.:]\d{2}(?:[.:]\d{2})?)?\s+(.+?)\s+([+-]?\s*(?:Rp\s*)?[\d.,]+)(?:\s+(?:Berhasil|Selesai|Sukses|Pending|Gagal))?$/i);
+  if (m) {
+   const [_, dStr, descRaw, amtStr] = m;
+   const parsedDate = parseIndoDate(dStr, year);
+   if (!parsedDate) continue;
+   const isIncome = amtStr.includes('+') || /masuk|top up|cashback|refund|terima/i.test(descRaw);
+   const kind = isIncome ? 'income' : 'expense';
+   try {
+    const cleanAmt = amtStr.replace(/[^\d.,]/g, '');
+    const amount = number(cleanAmt, currency);
+    const name = descRaw.replace(/^[-•\s]+/, '').replace(/[-•\s]+$/, '').trim() || 'GoPay Transaction';
+    const category = suggestCategory(name, kind);
+    rows.push({ name, date: parsedDate, amount, kind, currency, category });
+   } catch (e) {}
+   continue;
+  }
+ }
+ return rows;
+}
+
+function parseOvoStatement(lines, year = new Date().getFullYear(), currency = 'IDR') {
+ const rows = [];
+ for (let i = 0; i < lines.length; i++) {
+  const line = lines[i].trim();
+  if (!line || (!/\d{1,2}[\s/-]/.test(line) && /OVO Cash|OVO Points|Riwayat Transaksi|Total Transaksi|Tanggal|Keterangan|Nominal/i.test(line))) continue;
+
+  const m = line.match(/^(\d{1,2}(?:[\s/-][A-Za-z]{3,4}[\s/-]|\/\d{1,2}\/|\s+[A-Za-z]{3,4}\s+)(?:\d{2,4})?)(?:\s+\d{1,2}[.:]\d{2})?\s+(.+?)\s+([+-]?\s*(?:Rp\s*)?[\d.,]+)(?:\s+(?:Berhasil|Selesai|Sukses))?$/i);
+  if (m) {
+   const [_, dStr, descRaw, amtStr] = m;
+   const parsedDate = parseIndoDate(dStr, year);
+   if (!parsedDate) continue;
+   const isIncome = amtStr.includes('+') || /top up|cashback|points|masuk|terima/i.test(descRaw);
+   const kind = isIncome ? 'income' : 'expense';
+   try {
+    const cleanAmt = amtStr.replace(/[^\d.,]/g, '');
+    const amount = number(cleanAmt, currency);
+    const name = descRaw.replace(/^[-•\s]+/, '').replace(/[-•\s]+$/, '').trim() || 'OVO Transaction';
+    const category = suggestCategory(name, kind);
+    rows.push({ name, date: parsedDate, amount, kind, currency, category });
+   } catch (e) {}
+   continue;
+  }
+ }
+ return rows;
+}
+
+function parseDanaStatement(lines, year = new Date().getFullYear(), currency = 'IDR') {
+ const rows = [];
+ for (let i = 0; i < lines.length; i++) {
+  const line = lines[i].trim();
+  if (!line || (!/\d{1,2}[\s/-]/.test(line) && /Dompet Digital DANA|Riwayat Transaksi|Semua Transaksi|Filter|Unduh/i.test(line))) continue;
+
+  const m = line.match(/^(\d{1,2}(?:[\s/-][A-Za-z]{3,4}[\s/-]|\/\d{1,2}\/|\s+[A-Za-z]{3,4}\s+)(?:\d{2,4})?)(?:\s+\d{1,2}[.:]\d{2}(?:[.:]\d{2})?)?\s+(.+?)\s+([+-]?\s*(?:Rp\s*)?[\d.,]+)(?:\s+(?:Berhasil|Selesai|Sukses|Pending))?$/i);
+  if (m) {
+   const [_, dStr, descRaw, amtStr] = m;
+   const parsedDate = parseIndoDate(dStr, year);
+   if (!parsedDate) continue;
+   const isIncome = amtStr.includes('+') || /isi saldo|top up|cashback|terima uang/i.test(descRaw);
+   const kind = isIncome ? 'income' : 'expense';
+   try {
+    const cleanAmt = amtStr.replace(/[^\d.,]/g, '');
+    const amount = number(cleanAmt, currency);
+    const name = descRaw.replace(/^[-•\s]+/, '').replace(/[-•\s]+$/, '').trim() || 'DANA Transaction';
+    const category = suggestCategory(name, kind);
+    rows.push({ name, date: parsedDate, amount, kind, currency, category });
+   } catch (e) {}
+   continue;
+  }
+ }
+ return rows;
+}
+
+function parseShopeePayStatement(lines, year = new Date().getFullYear(), currency = 'IDR') {
+ const rows = [];
+ for (let i = 0; i < lines.length; i++) {
+  const line = lines[i].trim();
+  if (!line || (!/\d{1,2}[\s/-]/.test(line) && /ShopeePay|Rincian Transaksi|Saldo ShopeePay|Semua|Pengeluaran|Pemasukan/i.test(line))) continue;
+
+  const m = line.match(/^(\d{1,2}(?:[\s/-][A-Za-z]{3,4}[\s/-]|\/\d{1,2}\/|\s+[A-Za-z]{3,4}\s+|-\d{1,2}-)(?:\d{2,4})?)(?:\s+\d{1,2}[.:]\d{2})?\s+(.+?)\s+([+-]?\s*(?:Rp\s*)?[\d.,]+)(?:\s+(?:Selesai|Berhasil|Sukses))?$/i);
+  if (m) {
+   const [_, dStr, descRaw, amtStr] = m;
+   const parsedDate = parseIndoDate(dStr, year);
+   if (!parsedDate) continue;
+   const isIncome = amtStr.includes('+') || /top up|pengembalian|refund|terima/i.test(descRaw);
+   const kind = isIncome ? 'income' : 'expense';
+   try {
+    const cleanAmt = amtStr.replace(/[^\d.,]/g, '');
+    const amount = number(cleanAmt, currency);
+    const name = descRaw.replace(/^[-•\s]+/, '').replace(/[-•\s]+$/, '').trim() || 'ShopeePay Transaction';
+    const category = suggestCategory(name, kind);
+    rows.push({ name, date: parsedDate, amount, kind, currency, category });
+   } catch (e) {}
+   continue;
+  }
+ }
+ return rows;
+}
+
 function parseReceipt(lines,today,currency){
  if(!lines||!lines.length)return null;
  let merchant='';
@@ -409,7 +548,20 @@ function parse(text,currency='IDR',today=new Date().toISOString().slice(0,10)) {
   else if(detected.type==='seabank'){const rows=parseSeaBankStatement(lines,year,currency,text);if(rows.length)return rows;}
   else if(detected.type==='bca'){const rows=parseBcaStatement(lines,year,currency);if(rows.length)return rows;}
   else if(detected.type==='jago'){const rows=parseJagoStatement(lines,currency);if(rows.length)return rows;}
+  else if(detected.type==='gopay'){const rows=parseGopayStatement(lines,year,currency);if(rows.length)return rows;}
+  else if(detected.type==='ovo'){const rows=parseOvoStatement(lines,year,currency);if(rows.length)return rows;}
+  else if(detected.type==='dana'){const rows=parseDanaStatement(lines,year,currency);if(rows.length)return rows;}
+  else if(detected.type==='shopeepay'){const rows=parseShopeePayStatement(lines,year,currency);if(rows.length)return rows;}
  }
+
+ const gopayCandidate=parseGopayStatement(lines,year,currency);
+ if(gopayCandidate.length>=1)return gopayCandidate;
+ const ovoCandidate=parseOvoStatement(lines,year,currency);
+ if(ovoCandidate.length>=1)return ovoCandidate;
+ const danaCandidate=parseDanaStatement(lines,year,currency);
+ if(danaCandidate.length>=1)return danaCandidate;
+ const shopeePayCandidate=parseShopeePayStatement(lines,year,currency);
+ if(shopeePayCandidate.length>=1)return shopeePayCandidate;
 
  const jagoCandidate=parseJagoStatement(lines,currency);
  if(jagoCandidate.length>=1)return jagoCandidate;
@@ -628,5 +780,5 @@ function quickRecord(text,account,today,accounts=[]){
  if(currency!==account.currency)throw Error('Mata uang pesan harus sama dengan akun / Message currency must match the account');
  return {name:String(text).trim().slice(0,120),date:today,amount,currency,accountId:account.id,kind:/\b(gajian|gaji|terima|pemasukan|pendapatan|salary|income|received)\b/i.test(text)?'income':'expense'};
 }
-const api={number,parse,parseReceipt,duplicates,pairTransferDrafts,rates,quickIntent,quickRecord,cleanMerchant,suggestCategory,detectBankStatement,parseJagoStatement};if(typeof module!=='undefined')module.exports=api;else root.InveysRecording=api;
+const api={number,parse,parseReceipt,duplicates,pairTransferDrafts,rates,quickIntent,quickRecord,cleanMerchant,suggestCategory,detectBankStatement,parseJagoStatement,parseGopayStatement,parseOvoStatement,parseDanaStatement,parseShopeePayStatement};if(typeof module!=='undefined')module.exports=api;else root.InveysRecording=api;
 })(typeof window!=='undefined'?window:globalThis);

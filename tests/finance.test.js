@@ -81,3 +81,93 @@ test('monarch cash flow sankey compiles multi-tier income, pillars, category bre
   assert.equal(monthFlow.savingsRate, 90); // (50000 + 40000) / 100000 = 90%
 });
 
+test('buildDjpTaxAssetsReport accurately maps Indonesian assets and liabilities into official DJP codes', () => {
+  const s = workspace();
+  s.currency = 'IDR';
+  s.fx = { base: 'IDR', rates: { IDR: 1, USD: 16000 } };
+  s.accounts = [
+    { id: 'acc1', name: 'BCA Tahapan Utama', type: 'Checking', balance: 50000000, ownerId: 'm1', updated: '2026-05-10', currency: 'IDR' },
+    { id: 'acc2', name: 'GoPay Dompet Digital', type: 'Checking', balance: 2500000, ownerId: 'm1', updated: '2026-06-12', currency: 'IDR' },
+    { id: 'acc3', name: 'Dompet Tunai Brankas', type: 'Cash', balance: 1000000, ownerId: 'm2', updated: '2025-12-01', currency: 'IDR' },
+    { id: 'acc4', name: 'RDN Indo Premier', type: 'Investment', balance: 10000000, ownerId: 'm1', updated: '2026-01-15', currency: 'IDR' }
+  ];
+  s.holdings = [
+    { id: 'h1', symbol: 'BBCA', name: 'Bank Central Asia Tbk', assetType: 'stock', shares: 1000, avgPrice: 9000, currentPrice: 10000, currency: 'IDR', accountId: 'acc4', ownerId: 'm1', updated: '2026-02-10' },
+    { id: 'h2', symbol: 'ORI024', name: 'Obligasi Negara Ritel', assetType: 'bond', shares: 20, avgPrice: 1000000, currentPrice: 1000000, currency: 'IDR', accountId: 'acc4', ownerId: 'm1', updated: '2024-10-01' },
+    { id: 'h3', symbol: 'BTC', name: 'Bitcoin', assetType: 'crypto', shares: 0.1, avgPrice: 50000, currentPrice: 60000, currency: 'USD', accountId: 'acc4', ownerId: 'm1', updated: '2025-08-01' },
+    { id: 'h4', symbol: 'ANTAM', name: 'Emas Logam Mulia Antam', assetType: 'gold', shares: 10, avgPrice: 1300000, currentPrice: 1400000, currency: 'IDR', accountId: 'acc4', ownerId: 'm2', updated: '2026-03-01' },
+    { id: 'h5', symbol: 'RDPU', name: 'Sucorinvest Sharia Money Market', assetType: 'fund', shares: 5000, avgPrice: 1000, currentPrice: 1100, currency: 'IDR', accountId: 'acc4', ownerId: 'm1', updated: '2026-01-10' }
+  ];
+  s.debts = [
+    { id: 'd1', name: 'BCA Everyday Card', balance: 5000000, ownerId: 'm1', currency: 'IDR', updated: '2026-09-01' },
+    { id: 'd2', name: 'Shopee Paylater Cicilan', balance: 1500000, ownerId: 'm1', currency: 'IDR', updated: '2026-08-15' },
+    { id: 'd3', name: 'KPR Bank Mandiri Griya', balance: 350000000, ownerId: 'm2', currency: 'IDR', updated: '2022-01-10' }
+  ];
+
+  // Test full household recap
+  const repAll = F.buildDjpTaxAssetsReport(s, { year: '2026', ownerId: 'all' });
+  assert.equal(repAll.year, '2026');
+  assert.ok(repAll.assets.length >= 8); // 4 accounts + 5 holdings = 9
+  assert.equal(repAll.liabilities.length, 3);
+
+  // Check DJP code mapping
+  const bcaAcc = repAll.assets.find(a => a.name === 'BCA Tahapan Utama');
+  assert.equal(bcaAcc.code, '012'); // Tabungan
+
+  const gopayAcc = repAll.assets.find(a => a.name === 'GoPay Dompet Digital');
+  assert.equal(gopayAcc.code, '015'); // Uang Elektronik
+
+  const cashAcc = repAll.assets.find(a => a.name === 'Dompet Tunai Brankas');
+  assert.equal(cashAcc.code, '011'); // Uang Tunai
+
+  const bbcaHolding = repAll.assets.find(a => a.name.includes('BBCA'));
+  assert.equal(bbcaHolding.code, '031'); // Saham BEI
+  assert.equal(bbcaHolding.valueIdr, 10000000); // 1000 * 10000
+
+  const bondHolding = repAll.assets.find(a => a.name.includes('ORI024'));
+  assert.equal(bondHolding.code, '034'); // Obligasi Negara
+
+  const btcHolding = repAll.assets.find(a => a.name.includes('BTC'));
+  assert.equal(btcHolding.code, '039'); // Kripto / Investasi Lainnya
+  // 0.1 * 60000 USD = 6000 USD * 16000 IDR = 96,000,000 IDR
+  assert.equal(btcHolding.valueIdr, 96000000);
+
+  const goldHolding = repAll.assets.find(a => a.name.includes('ANTAM'));
+  assert.equal(goldHolding.code, '051'); // Logam Mulia
+
+  const fundHolding = repAll.assets.find(a => a.name.includes('RDPU'));
+  assert.equal(fundHolding.code, '038'); // Reksa Dana
+
+  // Check Liabilities DJP code mapping
+  const ccDebt = repAll.liabilities.find(l => l.name.includes('BCA Everyday Card'));
+  assert.equal(ccDebt.code, '102'); // Kartu Kredit
+
+  const paylaterDebt = repAll.liabilities.find(l => l.name.includes('Shopee Paylater'));
+  assert.equal(paylaterDebt.code, '104'); // Paylater / Fintech
+
+  const kprDebt = repAll.liabilities.find(l => l.name.includes('KPR Bank Mandiri'));
+  assert.equal(kprDebt.code, '101'); // Utang Bank
+
+  // Check Net fiscal wealth
+  assert.equal(repAll.netWealthIdr, repAll.totalAssetsIdr - repAll.totalLiabilitiesIdr);
+
+  // Check TSV format
+  assert.ok(repAll.tsvText.includes("Kode Harta\tNama Harta"));
+  assert.ok(repAll.tsvText.includes("012\tBCA Tahapan Utama"));
+  assert.ok(repAll.tsvText.includes("Kode Utang\tNama Pemberi Pinjaman"));
+  assert.ok(repAll.tsvText.includes("102\tBCA Everyday Card"));
+
+  // Check CSV format
+  assert.ok(repAll.csvText.includes("Kode DJP"));
+  assert.ok(repAll.csvText.includes('"HARTA","012"'));
+
+  // Test individual owner filter (m2 only)
+  const repM2 = F.buildDjpTaxAssetsReport(s, { year: '2026', ownerId: 'm2' });
+  assert.equal(repM2.assets.some(a => a.name === 'BCA Tahapan Utama'), false);
+  assert.equal(repM2.assets.some(a => a.name === 'Dompet Tunai Brankas'), true);
+  assert.equal(repM2.assets.some(a => a.name.includes('ANTAM')), true);
+  assert.equal(repM2.liabilities.length, 1);
+  assert.equal(repM2.liabilities[0].name, 'KPR Bank Mandiri Griya');
+});
+
+
