@@ -4,14 +4,39 @@
   "description": "Your financial life, connected. Household wealth, cash flow, debt and retirement system.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#111b18",
   "theme_color": "#244e3e",
+  "categories": ["finance", "productivity", "utilities"],
   "icons": [
     {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Catat Cepat",
+      "short_name": "Catat Cepat",
+      "description": "Pencatatan transaksi instan",
+      "url": "/#operations",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Ringkasan finansial dan saldo",
+      "url": "/#home",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Investasi & Aset",
+      "short_name": "Investasi",
+      "description": "Portofolio investasi dan emas",
+      "url": "/#investment",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
     }
   ]
 }

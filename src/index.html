@@ -38,15 +38,41 @@
   </div>
 </div>
 
+<!-- Vault Lock Screen (Biometric & Quick PIN Security) -->
+<div id="vault-lock-screen" style="display:none">
+  <div class="vault-lock-card">
+    <div class="vault-lock-badge">
+      <span class="vault-lock-icon">🔒</span>
+    </div>
+    <h2 id="vault-lock-title">INVEYS Sovereign Vault</h2>
+    <p id="vault-lock-subtitle">Brankas finansial terkunci demi keamanan data Anda.</p>
+    <div class="vault-lock-user" id="vault-lock-user-wrap">
+      <span class="avatar" id="vault-lock-avatar">IV</span>
+      <div style="text-align:left;">
+        <b id="vault-lock-name">Sovereign Member</b>
+        <small id="vault-lock-email" style="display:block;opacity:0.75;font-size:11px;">Local Vault</small>
+      </div>
+    </div>
+    <div id="vault-lock-actions" style="margin-top:16px;"></div>
+    <p id="vault-lock-error" class="form-error" style="margin-top:10px;display:none;color:#ef4444;font-size:12px;" role="alert"></p>
+    <div class="vault-lock-footer" style="margin-top:18px;display:flex;gap:10px;justify-content:center;align-items:center;font-size:11px;">
+      <button type="button" class="btn-link" id="vault-lock-switch-btn" style="background:none;border:none;color:var(--accent,#34d399);cursor:pointer;font-size:11px;text-decoration:underline;">Buka dengan Password</button>
+      <span style="opacity:0.4;">·</span>
+      <button type="button" class="btn-link" id="vault-lock-logout-btn" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;">Keluar (Log Out)</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand-row"><a href="#home" class="brand" aria-label="INVEYS home"><span class="brand-symbol">ı<span>v</span></span><span class="brand-name">INVEYS<span class="brand-dot">.</span></span></a><button id="sidebar-pin" class="icon-button sidebar-pin" aria-label="Pin navigation" title="Pin navigation" aria-pressed="false">⌖</button><button id="sidebar-close" class="icon-button sidebar-close" aria-label="Close navigation">×</button></div>
     <div class="nav-label">YOUR FINANCIAL WORLD</div>
     <nav id="navigation" aria-label="Main navigation"></nav>
     <div class="sidebar-bottom">
+      <button class="bottom-link pwa-install-link" id="pwa-install-button" aria-label="Install INVEYS App" title="Install INVEYS App" data-action="pwa-install"><span class="sidebar-icon">📲</span><span class="nav-text">Install App</span></button>
       <button class="bottom-link" id="about-button" aria-label="About INVEYS" title="About INVEYS"><span class="sidebar-icon">✧</span><span class="nav-text">About INVEYS</span></button>
       <button class="bottom-link" data-page="settings" id="settings-button" aria-label="Settings & data" title="Settings & data"><span class="sidebar-icon">⚙</span><span class="nav-text">Settings & data</span></button>
-      <div class="profile-wrap"><button class="profile" id="profile-button" aria-label="Open account menu" aria-expanded="false"><span class="avatar">HF</span><span class="profile-copy"><b>Hendra Febriansyah</b><small>Local demo account</small></span><span class="profile-status"></span><span class="profile-chevron">›</span></button><div class="profile-popover" id="profile-popover"><div class="profile-popover-header"><span class="avatar">HF</span><div><b class="profile-popover-name">Hendra Febriansyah</b><small class="profile-popover-email">Local demo account</small></div></div><div class="profile-popover-divider"></div><button class="profile-popover-item" id="popover-admin-btn" data-page="admin" data-close="1" style="display:none;color:var(--accent,#34d399);font-weight:600;"><span>🛡️</span><span>Admin Control Panel</span></button><button class="profile-popover-item" data-page="settings" data-close="1"><span>⚙</span><span>Account Settings</span></button><button class="profile-popover-item" id="popover-landing-btn" onclick="window.location.href=(location.protocol==='file:'?'landing.html':'/')"><span>🌐</span><span>Landing Page</span></button><button class="profile-popover-item" id="popover-lock-btn"><span>🔒</span><span>Lock Vault</span></button><button class="profile-popover-item profile-popover-danger" id="popover-logout-btn"><span>⏻</span><span>Log Out</span></button><div class="profile-popover-divider"></div><div class="profile-popover-footer"><small>INVEYS v0.23.0</small></div></div></div>
+      <div class="profile-wrap"><button class="profile" id="profile-button" aria-label="Open account menu" aria-expanded="false"><span class="avatar">HF</span><span class="profile-copy"><b>Hendra Febriansyah</b><small>Local demo account</small></span><span class="profile-status"></span><span class="profile-chevron">›</span></button><div class="profile-popover" id="profile-popover"><div class="profile-popover-header"><span class="avatar">HF</span><div><b class="profile-popover-name">Hendra Febriansyah</b><small class="profile-popover-email">Local demo account</small></div></div><div class="profile-popover-divider"></div><button class="profile-popover-item" id="popover-admin-btn" data-page="admin" data-close="1" style="display:none;color:var(--accent,#34d399);font-weight:600;"><span>🛡️</span><span>Admin Control Panel</span></button><button class="profile-popover-item" data-action="pwa-install"><span>📲</span><span>Install INVEYS App</span></button><button class="profile-popover-item" data-page="settings" data-close="1"><span>⚙</span><span>Account Settings</span></button><button class="profile-popover-item" id="popover-landing-btn" onclick="window.location.href=(location.protocol==='file:'?'landing.html':'/')"><span>🌐</span><span>Landing Page</span></button><button class="profile-popover-item" id="popover-lock-btn"><span>🔒</span><span>Lock Vault</span></button><button class="profile-popover-item profile-popover-danger" id="popover-logout-btn"><span>⏻</span><span>Log Out</span></button><div class="profile-popover-divider"></div><div class="profile-popover-footer"><small>INVEYS v0.23.0</small></div></div></div>
     </div>
   </aside>
   <button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" tabindex="-1"></button>

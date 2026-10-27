@@ -24,6 +24,7 @@ function boot(saved, env = {}) {
   const document={querySelector:element,querySelectorAll:()=>[],body:element('body'),activeElement:{tagName:'BODY'},
     addEventListener:(name,fn)=>{if(!events.has(name))events.set(name,[]);events.get(name).push(fn);}};
   const context=vm.createContext({document,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},
+    sessionStorage:{getItem:k=>store.get('sess_'+k)||null,setItem:(k,v)=>store.set('sess_'+k,v),removeItem:k=>store.delete('sess_'+k)},
     location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,
     __INVEYS_SERVER_MODE__: env.isServerMode || false,
     __INVEYS_CURRENT_USER__: env.currentUser || null,
@@ -799,6 +800,44 @@ test('administrator control panel renders access restriction in local mode and f
   assert.match(adminApp.html(), /admin-config-telegram/);
   assert.match(adminApp.html(), /admin-audit-panel/);
   assert.match(adminApp.html(), /audit-table/);
+});
+
+test('native PWA install experience and biometric vault lock security render and act properly', () => {
+  const app = boot();
+  app.click({page: 'settings'});
+  
+  // Verify vault security & PWA panels render in settings
+  assert.match(app.html(), /vault-security-panel/);
+  assert.match(app.html(), /pwa-panel/);
+  assert.match(app.html(), /Keamanan Brankas & Kunci Biometrik|Vault Security & Biometrics/);
+  assert.match(app.html(), /Aplikasi Mandiri & PWA|Native App & PWA Installation/);
+  assert.match(app.html(), /lock-vault-now/);
+  assert.match(app.html(), /setup-biometric/);
+  assert.match(app.html(), /setup-pin/);
+  assert.match(app.html(), /setting-autolock-select/);
+  assert.match(app.html(), /pwa-install/);
+
+  // Trigger PWA install guide modal
+  app.click({action: 'pwa-install'});
+  const modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /pwa-guide-modal/);
+  assert.match(modalBody, /Pengalaman Aplikasi Mandiri|Native Standalone App Experience/);
+
+  // Trigger Vault Lock Screen
+  app.click({action: 'lock-vault-now'});
+  const lockScreen = app.elements.get('#vault-lock-screen');
+  assert.equal(lockScreen.style.display, 'flex');
+  assert.equal(app.context.sessionStorage.getItem('inveys_vault_locked'), '1');
+
+  // Change auto-lock inactivity select
+  app.changeField('setting-autolock-select', '30');
+  assert.equal(app.context.localStorage.getItem('inveys_autolock'), '30');
+
+  // Trigger PIN setup modal
+  app.click({action: 'setup-pin'});
+  const pinModalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(pinModalBody, /pin-setup-form/);
+  assert.match(pinModalBody, /new-pin-input/);
 });
 
 

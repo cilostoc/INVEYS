@@ -5419,4 +5419,111 @@ dialog.has-key-mgr > #modal-body {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* PWA Sidebar & Popover Elements */
+.pwa-install-link {
+  color: var(--accent, #34d399) !important;
+  font-weight: 600;
+}
+.pwa-install-link:hover {
+  background: rgba(52, 211, 153, 0.12) !important;
+}
+
+/* Vault Lock Screen (Biometric & PIN Sovereign Security) */
+#vault-lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 14, 12, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 20px;
+}
+.vault-lock-card {
+  background: var(--paper, #111b18);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), 0 0 40px rgba(52, 211, 153, 0.12);
+  border-radius: 20px;
+  max-width: 380px;
+  width: 100%;
+  padding: 34px 28px;
+  text-align: center;
+  position: relative;
+  animation: vaultCardPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes vaultCardPop {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.vault-lock-badge {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(16, 185, 129, 0.08));
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+  font-size: 26px;
+  box-shadow: 0 0 24px rgba(52, 211, 153, 0.25);
+  animation: bioGlow 3s infinite ease-in-out;
+}
+@keyframes bioGlow {
+  0%, 100% { box-shadow: 0 0 24px rgba(52, 211, 153, 0.25); border-color: rgba(52, 211, 153, 0.4); }
+  50% { box-shadow: 0 0 36px rgba(52, 211, 153, 0.45); border-color: rgba(52, 211, 153, 0.7); }
+}
+#vault-lock-title {
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+  color: var(--ink, #f3f4f6);
+}
+#vault-lock-subtitle {
+  font-size: 12px;
+  color: var(--muted, #9ca3af);
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+.vault-lock-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  padding: 6px 14px 6px 8px;
+  border-radius: 30px;
+  margin-bottom: 20px;
+}
+.vault-lock-user .avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+.vault-bio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 650;
+  border-radius: 12px;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--accent, #34d399), #10b981);
+  color: #05241d;
+  border: none;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.vault-bio-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.45);
+}
+
 

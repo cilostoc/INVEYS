@@ -6343,7 +6343,585 @@
     `;
   }
 
-  function settings(){return header('Your information. Your control.','Manage your local workspace and take your records with you.','','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
+  /* ==========================================================================
+     PWA & VAULT SOVEREIGN SECURITY (BIOMETRIC & QUICK PIN)
+     ========================================================================== */
+  let deferredInstallPrompt = null;
+  let isVaultLocked = false;
+  let autoLockTimerId = null;
+
+  function safeSessionGet(key) {
+    try { return typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null; } catch (e) { return null; }
+  }
+  function safeSessionSet(key, val) {
+    try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(key, val); } catch (e) {}
+  }
+  function safeSessionRemove(key) {
+    try { if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(key); } catch (e) {}
+  }
+  function closeModal() {
+    try { $('#modal')?.close(); } catch (e) {}
+  }
+
+  function checkAppStandalone() {
+    if (typeof window === 'undefined') return false;
+    return !!(window.matchMedia?.('(display-mode: standalone)').matches || window.navigator?.standalone);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const btn = $('#pwa-install-button');
+      if (btn) btn.style.display = 'flex';
+    });
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      toast('🎉 ' + L('INVEYS berhasil diinstal sebagai aplikasi native!', 'INVEYS installed as native app!'));
+      render();
+    });
+  }
+
+  function triggerPwaInstall() {
+    if (checkAppStandalone()) {
+      toast('✓ ' + L('INVEYS sudah berjalan dalam mode aplikasi standalone!', 'INVEYS is running in standalone mode!'));
+      return;
+    }
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(choice => {
+        if (choice && choice.outcome === 'accepted') {
+          toast(L('Memasang aplikasi INVEYS…', 'Installing INVEYS app…'));
+        }
+        deferredInstallPrompt = null;
+      }).catch(() => {});
+    } else {
+      showPwaInstallGuideModal();
+    }
+  }
+
+  function showPwaInstallGuideModal() {
+    const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    openModal(L('📲 Instal INVEYS ke Layar Utama', '📲 Install INVEYS App'), `
+      <div class="pwa-guide-modal" style="text-align:center;max-width:440px;margin:0 auto;">
+        <div style="font-size:44px;margin-bottom:12px;">📱</div>
+        <h3 style="font-size:18px;margin-bottom:8px;">${L('Pengalaman Aplikasi Mandiri (Native PWA)', 'Native Standalone App Experience')}</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;">
+          ${L('Pasang INVEYS sebagai aplikasi resmi di perangkat Anda tanpa bilah browser, dengan loading instan, keamanan biometrik, dan performa cepat.', 'Install INVEYS as a native standalone app with offline speed, biometric lock, and zero browser distraction.')}
+        </p>
+
+        ${isIOS ? `
+          <div class="ios-install-steps" style="text-align:left;background:var(--bg-hover,#f8fafc);padding:16px;border-radius:12px;border:1px solid var(--line);margin-bottom:18px;">
+            <div style="font-weight:700;margin-bottom:10px;color:var(--accent,#34d399);">${L('Panduan Safari iOS (iPhone / iPad):', 'iOS Safari Steps:')}</div>
+            <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+              <span style="background:var(--card-subtle,#e2e8f0);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;">1</span>
+              <span style="font-size:13px;line-height:1.5;">${L('Ketuk tombol <b>Bagikan (Share)</b> <span style="font-size:16px;">⎋</span> di bilah bawah Safari.', 'Tap the <b>Share icon</b> <span style="font-size:16px;">⎋</span> at the bottom of Safari.')}</span>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+              <span style="background:var(--card-subtle,#e2e8f0);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;">2</span>
+              <span style="font-size:13px;line-height:1.5;">${L('Geser ke bawah dan pilih <b>"Tambahkan ke Layar Utama" (Add to Home Screen)</b> <span style="font-size:16px;">⊞</span>.', 'Scroll down and select <b>"Add to Home Screen"</b> <span style="font-size:16px;">⊞</span>.')}</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <span style="background:var(--card-subtle,#e2e8f0);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;">3</span>
+              <span style="font-size:13px;line-height:1.5;">${L('Ketuk <b>Tambah (Add)</b> di pojok kanan atas. Buka INVEYS dari layar depan Anda!', 'Tap <b>Add</b> at top right. Open INVEYS right from your home screen!')}</span>
+            </div>
+          </div>
+        ` : `
+          <div class="ios-install-steps" style="text-align:left;background:var(--bg-hover,#f8fafc);padding:16px;border-radius:12px;border:1px solid var(--line);margin-bottom:18px;">
+            <div style="font-weight:700;margin-bottom:10px;color:var(--accent,#34d399);">${L('Panduan Desktop / Android:', 'Desktop / Android Steps:')}</div>
+            <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+              <span style="background:var(--card-subtle,#e2e8f0);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;">1</span>
+              <span style="font-size:13px;line-height:1.5;">${L('Klik ikon instal <b>⊕</b> di bilah URL browser Chrome/Edge, atau buka menu titik tiga <b>⋮</b>.', 'Click the install icon <b>⊕</b> in your browser address bar, or tap the three dots menu <b>⋮</b>.')}</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <span style="background:var(--card-subtle,#e2e8f0);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;">2</span>
+              <span style="font-size:13px;line-height:1.5;">${L('Pilih <b>"Instal INVEYS"</b> atau <b>"Tambahkan ke Layar Utama"</b>.', 'Select <b>"Install INVEYS"</b> or <b>"Add to Home Screen"</b>.')}</span>
+            </div>
+          </div>
+        `}
+        <button type="button" class="btn primary" data-action="modal-close" onclick="closeModal()">${L('Mengerti & Tutup', 'Got It')}</button>
+      </div>
+    `);
+  }
+
+  async function isBiometricAvailable() {
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) return false;
+    try {
+      if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
+        return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function registerBiometric(username = 'INVEYS User') {
+    if (typeof window === 'undefined' || !window.PublicKeyCredential || !navigator.credentials) {
+      throw new Error(L('Sensor biometrik tidak didukung di peramban ini.', 'Biometrics not supported on this browser.'));
+    }
+    const challenge = new Uint8Array(32);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(challenge);
+    const userId = new Uint8Array(16);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(userId);
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'INVEYS Sovereign Vault', id: window.location?.hostname || 'localhost' },
+        user: { id: userId, name: username, displayName: username },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+        timeout: 60000
+      }
+    });
+    if (credential) {
+      const rawId = new Uint8Array(credential.rawId);
+      let binary = '';
+      for (let i = 0; i < rawId.byteLength; i++) binary += String.fromCharCode(rawId[i]);
+      const credIdBase64 = (typeof btoa === 'function') ? btoa(binary) : 'bio_token';
+      localStorage.setItem('inveys_bio_cred_id', credIdBase64);
+      localStorage.setItem('inveys_bio_enabled', 'true');
+      return credIdBase64;
+    }
+  }
+
+  async function verifyBiometric() {
+    if (typeof window === 'undefined' || !window.PublicKeyCredential || !navigator.credentials) {
+      throw new Error(L('Sensor biometrik tidak tersedia.', 'Biometrics unavailable.'));
+    }
+    const credIdBase64 = localStorage.getItem('inveys_bio_cred_id');
+    const challenge = new Uint8Array(32);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(challenge);
+    const options = { challenge, timeout: 60000, userVerification: 'required' };
+    if (credIdBase64 && typeof atob === 'function') {
+      try {
+        const binary = atob(credIdBase64);
+        const rawId = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) rawId[i] = binary.charCodeAt(i);
+        options.allowCredentials = [{ type: 'public-key', id: rawId, transports: ['internal'] }];
+      } catch (e) {}
+    }
+    const assertion = await navigator.credentials.get({ publicKey: options });
+    return !!assertion;
+  }
+
+  async function hashPin(pin, salt = 'inveys_pin_salt') {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+      try {
+        const enc = new TextEncoder();
+        const hashBuf = await window.crypto.subtle.digest('SHA-256', enc.encode(salt + pin));
+        return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {}
+    }
+    let h = 0;
+    const str = salt + pin;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) - h) + str.charCodeAt(i);
+      h |= 0;
+    }
+    return 'h_' + Math.abs(h);
+  }
+
+  function openPinSetupModal() {
+    const currentPinHash = localStorage.getItem('inveys_pin_hash');
+    openModal(currentPinHash ? L('Ubah PIN Keamanan', 'Change Security PIN') : L('Atur PIN Keamanan Baru', 'Set Up Security PIN'), `
+      <form id="pin-setup-form" style="max-width:320px;margin:0 auto;text-align:center;">
+        <div style="font-size:36px;margin-bottom:8px;">🔢</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:18px;">
+          ${L('Masukkan 4 hingga 6 digit angka untuk membuka brankas finansial Anda secara kilat.', 'Enter 4 to 6 numeric digits to quickly unlock your financial vault.')}
+        </p>
+        ${currentPinHash ? `
+          <div class="field" style="margin-bottom:12px;text-align:left;">
+            <label for="current-pin-input">${L('PIN Lama', 'Current PIN')}</label>
+            <input type="password" id="current-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autocomplete="off" style="text-align:center;letter-spacing:6px;font-size:18px;">
+          </div>
+        ` : ''}
+        <div class="field" style="margin-bottom:12px;text-align:left;">
+          <label for="new-pin-input">${L('PIN Baru (4–6 Angka)', 'New PIN (4–6 Digits)')}</label>
+          <input type="password" id="new-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autocomplete="off" style="text-align:center;letter-spacing:6px;font-size:18px;">
+        </div>
+        <div class="field" style="margin-bottom:18px;text-align:left;">
+          <label for="confirm-pin-input">${L('Konfirmasi PIN Baru', 'Confirm New PIN')}</label>
+          <input type="password" id="confirm-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autocomplete="off" style="text-align:center;letter-spacing:6px;font-size:18px;">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          ${currentPinHash ? `<button type="button" class="btn danger" id="remove-pin-btn">${L('Hapus PIN', 'Remove PIN')}</button>` : ''}
+          <button type="submit" class="btn primary">${L('Simpan PIN', 'Save PIN')}</button>
+        </div>
+      </form>
+    `);
+    setTimeout(() => {
+      const form = $('#pin-setup-form');
+      if (form) {
+        form.addEventListener('submit', async e => {
+          e.preventDefault();
+          const curInput = $('#current-pin-input');
+          const newInput = $('#new-pin-input');
+          const confInput = $('#confirm-pin-input');
+          if (currentPinHash && curInput) {
+            const curHash = await hashPin(curInput.value.trim());
+            if (curHash !== currentPinHash) {
+              toast('⚠️ ' + L('PIN Lama salah!', 'Current PIN is incorrect!'));
+              return;
+            }
+          }
+          const pin = (newInput?.value || '').trim();
+          const conf = (confInput?.value || '').trim();
+          if (!/^\d{4,6}$/.test(pin)) {
+            toast('⚠️ ' + L('PIN harus berupa 4 hingga 6 digit angka!', 'PIN must be 4 to 6 numeric digits!'));
+            return;
+          }
+          if (pin !== conf) {
+            toast('⚠️ ' + L('Konfirmasi PIN tidak cocok!', 'PIN confirmation does not match!'));
+            return;
+          }
+          const h = await hashPin(pin);
+          localStorage.setItem('inveys_pin_hash', h);
+          localStorage.setItem('inveys_pin_enabled', 'true');
+          closeModal();
+          toast('✅ ' + L('PIN keamanan berhasil disimpan!', 'Security PIN saved successfully!'));
+          render();
+        });
+      }
+      const removeBtn = $('#remove-pin-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          localStorage.removeItem('inveys_pin_hash');
+          localStorage.removeItem('inveys_pin_enabled');
+          closeModal();
+          toast(L('PIN keamanan dinonaktifkan', 'Security PIN disabled'));
+          render();
+        });
+      }
+    }, 40);
+  }
+
+  async function toggleBiometricSetup() {
+    const isEnabled = localStorage.getItem('inveys_bio_enabled') === 'true';
+    if (isEnabled) {
+      localStorage.removeItem('inveys_bio_enabled');
+      localStorage.removeItem('inveys_bio_cred_id');
+      toast(L('Kunci biometrik dinonaktifkan', 'Biometric unlock disabled'));
+      render();
+      return;
+    }
+    try {
+      const available = await isBiometricAvailable();
+      if (!available && typeof window !== 'undefined' && !window.PublicKeyCredential) {
+        toast('⚠️ ' + L('Perangkat atau peramban ini tidak mendukung sensor biometrik WebAuthn.', 'This device or browser does not support WebAuthn biometrics.'));
+        return;
+      }
+      const userDisplayName = currentUser?.name || state.members[0]?.name || 'INVEYS User';
+      await registerBiometric(userDisplayName);
+      toast('✅ ' + L('Biometrik (Touch ID / Face ID) berhasil diaktifkan!', 'Biometrics (Touch ID / Face ID) successfully enabled!'));
+      render();
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        toast('⚠️ ' + L('Aktivasi biometrik dibatalkan oleh pengguna.', 'Biometric setup cancelled.'));
+      } else {
+        toast('⚠️ ' + err.message);
+      }
+    }
+  }
+
+  function lockVault() {
+    isVaultLocked = true;
+    safeSessionSet('inveys_vault_locked', '1');
+    showVaultLockScreen();
+  }
+
+  function unlockVault() {
+    isVaultLocked = false;
+    safeSessionRemove('inveys_vault_locked');
+    hideVaultLockScreen();
+    resetAutoLockTimer();
+    toast('🔓 ' + L('Brankas berhasil dibuka!', 'Vault unlocked successfully!'));
+  }
+
+  async function logoutUser() {
+    try {
+      const token = localStorage.getItem('inveys_token');
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': 'Bearer ' + token } : {}) }
+      });
+    } catch (e) {}
+    localStorage.removeItem('inveys_token');
+    safeSessionRemove('inveys_vault_locked');
+    isVaultLocked = false;
+    currentUser = null;
+    hideVaultLockScreen();
+    render();
+    showAuthScreen('login');
+    toast(L('Sesi telah diakhiri. Silakan masuk kembali.', 'Logged out successfully. Please log in again.'));
+  }
+
+  function showVaultLockScreen() {
+    const lockEl = $('#vault-lock-screen');
+    if (!lockEl) return;
+    lockEl.style.display = 'flex';
+
+    const userName = currentUser?.name || state.members[0]?.name || 'Sovereign Member';
+    const userEmail = currentUser?.email || 'Local Sovereign Vault';
+    const initials = userName.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() || 'IV';
+
+    const nameEl = $('#vault-lock-name');
+    const emailEl = $('#vault-lock-email');
+    const avatarEl = $('#vault-lock-avatar');
+    if (nameEl) nameEl.textContent = userName;
+    if (emailEl) emailEl.textContent = userEmail;
+    if (avatarEl) avatarEl.textContent = initials;
+
+    renderVaultLockActions('default');
+
+    const bioEnabled = localStorage.getItem('inveys_bio_enabled') === 'true';
+    if (bioEnabled) {
+      setTimeout(() => { triggerBiometricUnlock(); }, 250);
+    }
+  }
+
+  function hideVaultLockScreen() {
+    const lockEl = $('#vault-lock-screen');
+    if (lockEl) lockEl.style.display = 'none';
+    const errEl = $('#vault-lock-error');
+    if (errEl) errEl.style.display = 'none';
+  }
+
+  function showLockError(msg) {
+    const errEl = $('#vault-lock-error');
+    if (errEl) {
+      errEl.textContent = msg;
+      errEl.style.display = 'block';
+    }
+  }
+
+  function renderVaultLockActions(mode = 'default') {
+    const actionsEl = $('#vault-lock-actions');
+    const switchBtn = $('#vault-lock-switch-btn');
+    if (!actionsEl) return;
+
+    const bioEnabled = localStorage.getItem('inveys_bio_enabled') === 'true';
+    const pinEnabled = localStorage.getItem('inveys_pin_enabled') === 'true' && !!localStorage.getItem('inveys_pin_hash');
+
+    if (mode === 'default') {
+      if (bioEnabled) {
+        actionsEl.innerHTML = `
+          <button type="button" class="vault-bio-btn" id="vault-trigger-bio-btn">
+            <span style="font-size:22px;">👆</span>
+            <span>${L('Buka dengan Touch ID / Face ID', 'Unlock with Touch ID / Face ID')}</span>
+          </button>
+        `;
+        if (switchBtn) {
+          switchBtn.textContent = pinEnabled ? L('Buka dengan PIN', 'Unlock with PIN') : L('Buka dengan Password', 'Unlock with Password');
+          switchBtn.dataset.nextMode = pinEnabled ? 'pin' : 'pw';
+        }
+        setTimeout(() => {
+          $('#vault-trigger-bio-btn')?.addEventListener('click', () => triggerBiometricUnlock());
+        }, 20);
+        return;
+      }
+      mode = pinEnabled ? 'pin' : 'pw';
+    }
+
+    if (mode === 'pin') {
+      actionsEl.innerHTML = `
+        <form id="vault-pin-form">
+          <label for="vault-pin-input" style="font-size:11px;color:var(--muted);display:block;margin-bottom:8px;">${L('Masukkan 4–6 Digit PIN Anda', 'Enter your 4–6 digit PIN')}</label>
+          <input type="password" id="vault-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="• • • •" required autofocus style="text-align:center;letter-spacing:10px;font-size:24px;font-weight:700;width:180px;margin:0 auto 14px;display:block;">
+          <button type="submit" class="btn primary" style="width:180px;">${L('Buka Kunci', 'Unlock')}</button>
+        </form>
+      `;
+      if (switchBtn) {
+        switchBtn.textContent = bioEnabled ? L('Buka dengan Biometrik', 'Unlock with Biometrics') : L('Buka dengan Password', 'Unlock with Password');
+        switchBtn.dataset.nextMode = bioEnabled ? 'default' : 'pw';
+      }
+      setTimeout(() => {
+        const form = $('#vault-pin-form');
+        if (form) {
+          form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const entered = $('#vault-pin-input')?.value || '';
+            const hash = await hashPin(entered.trim());
+            if (hash === localStorage.getItem('inveys_pin_hash')) {
+              unlockVault();
+            } else {
+              showLockError(L('PIN salah. Silakan coba lagi.', 'Incorrect PIN. Please try again.'));
+              const inp = $('#vault-pin-input');
+              if (inp) { inp.value = ''; inp.focus(); }
+            }
+          });
+        }
+      }, 20);
+      return;
+    }
+
+    if (mode === 'pw') {
+      actionsEl.innerHTML = `
+        <form id="vault-pw-form">
+          <input type="password" id="vault-pw-input" placeholder="${L('Password Akun', 'Account Password')}" required autofocus style="margin-bottom:12px;text-align:left;width:100%;">
+          <button type="submit" class="btn primary" style="width:100%;">${L('Buka Kunci Brankas', 'Unlock Vault')}</button>
+        </form>
+      `;
+      if (switchBtn) {
+        switchBtn.textContent = bioEnabled ? L('Buka dengan Biometrik', 'Unlock with Biometrics') : (pinEnabled ? L('Buka dengan PIN', 'Unlock with PIN') : '');
+        switchBtn.dataset.nextMode = bioEnabled ? 'default' : (pinEnabled ? 'pin' : '');
+      }
+      setTimeout(() => {
+        const form = $('#vault-pw-form');
+        if (form) {
+          form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const pw = $('#vault-pw-input')?.value || '';
+            if (isServerMode && currentUser?.email) {
+              const email = currentUser.email;
+              try {
+                const res = await fetch('/api/auth/login', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email, password: pw })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Password salah');
+                unlockVault();
+              } catch (err) {
+                showLockError(err.message);
+              }
+            } else {
+              unlockVault();
+            }
+          });
+        }
+      }, 20);
+    }
+  }
+
+  async function triggerBiometricUnlock() {
+    try {
+      const verified = await verifyBiometric();
+      if (verified) {
+        unlockVault();
+      }
+    } catch (err) {
+      if (err.name !== 'NotAllowedError') {
+        showLockError(err.message || L('Verifikasi biometrik tidak berhasil', 'Biometric verification unsuccessful'));
+      }
+    }
+  }
+
+  function resetAutoLockTimer() {
+    if (autoLockTimerId) clearTimeout(autoLockTimerId);
+    if (typeof localStorage === 'undefined') return;
+    const setting = localStorage.getItem('inveys_autolock') || '15';
+    if (setting === 'never') return;
+    const minutes = parseInt(setting, 10);
+    if (isNaN(minutes) || minutes <= 0) return;
+    autoLockTimerId = setTimeout(() => {
+      if (!isVaultLocked && (isAuthenticated || !isServerMode)) {
+        lockVault();
+      }
+    }, minutes * 60 * 1000);
+  }
+
+  if (typeof window !== 'undefined') {
+    ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+      window.addEventListener(evt, () => resetAutoLockTimer(), { passive: true });
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (typeof localStorage === 'undefined') return;
+      const setting = localStorage.getItem('inveys_autolock') || '15';
+      if (document.hidden) {
+        if (setting === 'immediately' && !isVaultLocked && (isAuthenticated || !isServerMode)) {
+          lockVault();
+        }
+      } else {
+        resetAutoLockTimer();
+      }
+    });
+  }
+
+  function vaultSecuritySettings() {
+    const bioEnabled = localStorage.getItem('inveys_bio_enabled') === 'true';
+    const pinEnabled = localStorage.getItem('inveys_pin_enabled') === 'true' && !!localStorage.getItem('inveys_pin_hash');
+    const autoLock = localStorage.getItem('inveys_autolock') || '15';
+    const bioStatusText = bioEnabled
+      ? '✓ ' + L('Aktif (Touch ID / Face ID terhubung)', 'Active (Touch ID / Face ID enabled)')
+      : L('Belum aktif · Sentuh untuk mendaftarkan sensor perangkat', 'Disabled · Tap to register biometric sensor');
+    const pinStatusText = pinEnabled
+      ? '✓ ' + L('PIN Aktif (4–6 digit terenkripsi)', 'Active (4–6 digit salted PIN)')
+      : L('Belum diatur · Buat PIN numerik untuk kunci kilat', 'Not set · Create numerical PIN for quick unlock');
+
+    return `
+      <section class="panel panel-pad vault-security-panel" style="margin-top:22px">
+        <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h2>🔒 ${L('Keamanan Brankas & Kunci Biometrik', 'Vault Security & Biometrics')}</h2>
+            <p>${L('Kunci brankas finansial secara instan saat ditinggalkan, dan buka kunci dengan Touch ID, Face ID, atau Quick PIN.', 'Instantly lock your financial vault and unlock via Touch ID, Face ID, or Quick PIN.')}</p>
+          </div>
+          <button type="button" class="btn" data-action="lock-vault-now">🔒 ${L('Kunci Sekarang', 'Lock Now')}</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <b>${L('Kunci Biometrik (Touch ID / Face ID / Windows Hello)', 'Biometric Unlock (Touch ID / Face ID / Windows Hello)')}</b>
+            <p>${L('Buka kunci brankas dengan sidik jari atau pengenalan wajah perangkat menggunakan standar WebAuthn.', 'Unlock your vault instantly using device biometrics via WebAuthn standard.')}</p>
+            <span style="font-size:11px;color:var(--muted);">${escape(bioStatusText)}</span>
+          </div>
+          <button type="button" class="btn ${bioEnabled ? '' : 'primary'}" data-action="${bioEnabled ? 'disable-biometric' : 'setup-biometric'}">
+            ${bioEnabled ? '✕ ' + L('Nonaktifkan', 'Disable') : '👆 ' + L('Aktifkan Biometrik', 'Enable Biometrics')}
+          </button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <b>${L('Quick PIN Keamanan (4–6 Digit)', 'Quick Security PIN (4–6 Digits)')}</b>
+            <p>${L('Kunci kilat numerik untuk membuka brankas tanpa mengetik password panjang.', 'Fast numerical PIN to unlock your vault without typing full passwords.')}</p>
+            <span style="font-size:11px;color:var(--muted);">${escape(pinStatusText)}</span>
+          </div>
+          <button type="button" class="btn" data-action="setup-pin">
+            ${pinEnabled ? '🔢 ' + L('Ubah PIN', 'Change PIN') : '🔢 ' + L('Atur PIN Baru', 'Set Up PIN')}
+          </button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <b>${L('Kunci Otomatis (Auto-Lock Inactivity)', 'Auto-Lock Inactivity Timeout')}</b>
+            <p>${L('Kunci brankas secara otomatis saat aplikasi tidak aktif atau saat berpindah tab browser.', 'Automatically lock vault when switching tabs or after a period of inactivity.')}</p>
+          </div>
+          <select id="setting-autolock-select" data-action="change-autolock" style="max-width:180px;">
+            <option value="never" ${autoLock === 'never' ? 'selected' : ''}>${L('Hanya Manual', 'Manual Only')}</option>
+            <option value="immediately" ${autoLock === 'immediately' ? 'selected' : ''}>${L('Saat Pindah Tab', 'On Tab Switch')}</option>
+            <option value="5" ${autoLock === '5' ? 'selected' : ''}>5 ${L('Menit', 'Minutes')}</option>
+            <option value="15" ${autoLock === '15' ? 'selected' : ''}>15 ${L('Menit', 'Minutes')}</option>
+            <option value="30" ${autoLock === '30' ? 'selected' : ''}>30 ${L('Menit', 'Minutes')}</option>
+          </select>
+        </div>
+      </section>
+    `;
+  }
+
+  function pwaSettings() {
+    const isStandalone = checkAppStandalone();
+    return `
+      <section class="panel panel-pad pwa-panel" style="margin-top:22px">
+        <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h2>📲 ${L('Aplikasi Mandiri & PWA (Installable App)', 'Native App & PWA Installation')}</h2>
+            <p>${L('Jalankan INVEYS sebagai aplikasi resmi di perangkat seluler atau desktop dengan performa offline dan tanpa bilah browser.', 'Run INVEYS as a standalone desktop or mobile application with offline speed and zero browser chrome.')}</p>
+          </div>
+          <span class="vps-status-pill ${isStandalone ? 'online' : ''}">${isStandalone ? '● ' + L('Aplikasi Terinstal (Standalone)', 'Installed (Standalone)') : '○ ' + L('Mode Browser Web', 'Web Browser Mode')}</span>
+        </div>
+        <div class="settings-row">
+          <div>
+            <b>${L('Instal INVEYS ke Layar Utama', 'Install INVEYS to Home Screen')}</b>
+            <p>${L('Tambahkan ikon resmi INVEYS ke layar beranda HP (Android/iOS) atau Desktop (Mac/Windows) untuk peluncuran instan.', 'Add INVEYS to your phone home screen or desktop application dock for instant launch.')}</p>
+          </div>
+          <button type="button" class="btn primary" data-action="pwa-install">
+            📲 ${isStandalone ? L('Info Aplikasi', 'App Info') : L('Instal Aplikasi Sekarang', 'Install App Now')}
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  function settings(){return header(L('Pengaturan & Kedaulatan Data', 'Your information. Your control.'),L('Kelola preferensi, keamanan brankas, kunci biometrik, PWA, dan portabilitas data finansial.','Manage your workspace, biometric security, PWA, and take your records with you.'),'','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+vaultSecuritySettings()+pwaSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
   const prevTickerValues=new Map();
   function updateRollingTickers(){
     if(typeof window==='undefined'||typeof requestAnimationFrame==='undefined')return;
@@ -7008,6 +7586,11 @@
   function importFile(file){if(!file)return;if(file.size>5000000){toast('Choose a JSON file smaller than 5 MB.');return;}file.text().then(text=>{const candidate=E.validate(JSON.parse(text));const p=E.position(candidate);confirmAction('Restore this workspace?',`${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, ${candidate.goals.length} goals. Reporting currency: ${escape(candidate.currency)}. This replaces all current local records. Export your current workspace first if needed.`,()=>{state=candidate;resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;save();toast('Workspace restored.');},'Replace workspace');}).catch(error=>toast('Import failed: '+error.message));}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
   function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+    case 'pwa-install':triggerPwaInstall();break;
+    case 'lock-vault-now':lockVault();break;
+    case 'setup-biometric':toggleBiometricSetup();break;
+    case 'disable-biometric':toggleBiometricSetup();break;
+    case 'setup-pin':openPinSetupModal();break;
     case 'budget-setup':openBudgetSetupModal();break;
     case 'budget-edit':openBudgetSetupModal(id);break;
     case 'budget-remove':removeBudgetCategory(id);break;
@@ -7045,14 +7628,14 @@
   }}
   document.addEventListener('click',event=>{const target=event.target.closest('button,[data-action]');if(!target)return;if(target.dataset.page){if(target.dataset.close)$('#modal').close();navigate(target.dataset.page);}else if(target.dataset.action)act(target.dataset.action);else if(target.dataset.question)ask(target.dataset.question);else if(target.dataset.starter){const box=$('#quick-text');if(box){box.value=target.dataset.starter;quickText=target.dataset.starter;box.focus();if(box.style){box.style.height='auto';box.style.height=Math.min(132,box.scrollHeight)+'px';}}}else if(target.dataset.quickFill){const box=$('#quick-text');if(box){box.value=target.dataset.quickFill;quickText=target.dataset.quickFill;box.focus();if(box.style){box.style.height='auto';box.style.height=Math.min(132,box.scrollHeight)+'px';}}}});
   document.addEventListener('input',event=>{const el=event.target;if(el.id==='admin-search-input'){adminData.query=el.value.toLowerCase().trim();const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='forecast-preview-year'){forecastSelectedYear=Math.max(0,Math.min(selectedPlan().years,Number(el.value)||0));if(forecastResult)$('#forecast-preview').innerHTML=forecastPreview(forecastResult,selectedPlan());}if(el.id==='gold-spot-price-slider'||el.id==='gold-spot-price-input'){const val=Number(el.value);if(Number.isFinite(val)&&val>0){state.goldInstallment.customSpotPrice=val;if(state.goldInstallment.synced){const h=state.holdings.find(h=>h.id==='h-gold-galeri24');if(h){h.price=val;h.quoteDate=date();}const acc=state.accounts.find(a=>a.id==='acc-gold-pegadaian');if(acc){acc.balance=Math.round(50*val*100);acc.updated=date();}}render();}}if(el.id==='gold-paid-months-slider'){const val=Math.max(0,Math.min(60,Number(el.value)||0));state.goldInstallment.paidMonths=val;render();}if(el.id==='quick-text'){quickText=el.value;if(el.style){el.style.height='auto';el.style.height=Math.min(132,el.scrollHeight)+'px';}}if(el.dataset.scenario){scenario[el.dataset.scenario]=E.cents(el.value);$('#value-'+el.dataset.scenario).textContent=money(scenario[el.dataset.scenario]);updateScenario();}if(el.dataset.debtId){const id=el.dataset.debtId;const d=state.debts.find(d=>d.id===id);$('#extra-label-'+id).textContent=money(E.cents(el.value),false,d.currency);$('#debt-results-'+id).innerHTML=debtResult(d,E.cents(el.value));}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';}if(el.id==='transaction-search'){txQuery=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='category-manager-search'){const q=el.value.toLowerCase().trim();$$('.monarch-settings-cat-row').forEach(row=>{const text=((row.dataset.catRow||'')+' '+(row.dataset.catDisplay||'')).toLowerCase();row.style.display=!q||text.includes(q)?'flex':'none';});}});
-  document.addEventListener('change',event=>{const el=event.target;if(['admin-role-filter','admin-plan-filter','admin-status-filter'].includes(el.id)){if(el.id==='admin-role-filter')adminData.roleFilter=el.value;if(el.id==='admin-plan-filter')adminData.planFilter=el.value;if(el.id==='admin-status-filter')adminData.statusFilter=el.value;const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='import-file')importFile(el.files[0]);});
+  document.addEventListener('change',event=>{const el=event.target;if(el.id==='setting-autolock-select'||el.dataset.action==='change-autolock'){localStorage.setItem('inveys_autolock',el.value);resetAutoLockTimer();toast('🔒 '+L('Waktu kunci otomatis diperbarui','Auto-lock timer updated'));}if(['admin-role-filter','admin-plan-filter','admin-status-filter'].includes(el.id)){if(el.id==='admin-role-filter')adminData.roleFilter=el.value;if(el.id==='admin-plan-filter')adminData.planFilter=el.value;if(el.id==='admin-status-filter')adminData.statusFilter=el.value;const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='import-file')importFile(el.files[0]);});
   document.addEventListener('submit',event=>{if(event.target.id==='quick-form'){event.preventDefault();const d=Object.fromEntries(new FormData(event.target));quickSend(d.text,d.accountId);return;}if(event.target.id==='chat-form'){event.preventDefault();ask($('#chat-question').value.trim());}});
   $('#close-modal').addEventListener('click',()=>$('#modal').close());$('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=$('#modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('#modal').close();}});
   $('#menu-button').addEventListener('click',()=>{setSidebarOpen(!sidebarOpen);if(sidebarOpen)$('#navigation button')?.focus();});$('#search-button').addEventListener('click',searchModal);$('#notification-button').addEventListener('click',openReminders);$('#workspace-button')?.addEventListener('click',()=>navigate('home'));
   $('#about-button').addEventListener('click',()=>openModal('Your financial life, connected.',`<p class="dialog-copy">INVEYS stands for <b>INtelligent VElocity for Your Financial System</b>. Connect your financial picture, anticipate commitments, plan meaningful goals, and coordinate your next steps.</p><p class="note">This is a local-first MVP with sample data. No funds are moved, no institutions are connected, and external providers require separate configuration and explicit consent.</p><div class="form-actions">${button('Explore your workspace','modal-close','primary')}</div>`));
   /* --- Profile popover toggle --- */
   const profileBtn=$('#profile-button'),profilePopover=$('#profile-popover');
-  if(profileBtn&&profilePopover){profileBtn.addEventListener('click',e=>{e.stopPropagation();const isOpen=profilePopover.classList.toggle('open');profileBtn.setAttribute('aria-expanded',String(isOpen));});document.addEventListener('click',e=>{if(!e.target.closest('.profile-wrap')||e.target.closest('.profile-popover-item')){profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');}});$('#popover-lock-btn')?.addEventListener('click',()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');$('#auth-lock-btn')?.click();});$('#popover-logout-btn')?.addEventListener('click',async()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');$('#auth-lock-btn')?.click();});}
+  if(profileBtn&&profilePopover){profileBtn.addEventListener('click',e=>{e.stopPropagation();const isOpen=profilePopover.classList.toggle('open');profileBtn.setAttribute('aria-expanded',String(isOpen));});document.addEventListener('click',e=>{if(!e.target.closest('.profile-wrap')||e.target.closest('.profile-popover-item')){profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');}});$('#popover-lock-btn')?.addEventListener('click',()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');lockVault();});$('#popover-logout-btn')?.addEventListener('click',async()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');logoutUser();});}
   document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('#modal').open){e.preventDefault();searchModal();}});
   window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(target!==page)navigate(target);});
   let sidebarOpen=false,sidebarPinned=false;
@@ -7226,19 +7809,18 @@
       }
     }
   });
-  $('#auth-lock-btn')?.addEventListener('click',async ()=>{
-    try{
-      const token=localStorage.getItem('inveys_token');
-      await fetch('/api/auth/logout',{
-        method:'POST',
-        headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})}
-      });
-    }catch(e){}
-    localStorage.removeItem('inveys_token');
-    currentUser=null;
-    render();
-    showAuthScreen('login');
-    toast('Terkunci. Sesi telah diakhiri.');
+  $('#auth-lock-btn')?.addEventListener('click',()=>{
+    lockVault();
+  });
+  $('#pwa-install-button')?.addEventListener('click',()=>{
+    triggerPwaInstall();
+  });
+  $('#vault-lock-switch-btn')?.addEventListener('click',e=>{
+    const nextMode=e.target.dataset.nextMode||'pw';
+    renderVaultLockActions(nextMode);
+  });
+  $('#vault-lock-logout-btn')?.addEventListener('click',()=>{
+    logoutUser();
   });
   $('#about-button').innerHTML=`<span class="sidebar-icon">${icon('about')}</span><span class="nav-text">About INVEYS</span>`;
   $('#settings-button').innerHTML=`<span class="sidebar-icon">${icon('settings')}</span><span class="nav-text">Settings & data</span>`;
@@ -7247,5 +7829,7 @@
   page=(typeof location!=='undefined'&&location.hash)?location.hash.slice(1):(pages.some(p=>p[0]===pathCandidate)?pathCandidate:'home');
   if(!pages.some(p=>p[0]===page)&&page!=='settings')page='home';
   render();checkNotifications();checkServerAuth();
+  if(safeSessionGet('inveys_vault_locked')==='1')showVaultLockScreen();
+  resetAutoLockTimer();
   if(typeof fetch==='function'&&state.fx.auto&&Date.now()-Math.max(Date.parse(state.fx.updatedAt||'1970-01-01'),Date.parse(state.fx.lastAttempt||'1970-01-01'))>8*3600000)refreshFX();
 })();
