@@ -168,11 +168,12 @@ def transcribe(data):
 
 
 @contextmanager
-def db():
+def db(timeout=10.0):
     DB.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    c = sqlite3.connect(DB)
+    c = sqlite3.connect(DB, timeout=timeout)
     os.chmod(DB, 0o600)
     c.execute('PRAGMA journal_mode = WAL')
+    c.execute('PRAGMA busy_timeout = 5000')
     c.execute('CREATE TABLE IF NOT EXISTS inbox (id INTEGER PRIMARY KEY, text TEXT NOT NULL, date INTEGER, reviewed INTEGER DEFAULT 0)')
     c.execute('CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value INTEGER)')
     c.execute('CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY CHECK (id=1), password_hash TEXT NOT NULL, salt TEXT NOT NULL, created_at INTEGER NOT NULL)')
@@ -183,6 +184,7 @@ def db():
     c.execute('CREATE TABLE IF NOT EXISTS server_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, user_id TEXT, email TEXT, plan TEXT NOT NULL, cycle TEXT NOT NULL, amount INTEGER NOT NULL, currency TEXT DEFAULT "IDR", provider TEXT NOT NULL, status TEXT NOT NULL, payment_method TEXT, snap_token TEXT, payment_url TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)')
     c.execute('CREATE TABLE IF NOT EXISTS licenses (id TEXT PRIMARY KEY, license_key TEXT UNIQUE NOT NULL, user_id TEXT, email TEXT, plan TEXT NOT NULL, expires_at INTEGER, signature TEXT NOT NULL, created_at INTEGER NOT NULL)')
+    c.execute('CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, action TEXT NOT NULL, details TEXT, ip TEXT, user_agent TEXT, created_at INTEGER NOT NULL)')
     for col_alter in (
         'ALTER TABLE sessions ADD COLUMN user_id TEXT',
         'ALTER TABLE workspaces ADD COLUMN user_id TEXT',
@@ -195,6 +197,20 @@ def db():
     try:
         with c: yield c
     finally: c.close()
+
+
+def record_audit(user_id: str, action: str, details: str = '', ip: str = None, user_agent: str = None, conn = None):
+    try:
+        now = int(time.time())
+        if conn is not None:
+            conn.execute('INSERT INTO audit_logs (user_id, action, details, ip, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                         (user_id, action, str(details or '')[:500], ip or '', (user_agent or '')[:250], now))
+        else:
+            with db() as c:
+                c.execute('INSERT INTO audit_logs (user_id, action, details, ip, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                          (user_id, action, str(details or '')[:500], ip or '', (user_agent or '')[:250], now))
+    except Exception as e:
+        print(f"[!] Warning recording audit log: {e}", flush=True)
 
 
 def mask_secret(s: str) -> str:
@@ -1125,6 +1141,90 @@ class Handler(SimpleHTTPRequestHandler):
                     })
             return self.send_json({'ok': True, 'users': users_list})
 
+        if self.path == '/api/admin/database/export':
+            user = self.get_authenticated_user()
+            if not user: return self.send_json({'error': 'Unauthorized'}, 401)
+            if user.get('role') != 'admin' and user.get('id') != 'master':
+                return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+
+            try:
+                with db() as c:
+                    c.execute('PRAGMA wal_checkpoint(PASSIVE)')
+            except Exception: pass
+
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.sqlite', delete=False) as tmp:
+                tmp_path = Path(tmp.name)
+            try:
+                with sqlite3.connect(DB) as src:
+                    with sqlite3.connect(tmp_path) as dst:
+                        src.backup(dst)
+                db_bytes = tmp_path.read_bytes()
+            finally:
+                try: tmp_path.unlink()
+                except Exception: pass
+
+            ts_str = datetime.datetime.now().strftime('%Y-%m-%d-%H%M')
+            filename = f"inveys-backup-{ts_str}.sqlite"
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/vnd.sqlite3')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('Content-Length', str(len(db_bytes)))
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
+            self.end_headers()
+            self.wfile.write(db_bytes)
+            record_audit(user.get('id'), 'admin.database.export', f'bytes={len(db_bytes)}, filename={filename}', self.get_client_ip(), self.headers.get('User-Agent'))
+            return
+
+        if self.path.startswith('/api/admin/audit-logs'):
+            user = self.get_authenticated_user()
+            if not user: return self.send_json({'error': 'Unauthorized'}, 401)
+            if user.get('role') != 'admin' and user.get('id') != 'master':
+                return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+
+            parsed = urllib.parse.urlsplit(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            try:
+                limit = min(200, max(1, int(qs.get('limit', ['50'])[0])))
+            except Exception:
+                limit = 50
+
+            with db() as c:
+                rows = c.execute('''
+                    SELECT a.id, a.user_id, u.email, u.name, a.action, a.details, a.ip, a.user_agent, a.created_at
+                    FROM audit_logs a
+                    LEFT JOIN users u ON a.user_id = u.id
+                    ORDER BY a.id DESC
+                    LIMIT ?
+                ''', (limit,)).fetchall()
+
+            logs = []
+            for r in rows:
+                logs.append({
+                    'id': r[0],
+                    'userId': r[1],
+                    'userEmail': r[2] or ('master' if r[1] == 'master' else (r[1] if r[1] else 'System/Guest')),
+                    'userName': r[3] or ('Master Admin' if r[1] == 'master' else None),
+                    'action': r[4],
+                    'details': r[5] or '',
+                    'ip': r[6] or '',
+                    'userAgent': r[7] or '',
+                    'createdAt': r[8]
+                })
+            return self.send_json({'ok': True, 'logs': logs})
+
+        if self.path == '/api/broadcast':
+            with db() as c:
+                row = c.execute("SELECT value, updated_at FROM server_settings WHERE key = 'broadcast_banner'").fetchone()
+            if row and row[0]:
+                try:
+                    b_data = json.loads(row[0])
+                except Exception:
+                    b_data = {'active': False, 'message': '', 'tone': 'info'}
+            else:
+                b_data = {'active': False, 'message': '', 'tone': 'info'}
+            return self.send_json({'ok': True, 'broadcast': b_data})
+
         allowed_static = (
             '/', '/index.html', '/inveys-app.html', '/landing.html', '/landing',
             '/app', '/app/', '/vault', '/vault/', '/dashboard', '/dashboard/', '/admin', '/admin/',
@@ -1194,6 +1294,7 @@ class Handler(SimpleHTTPRequestHandler):
                     expires = now + 30 * 86400
                     c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                               (token, user_id, now, expires, self.get_client_ip()))
+                    record_audit(user_id, 'auth.register', f'email={email}, role={role}, plan={user_plan}', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
 
                 cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
                 user_data = {'id': user_id, 'email': email, 'name': name, 'plan': user_plan, 'role': role, 'status': 'active'}
@@ -1211,8 +1312,10 @@ class Handler(SimpleHTTPRequestHandler):
                         row = c.execute('SELECT id, password_hash, salt, name, plan, role, status FROM users WHERE email=?', (email,)).fetchone()
                     if not row or not verify_password(pw, row[1], row[2]):
                         record_failed_login(ip)
+                        record_audit(None, 'auth.login.failed', f'email={email}', ip, self.headers.get('User-Agent'))
                         return self.send_json({'error': 'Email atau password salah'}, 401)
                     if (row[6] or 'active') == 'suspended':
+                        record_audit(row[0], 'auth.login.blocked', f'email={email}, reason=suspended', ip, self.headers.get('User-Agent'))
                         return self.send_json({'error': 'Akun Anda ditangguhkan oleh administrator. Hubungi admin untuk bantuan.'}, 403)
                     clear_failed_login(ip)
                     user_id = row[0]
@@ -1227,6 +1330,7 @@ class Handler(SimpleHTTPRequestHandler):
                         c.execute('DELETE FROM sessions WHERE expires_at < ?', (now,))
                         c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                                   (token, user_id, now, expires, ip))
+                    record_audit(user_id, 'auth.login.success', f'email={email}, role={user_role}', ip, self.headers.get('User-Agent'))
                     cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
                     user_data = {'id': user_id, 'email': email, 'name': user_name, 'plan': user_plan, 'role': user_role, 'status': user_status}
                     return self.send_json({'ok': True, 'token': token, 'user': user_data}, headers={'Set-Cookie': cookie})
@@ -1236,6 +1340,7 @@ class Handler(SimpleHTTPRequestHandler):
                     row = c.execute('SELECT password_hash, salt FROM auth WHERE id=1').fetchone()
                 if not row or not verify_password(pw, row[0], row[1]):
                     record_failed_login(ip)
+                    record_audit(None, 'auth.login.failed', 'master password failure', ip, self.headers.get('User-Agent'))
                     return self.send_json({'error': 'Incorrect master password'}, 401)
                 clear_failed_login(ip)
                 token = secrets.token_urlsafe(32)
@@ -1245,6 +1350,7 @@ class Handler(SimpleHTTPRequestHandler):
                     c.execute('DELETE FROM sessions WHERE expires_at < ?', (now,))
                     c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                               (token, 'master', now, expires, ip))
+                record_audit('master', 'auth.login.success', 'master admin', ip, self.headers.get('User-Agent'))
                 cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
                 return self.send_json({'ok': True, 'token': token, 'user': {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra', 'role': 'admin', 'status': 'active'}}, headers={'Set-Cookie': cookie})
 
@@ -1268,6 +1374,7 @@ class Handler(SimpleHTTPRequestHandler):
                                   (user_id, email, h, salt, name, now, now))
                         c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                                   (token, user_id, now, expires, self.get_client_ip()))
+                        record_audit(user_id, 'auth.setup.owner', f'email={email}', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
                         cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
                         return self.send_json({'ok': True, 'token': token, 'user': {'id': user_id, 'email': email, 'name': name, 'plan': 'ultra', 'role': 'admin', 'status': 'active'}}, headers={'Set-Cookie': cookie})
                     else:
@@ -1277,11 +1384,15 @@ class Handler(SimpleHTTPRequestHandler):
                         c.execute('INSERT INTO auth (id, password_hash, salt, created_at) VALUES (1, ?, ?, ?)', (h, salt, now))
                         c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                                   (token, 'master', now, expires, self.get_client_ip()))
+                        record_audit('master', 'auth.setup.master', 'master password created', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
                         cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
                         return self.send_json({'ok': True, 'token': token, 'user': {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra', 'role': 'admin', 'status': 'active'}}, headers={'Set-Cookie': cookie})
 
             # Logout
             if self.path == '/api/auth/logout':
+                user = self.get_authenticated_user()
+                if user:
+                    record_audit(user.get('id'), 'auth.logout', f"email={user.get('email')}", self.get_client_ip(), self.headers.get('User-Agent'))
                 token = self.get_session_token()
                 if token:
                     with db() as c: c.execute('DELETE FROM sessions WHERE token=?', (token,))
@@ -1363,6 +1474,7 @@ class Handler(SimpleHTTPRequestHandler):
                     now = int(time.time())
                     c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, "active", ?, ?)',
                               (user_id, email, h, salt, name, plan, role, now, now))
+                    record_audit(user['id'], 'admin.user.create', f'target_email={email}, target_id={user_id}, role={role}, plan={plan}', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
 
                 return self.send_json({
                     'ok': True,
@@ -1413,6 +1525,8 @@ class Handler(SimpleHTTPRequestHandler):
                     if new_status == 'suspended':
                         c.execute('DELETE FROM sessions WHERE user_id = ?', (target_id,))
 
+                    record_audit(user['id'], 'admin.user.update', f'target_id={target_id}, name={new_name}, role={new_role}, plan={new_plan}, status={new_status}', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
+
                 return self.send_json({
                     'ok': True,
                     'user': {
@@ -1436,7 +1550,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json({'error': 'Password minimal 6 karakter'}, 400)
 
                 with db() as c:
-                    target = c.execute('SELECT id FROM users WHERE id = ?', (target_id,)).fetchone()
+                    target = c.execute('SELECT id, email FROM users WHERE id = ?', (target_id,)).fetchone()
                     if not target:
                         return self.send_json({'error': 'Pengguna tidak ditemukan'}, 404)
 
@@ -1444,6 +1558,7 @@ class Handler(SimpleHTTPRequestHandler):
                     now = int(time.time())
                     c.execute('UPDATE users SET password_hash=?, salt=?, updated_at=? WHERE id=?', (h, salt, now, target_id))
                     c.execute('DELETE FROM sessions WHERE user_id = ?', (target_id,))
+                    record_audit(user['id'], 'admin.user.reset_password', f'target_id={target_id}, target_email={target[1]}', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
 
                 return self.send_json({'ok': True, 'message': 'Password berhasil direset'})
 
@@ -1473,8 +1588,34 @@ class Handler(SimpleHTTPRequestHandler):
                     c.execute('DELETE FROM orders WHERE user_id = ? OR email = ?', (target_id, target[1]))
                     c.execute('DELETE FROM licenses WHERE user_id = ? OR email = ?', (target_id, target[1]))
                     c.execute('DELETE FROM users WHERE id = ?', (target_id,))
+                    record_audit(user['id'], 'admin.user.delete', f'target_id={target_id}, target_email={target[1]}', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
 
                 return self.send_json({'ok': True, 'message': f'Pengguna {target[1]} berhasil dihapus'})
+
+            if self.path == '/api/admin/broadcast':
+                user = self.get_authenticated_user()
+                if not user or (user.get('role') != 'admin' and user.get('id') != 'master'):
+                    return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+
+                message = str(data.get('message', '')).strip()
+                tone = str(data.get('tone', 'info')).strip().lower()
+                if tone not in ('info', 'warning', 'alert'):
+                    tone = 'info'
+                active = bool(data.get('active', False))
+                now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                b_payload = {
+                    'active': active,
+                    'message': message,
+                    'tone': tone,
+                    'updatedAt': now_iso,
+                    'updatedBy': user.get('email') or user.get('id')
+                }
+                val_str = json.dumps(b_payload)
+                with db() as c:
+                    c.execute("INSERT INTO server_settings (key, value, updated_at) VALUES ('broadcast_banner', ?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+                              (val_str, now_iso))
+                record_audit(user['id'], 'admin.broadcast.update', f'active={active}, tone={tone}', self.get_client_ip(), self.headers.get('User-Agent'))
+                return self.send_json({'ok': True, 'broadcast': b_payload})
 
             # Commercial Payment & Licensing Endpoints
             if self.path == '/api/payment/create':

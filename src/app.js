@@ -5158,9 +5158,52 @@
     }
   }
 
+  let globalBroadcast = null;
+
+  async function fetchBroadcast() {
+    if (!isServerMode) return;
+    try {
+      const res = await fetch('/api/broadcast');
+      if (res.ok) {
+        const d = await res.json();
+        if (d.ok && d.broadcast) {
+          globalBroadcast = d.broadcast;
+          const bannerEl = $('#global-broadcast-banner');
+          if (bannerEl) bannerEl.outerHTML = broadcastBanner();
+        }
+      }
+    } catch (e) {}
+  }
+
+  function broadcastBanner() {
+    if (!globalBroadcast || !globalBroadcast.active || !globalBroadcast.message) return '';
+    const dismissedKey = 'dismissed_broadcast_' + (globalBroadcast.updatedAt || 'latest');
+    if (sessionStorage.getItem(dismissedKey)) return '';
+    const tone = ['info', 'warning', 'alert'].includes(globalBroadcast.tone) ? globalBroadcast.tone : 'info';
+    const iconMap = { info: 'ℹ️', warning: '⚠️', alert: '🚨' };
+    const labelMap = {
+      info: L('Pengumuman Sistem', 'System Announcement'),
+      warning: L('Peringatan Pemeliharaan', 'Maintenance Notice'),
+      alert: L('Pemberitahuan Penting', 'Critical Alert')
+    };
+    return `
+      <aside id="global-broadcast-banner" class="broadcast-banner tone-${tone}" role="alert">
+        <div class="broadcast-banner-inner">
+          <span class="broadcast-banner-icon">${iconMap[tone]}</span>
+          <div class="broadcast-banner-content">
+            <strong>${labelMap[tone]}:</strong> <span>${escape(globalBroadcast.message)}</span>
+          </div>
+          <button type="button" class="broadcast-dismiss-btn" data-action="dismiss-broadcast" aria-label="${L('Tutup pengumuman', 'Dismiss announcement')}" title="${L('Tutup pengumuman', 'Dismiss announcement')}">✕</button>
+        </div>
+      </aside>
+    `;
+  }
+
   let adminData = {
     overview: null,
     users: [],
+    auditLogs: [],
+    broadcast: { active: false, message: '', tone: 'info', updatedAt: '' },
     query: '',
     roleFilter: 'all',
     planFilter: 'all',
@@ -5177,9 +5220,11 @@
     const token = localStorage.getItem('inveys_token');
     const headers = token ? {'Authorization': 'Bearer ' + token} : {};
     try {
-      const [ovRes, usrRes] = await Promise.all([
+      const [ovRes, usrRes, auditRes, bcastRes] = await Promise.all([
         fetch('/api/admin/overview', { headers }),
-        fetch(`/api/admin/users${q ? '?q=' + encodeURIComponent(q) : ''}`, { headers })
+        fetch(`/api/admin/users${q ? '?q=' + encodeURIComponent(q) : ''}`, { headers }),
+        fetch('/api/admin/audit-logs?limit=50', { headers }),
+        fetch('/api/broadcast')
       ]);
       if (!ovRes.ok || !usrRes.ok) {
         if (ovRes.status === 403 || usrRes.status === 403) {
@@ -5191,6 +5236,15 @@
       const usrJson = await usrRes.json();
       adminData.overview = ovJson.overview;
       adminData.users = usrJson.users || [];
+      if (auditRes.ok) {
+        const auditJson = await auditRes.json();
+        adminData.auditLogs = auditJson.logs || [];
+      }
+      if (bcastRes.ok) {
+        const bcastJson = await bcastRes.json();
+        adminData.broadcast = bcastJson.broadcast || { active: false, message: '', tone: 'info' };
+        globalBroadcast = adminData.broadcast;
+      }
       adminData.lastFetched = Date.now();
     } catch (err) {
       adminData.error = err.message;
@@ -5198,6 +5252,79 @@
       adminData.loading = false;
       if (page === 'admin') render();
     }
+  }
+
+  function auditLogsRows() {
+    const logs = adminData.auditLogs || [];
+    if (!logs.length) {
+      return `
+        <tr>
+          <td colspan="5" style="text-align:center;padding:24px;color:var(--muted);">
+            ${L('Belum ada riwayat aktivitas yang tercatat.', 'No audit activity logged yet.')}
+          </td>
+        </tr>
+      `;
+    }
+
+    const badgeClasses = {
+      'auth.login.success': 'audit-badge success',
+      'auth.login.failed': 'audit-badge danger',
+      'auth.login.blocked': 'audit-badge danger',
+      'auth.register': 'audit-badge info',
+      'auth.logout': 'audit-badge neutral',
+      'auth.setup.owner': 'audit-badge info',
+      'auth.setup.master': 'audit-badge info',
+      'admin.user.create': 'audit-badge primary',
+      'admin.user.update': 'audit-badge warning',
+      'admin.user.reset_password': 'audit-badge warning',
+      'admin.user.delete': 'audit-badge danger',
+      'admin.database.export': 'audit-badge purple',
+      'admin.broadcast.update': 'audit-badge orange'
+    };
+
+    const actionLabels = {
+      'auth.login.success': L('Login Berhasil', 'Login Success'),
+      'auth.login.failed': L('Login Gagal', 'Login Failed'),
+      'auth.login.blocked': L('Login Diblokir', 'Login Blocked'),
+      'auth.register': L('Registrasi Akun', 'User Register'),
+      'auth.logout': L('Logout', 'Logout'),
+      'auth.setup.owner': L('Inisialisasi Owner', 'Setup Owner'),
+      'auth.setup.master': L('Inisialisasi Master', 'Setup Master'),
+      'admin.user.create': L('Buat Pengguna', 'Create User'),
+      'admin.user.update': L('Update Pengguna', 'Update User'),
+      'admin.user.reset_password': L('Reset Password', 'Reset Password'),
+      'admin.user.delete': L('Hapus Pengguna', 'Delete User'),
+      'admin.database.export': L('Export Database', 'Export Database'),
+      'admin.broadcast.update': L('Update Broadcast', 'Update Broadcast')
+    };
+
+    return logs.map(log => {
+      const cls = badgeClasses[log.action] || 'audit-badge neutral';
+      const label = actionLabels[log.action] || log.action;
+      const dateStr = log.createdAt ? new Date(log.createdAt * 1000).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }) : '—';
+      const userDisplay = log.userEmail ? escape(log.userEmail) : (log.userId ? escape(log.userId) : 'System / Guest');
+
+      return `
+        <tr>
+          <td style="white-space:nowrap;font-size:12px;color:var(--muted);">${dateStr}</td>
+          <td>
+            <span class="${cls}">${label}</span>
+          </td>
+          <td>
+            <div style="font-weight:600;font-size:13px;">${userDisplay}</div>
+            ${log.userName ? `<small style="color:var(--muted);">${escape(log.userName)}</small>` : ''}
+          </td>
+          <td style="font-size:12px;max-width:280px;word-break:break-all;color:var(--text-subtle, #a1a1aa);">
+            ${escape(log.details || '—')}
+          </td>
+          <td style="white-space:nowrap;font-size:12px;">
+            <code>${escape(log.ip || '127.0.0.1')}</code>
+          </td>
+        </tr>
+      `;
+    }).join('');
   }
 
   function adminUserRows() {
@@ -5315,9 +5442,13 @@
     const totalBk = ov.totalBackups ?? '…';
     const dbKb = ov.databaseSizeBytes ? (ov.databaseSizeBytes / 1024).toFixed(1) + ' KB' : '…';
     const planCounts = ov.plans || {};
+    const bcast = adminData.broadcast || { active: false, message: '', tone: 'info' };
 
     const actions = `
       <span class="vps-status-pill online" style="margin-right:8px;"><i></i> Hostinger Node 187.77.134.249</span>
+      <button type="button" class="btn" data-action="admin-export-db" title="${L('Unduh Cadangan Database SQLite Langsung', 'Direct SQLite Database Backup')}">
+        💾 ${L('Unduh Database (.sqlite)', 'Export Database (.sqlite)')}
+      </button>
       <button type="button" class="btn primary" data-action="admin-create-user">
         ${icon('plus')} ${L('Tambah Pengguna', 'Add User')}
       </button>
@@ -5325,6 +5456,40 @@
         🔄 ${adminData.loading ? L('Memuat…', 'Loading…') : L('Segarkan', 'Refresh')}
       </button>
     `;
+
+    setTimeout(() => {
+      const bForm = $('#admin-broadcast-form');
+      if (bForm && !bForm.dataset.bound) {
+        bForm.dataset.bound = 'true';
+        bForm.addEventListener('submit', async e => {
+          e.preventDefault();
+          const msg = $('#adm-broadcast-msg')?.value || '';
+          const tone = $('#adm-broadcast-tone')?.value || 'info';
+          const active = $('#adm-broadcast-active')?.checked || false;
+          const btn = $('#adm-broadcast-save-btn');
+          if (btn) { btn.disabled = true; btn.textContent = L('Menyimpan…', 'Saving…'); }
+          const token = localStorage.getItem('inveys_token');
+          const headers = { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) };
+          try {
+            const res = await fetch('/api/admin/broadcast', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ message: msg, tone, active })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Gagal menyimpan pengumuman');
+            globalBroadcast = data.broadcast;
+            adminData.broadcast = data.broadcast;
+            toast(L('Pengumuman sistem berhasil diperbarui!', 'System broadcast updated successfully!'));
+            render();
+          } catch (err) {
+            toast(err.message);
+          } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '📢 ' + L('Simpan & Siarkan Pengumuman', 'Publish Broadcast'); }
+          }
+        });
+      }
+    }, 50);
 
     return `
       ${header(L('Kontrol Panel Administrator', 'Administrator Control Panel'), L('Pusat kendali & monitoring pengguna, lisensi paket, brankas multi-tenant, dan database VPS Hostinger.', 'Central hub for monitoring users, plans, multi-tenant vaults, and Hostinger VPS database.'), actions, 'HOSTINGER VPS ROOT · CONTROL PANEL')}
@@ -5351,6 +5516,44 @@
           <div class="metric-label"><span>${L('Distribusi Lisensi', 'Plan Breakdown')}</span><span class="metric-icon-wrap">${icon('shield')}</span></div>
           <div class="metric-value">Ultra: ${planCounts.ultra || 0}</div>
           <div class="metric-foot"><span>Pro: ${planCounts.pro || 0}</span> · <span>Plus: ${planCounts.plus || 0}</span></div>
+        </div>
+      </div>
+
+      <div class="panel admin-broadcast-panel" style="margin-bottom:24px;">
+        <div class="panel-pad">
+          <div class="panel-head" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+            <div>
+              <h2 class="panel-title">📢 ${L('Pengumuman Sistem Global (Broadcast Banner)', 'Global System Broadcast Banner')}</h2>
+              <p>${L('Siarkan pesan penting atau peringatan pemeliharaan yang akan tampil di bagian atas layar seluruh pengguna secara langsung.', 'Broadcast announcements or maintenance alerts displayed at the top of all user screens in real-time.')}</p>
+            </div>
+            <div>
+              <span class="vps-status-pill ${bcast.active ? 'online' : ''}">${bcast.active ? '● ' + L('Sedang Aktif', 'Broadcasting Live') : '○ ' + L('Tidak Aktif', 'Inactive')}</span>
+            </div>
+          </div>
+          <form id="admin-broadcast-form" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="field">
+              <label for="adm-broadcast-msg">${L('Isi Pesan Pengumuman', 'Announcement Message')}</label>
+              <textarea id="adm-broadcast-msg" name="message" rows="2" placeholder="${L('Contoh: Pemeliharaan server VPS terjadwal malam ini pukul 23:00 WIB. Mohon simpan perubahan Anda.', 'Example: Scheduled VPS server maintenance tonight at 23:00 UTC. Please save your work.')}" style="width:100%;resize:vertical;">${escape(bcast.message || '')}</textarea>
+            </div>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+              <div class="field" style="min-width:220px;">
+                <label for="adm-broadcast-tone">${L('Nada Pesan (Visual Tone)', 'Message Tone')}</label>
+                <select id="adm-broadcast-tone" name="tone">
+                  <option value="info" ${(bcast.tone || 'info') === 'info' ? 'selected' : ''}>ℹ️ ${L('Informasi Normal (Biru)', 'Informational (Blue)')}</option>
+                  <option value="warning" ${bcast.tone === 'warning' ? 'selected' : ''}>⚠️ ${L('Peringatan Pemeliharaan (Kuning)', 'Warning (Yellow)')}</option>
+                  <option value="alert" ${bcast.tone === 'alert' ? 'selected' : ''}>🚨 ${L('Kritis / Darurat (Merah)', 'Critical Alert (Red)')}</option>
+                </select>
+              </div>
+              <div class="field" style="display:flex;align-items:center;gap:8px;padding-top:22px;">
+                <input type="checkbox" id="adm-broadcast-active" name="active" ${bcast.active ? 'checked' : ''}>
+                <label for="adm-broadcast-active" style="margin:0;cursor:pointer;font-weight:600;">${L('Tampilkan banner untuk seluruh pengguna', 'Broadcast banner publicly to all users')}</label>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+              ${bcast.active ? `<button type="button" class="btn" data-action="admin-clear-broadcast">${L('Hapus / Nonaktifkan', 'Deactivate Broadcast')}</button>` : ''}
+              <button type="submit" class="btn primary" id="adm-broadcast-save-btn">📢 ${L('Simpan & Siarkan Pengumuman', 'Publish Broadcast')}</button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -5404,6 +5607,34 @@
         </div>
       </div>
 
+      <div class="panel admin-audit-panel" style="margin-bottom:24px;">
+        <div class="panel-pad">
+          <div class="panel-head" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+              <h2 class="panel-title">🛡️ ${L('Jejak Audit Keamanan & Riwayat Sesi', 'Security Audit Trail & Session Log')}</h2>
+              <p>${L('Catatan autentikasi login, perubahan hak akses pengguna, export database, dan peristiwa administratif di server VPS Hostinger.', 'Comprehensive logs of logins, user privilege changes, database exports, and administrative events on your VPS.')}</p>
+            </div>
+            <button type="button" class="btn small" data-action="admin-refresh" title="${L('Muat Ulang Log', 'Refresh Logs')}">🔄 ${L('Segarkan', 'Refresh')}</button>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table audit-table">
+              <thead>
+                <tr>
+                  <th>${L('Waktu', 'Timestamp')}</th>
+                  <th>${L('Aksi', 'Event')}</th>
+                  <th>${L('Pelaku', 'Actor')}</th>
+                  <th>${L('Detail', 'Details')}</th>
+                  <th>${L('Alamat IP', 'IP Address')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${auditLogsRows()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="panel admin-diagnostics-panel">
         <div class="panel-pad">
           <div class="panel-head" style="margin-bottom:14px;">
@@ -5428,12 +5659,71 @@
               <b>INVEYS v0.23.0 (Production Multi-User Vault)</b>
             </div>
           </div>
+          <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+            <button type="button" class="btn primary" data-action="admin-export-db">
+              💾 ${L('Unduh Backup Database (.sqlite)', 'Export Database (.sqlite)')}
+            </button>
+            <span style="font-size:12px;color:var(--muted);line-height:1.5;">
+              ${L('Unduh seluruh database SQLite (termasuk semua user, vault, order, dan backup) untuk arsip pemulihan bencana (Disaster Recovery).', 'Directly export SQLite database snapshot for disaster recovery and offline sovereignty archives.')}
+            </span>
+          </div>
         </div>
       </div>
     `;
   }
 
   function adminAction(name, id, extra) {
+    if (name === 'admin-export-db') {
+      toast(L('Menyiapkan cadangan snapshot SQLite…', 'Preparing SQLite database snapshot…'));
+      const token = localStorage.getItem('inveys_token');
+      const headers = token ? {'Authorization': 'Bearer ' + token} : {};
+      fetch('/api/admin/database/export', { headers })
+        .then(async res => {
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || L('Gagal mengunduh database', 'Failed to export database'));
+          }
+          return res.blob();
+        })
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const ts = new Date().toISOString().slice(0, 10);
+          a.href = url;
+          a.download = `inveys-backup-${ts}.sqlite`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          toast(L('Database SQLite berhasil diunduh!', 'SQLite database downloaded successfully!'));
+          fetchAdminData();
+        })
+        .catch(err => {
+          toast(err.message);
+        });
+      return;
+    }
+
+    if (name === 'admin-clear-broadcast') {
+      const token = localStorage.getItem('inveys_token');
+      const headers = { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) };
+      fetch('/api/admin/broadcast', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message: '', tone: 'info', active: false })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ok) throw new Error(data.error || 'Gagal menonaktifkan pengumuman');
+          globalBroadcast = data.broadcast;
+          adminData.broadcast = data.broadcast;
+          toast(L('Pengumuman berhasil dinonaktifkan', 'Broadcast deactivated'));
+          render();
+        })
+        .catch(err => toast(err.message));
+      return;
+    }
+
     if (name === 'admin-panel') {
       const profilePopover = $('#profile-popover');
       const profileBtn = $('#profile-button');
@@ -6076,7 +6366,7 @@
     });
   }
 
-  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates,admin:adminPanel}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
+  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=broadcastBanner()+viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates,admin:adminPanel}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
   function refreshCharts(){
     if(page==='scenarios'){updateScenario();localize();return;}
     if(page==='montecarlo'){if(mcResult&&$('#mc-chart'))$('#mc-chart').innerHTML=mcChart();return;}
@@ -6638,7 +6928,7 @@
   function exportCSV(){const sanitize=v=>{let str=String(v??'');if(/^[=+@-]/.test(str))str="'"+str;return '"'+str.replaceAll('"','""')+'"';};const rows=[['Date','Description','Type','Amount','Currency','Account','Destination','Category'],...state.transactions.map(t=>[t.date,t.name,t.kind,(t.amount/100).toFixed(2),t.currency,getAccount(t.accountId)?.name||'',getAccount(t.targetId)?.name||'',t.category])];download('inveys-transactions.csv',rows.map(r=>r.map(sanitize).join(',')).join('\r\n'),'text/csv');toast('Transaction CSV exported.');}
   function importFile(file){if(!file)return;if(file.size>5000000){toast('Choose a JSON file smaller than 5 MB.');return;}file.text().then(text=>{const candidate=E.validate(JSON.parse(text));const p=E.position(candidate);confirmAction('Restore this workspace?',`${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, ${candidate.goals.length} goals. Reporting currency: ${escape(candidate.currency)}. This replaces all current local records. Export your current workspace first if needed.`,()=>{state=candidate;resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;save();toast('Workspace restored.');},'Replace workspace');}).catch(error=>toast('Import failed: '+error.message));}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
-  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'budget-setup':openBudgetSetupModal();break;
     case 'budget-edit':openBudgetSetupModal(id);break;
     case 'budget-remove':removeBudgetCategory(id);break;
@@ -6709,6 +6999,7 @@
       if(!res.ok)return;
       const data=await res.json();
       isServerMode=true;
+      fetchBroadcast();
       if(data.user){
         currentUser=data.user;
       }

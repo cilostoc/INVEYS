@@ -24,6 +24,12 @@ class Backend(unittest.TestCase):
         try:
             with urllib.request.urlopen(req) as r:return r.status,json.loads(r.read())
         except urllib.error.HTTPError as e:return e.code,json.loads(e.read())
+    def raw_request(self,path,headers=None):
+        h={'Host':'127.0.0.1:3000',**(headers or {})}
+        req=urllib.request.Request(self.url+path,headers=h)
+        try:
+            with urllib.request.urlopen(req) as r:return r.status,r.headers,r.read()
+        except urllib.error.HTTPError as e:return e.code,e.headers,e.read()
     def test_index_scripts_are_served(self):
         import re
         index=(Path(__file__).resolve().parents[1]/'src'/'index.html').read_text()
@@ -638,5 +644,118 @@ class Backend(unittest.TestCase):
             # 12. Admin cannot delete self
             st_self_del, _ = self.request('/api/admin/users/delete', {'id': res_adm['user']['id']}, admin_headers)
             self.assertEqual(st_self_del, 400)
+
+    def test_admin_database_export_and_disaster_recovery(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'inbox.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            # 1. Unauthenticated gets 401
+            st_unauth, _, _ = self.raw_request('/api/admin/database/export')
+            self.assertEqual(st_unauth, 401)
+
+            # 2. Register first user (Admin)
+            _, res_adm = self.request('/api/auth/register', {
+                'email': 'admin_dr@inveys.io',
+                'password': 'password123',
+                'name': 'Disaster Recovery Admin'
+            }, headers_csrf)
+            adm_headers = {'Authorization': 'Bearer ' + res_adm['token'], 'Origin': 'http://127.0.0.1:3000'}
+
+            # 3. Register second user (standard user)
+            _, res_user = self.request('/api/auth/register', {
+                'email': 'regular_dr@inveys.io',
+                'password': 'password123',
+                'name': 'Regular User'
+            }, headers_csrf)
+            usr_headers = {'Authorization': 'Bearer ' + res_user['token'], 'Origin': 'http://127.0.0.1:3000'}
+
+            # 4. Standard user gets 403 Forbidden
+            st_forbid, _, _ = self.raw_request('/api/admin/database/export', usr_headers)
+            self.assertEqual(st_forbid, 403)
+
+            # 5. Admin gets 200 with valid SQLite file
+            st_ok, headers, body = self.raw_request('/api/admin/database/export', adm_headers)
+            self.assertEqual(st_ok, 200)
+            self.assertEqual(headers.get('Content-Type'), 'application/vnd.sqlite3')
+            self.assertIn('inveys-backup-', headers.get('Content-Disposition', ''))
+            self.assertTrue(body.startswith(b'SQLite format 3\x00'))
+            self.assertGreater(len(body), 1000)
+
+    def test_admin_audit_logs_and_security_trail(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'inbox.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            # Register Admin
+            _, res_adm = self.request('/api/auth/register', {
+                'email': 'security_officer@inveys.io',
+                'password': 'secPassword123'
+            }, headers_csrf)
+            adm_headers = {'Authorization': 'Bearer ' + res_adm['token'], 'Origin': 'http://127.0.0.1:3000'}
+
+            # Register User
+            _, res_usr = self.request('/api/auth/register', {
+                'email': 'standard_user@inveys.io',
+                'password': 'secPassword123'
+            }, headers_csrf)
+            usr_headers = {'Authorization': 'Bearer ' + res_usr['token'], 'Origin': 'http://127.0.0.1:3000'}
+
+            # Regular user cannot access audit logs
+            st_forbid, _ = self.request('/api/admin/audit-logs', headers=usr_headers)
+            self.assertEqual(st_forbid, 403)
+
+            # Trigger a failed login
+            self.request('/api/auth/login', {'email': 'unknown@inveys.io', 'password': 'wrong'}, headers_csrf)
+
+            # Admin reads audit logs
+            st_logs, res_logs = self.request('/api/admin/audit-logs', headers=adm_headers)
+            self.assertEqual(st_logs, 200)
+            self.assertTrue(res_logs['ok'])
+            actions = [log['action'] for log in res_logs['logs']]
+            self.assertIn('auth.register', actions)
+            self.assertIn('auth.login.failed', actions)
+
+    def test_system_broadcast_announcement(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'inbox.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            # Initial public broadcast is inactive
+            st_init, res_init = self.request('/api/broadcast')
+            self.assertEqual(st_init, 200)
+            self.assertFalse(res_init['broadcast']['active'])
+
+            # Register Admin & User
+            _, res_adm = self.request('/api/auth/register', {
+                'email': 'sysadmin@inveys.io',
+                'password': 'passAdmin123'
+            }, headers_csrf)
+            adm_headers = {'Authorization': 'Bearer ' + res_adm['token'], 'Origin': 'http://127.0.0.1:3000'}
+
+            _, res_usr = self.request('/api/auth/register', {
+                'email': 'member@inveys.io',
+                'password': 'passAdmin123'
+            }, headers_csrf)
+            usr_headers = {'Authorization': 'Bearer ' + res_usr['token'], 'Origin': 'http://127.0.0.1:3000'}
+
+            # User cannot post broadcast
+            st_forbid, _ = self.request('/api/admin/broadcast', {
+                'message': 'Evil announcement',
+                'active': True
+            }, usr_headers)
+            self.assertEqual(st_forbid, 403)
+
+            # Admin posts broadcast
+            st_set, res_set = self.request('/api/admin/broadcast', {
+                'message': 'Pemeliharaan server VPS malam ini pukul 23:00 WIB.',
+                'tone': 'warning',
+                'active': True
+            }, adm_headers)
+            self.assertEqual(st_set, 200)
+            self.assertTrue(res_set['ok'])
+            self.assertTrue(res_set['broadcast']['active'])
+            self.assertEqual(res_set['broadcast']['tone'], 'warning')
+
+            # Public GET now retrieves active broadcast
+            st_pub, res_pub = self.request('/api/broadcast')
+            self.assertEqual(st_pub, 200)
+            self.assertTrue(res_pub['broadcast']['active'])
+            self.assertEqual(res_pub['broadcast']['tone'], 'warning')
+            self.assertIn('Pemeliharaan server', res_pub['broadcast']['message'])
 
 if __name__=='__main__':unittest.main()

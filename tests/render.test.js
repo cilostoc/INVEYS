@@ -791,6 +791,11 @@ test('administrator control panel renders access restriction in local mode and f
   assert.match(adminApp.html(), /admin-table/);
   assert.match(adminApp.html(), /admin-user-tbody/);
   assert.match(adminApp.html(), /SQLite 3/);
+  assert.match(adminApp.html(), /admin-export-db/);
+  assert.match(adminApp.html(), /admin-broadcast-panel/);
+  assert.match(adminApp.html(), /admin-broadcast-form/);
+  assert.match(adminApp.html(), /admin-audit-panel/);
+  assert.match(adminApp.html(), /audit-table/);
 });
 
 
