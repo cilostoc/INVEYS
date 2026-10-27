@@ -4996,7 +4996,7 @@
   }
   function planGate(feature){if(P.allowed(state.commercial.previewTier,feature))return false;openModal(L('Fitur pada paket lebih tinggi','Feature on a higher plan'),`<p class="note">${L('Fitur ini berada pada paket Pro atau Ultra dalam pratinjau. Data yang sudah ada tetap tersedia. Tidak ada pembayaran otomatis.','This feature belongs to Pro or Ultra in preview. Existing records remain available. No automatic payment occurs.')}</p><div class="button-group">${button(L('Bandingkan paket','Compare plans'),'plan-open','primary')}${button(t('Close'),'modal-close')}</div>`);return true;}
   function planAction(name,id){
-    if(name==='landing-open'){window.open('/', '_blank');return;}
+    if(name==='landing-open'){window.open(location.protocol==='file:'?'landing.html':'/', '_blank');return;}
     if(name==='plan-open'){$('#modal').close();navigate('plans');}
     if(name==='plan-cycle'&&['monthly','annual'].includes(id)){planCycle=id;render();}
     if(name==='plan-preview'&&P.catalog.some(p=>p.id===id))confirmAction(L('Ganti pratinjau ke ','Switch preview to ')+id.toUpperCase(),L('Ini bukan pembelian. Catatan dan skenario lama tidak dihapus; batas diterapkan saat membuat fitur baru.','This is not a purchase. Existing records/scenarios remain; limits apply when creating new items.'),()=>{state.commercial.previewTier=id;toast(L('Pratinjau paket diperbarui','Plan preview updated'));},L('Ganti pratinjau','Switch preview'));
@@ -6683,7 +6683,7 @@
   $('#about-button').addEventListener('click',()=>openModal('Your financial life, connected.',`<p class="dialog-copy">INVEYS stands for <b>INtelligent VElocity for Your Financial System</b>. Connect your financial picture, anticipate commitments, plan meaningful goals, and coordinate your next steps.</p><p class="note">This is a local-first MVP with sample data. No funds are moved, no institutions are connected, and external providers require separate configuration and explicit consent.</p><div class="form-actions">${button('Explore your workspace','modal-close','primary')}</div>`));
   /* --- Profile popover toggle --- */
   const profileBtn=$('#profile-button'),profilePopover=$('#profile-popover');
-  if(profileBtn&&profilePopover){profileBtn.addEventListener('click',e=>{e.stopPropagation();const isOpen=profilePopover.classList.toggle('open');profileBtn.setAttribute('aria-expanded',String(isOpen));});document.addEventListener('click',e=>{if(!e.target.closest('.profile-wrap')){profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');}});$('#popover-lock-btn')?.addEventListener('click',()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');$('#auth-lock-btn')?.click();});$('#popover-logout-btn')?.addEventListener('click',async()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');$('#auth-lock-btn')?.click();});}
+  if(profileBtn&&profilePopover){profileBtn.addEventListener('click',e=>{e.stopPropagation();const isOpen=profilePopover.classList.toggle('open');profileBtn.setAttribute('aria-expanded',String(isOpen));});document.addEventListener('click',e=>{if(!e.target.closest('.profile-wrap')||e.target.closest('.profile-popover-item')){profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');}});$('#popover-lock-btn')?.addEventListener('click',()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');$('#auth-lock-btn')?.click();});$('#popover-logout-btn')?.addEventListener('click',async()=>{profilePopover.classList.remove('open');profileBtn.setAttribute('aria-expanded','false');$('#auth-lock-btn')?.click();});}
   document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('#modal').open){e.preventDefault();searchModal();}});
   window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(target!==page)navigate(target);});
   let sidebarOpen=false,sidebarPinned=false;
@@ -6719,6 +6719,7 @@
       }else{
         hideAuthScreen();
         if(currentUser)save();
+        render();
         try{
           const wsRes=await fetch('/api/workspace',{
             headers:token?{'Authorization':'Bearer '+token}:{}
@@ -6865,12 +6866,16 @@
     }catch(e){}
     localStorage.removeItem('inveys_token');
     currentUser=null;
+    render();
     showAuthScreen('login');
     toast('Terkunci. Sesi telah diakhiri.');
   });
   $('#about-button').innerHTML=`<span class="sidebar-icon">${icon('about')}</span><span class="nav-text">About INVEYS</span>`;
   $('#settings-button').innerHTML=`<span class="sidebar-icon">${icon('settings')}</span><span class="nav-text">Settings & data</span>`;
   syncSidebar();
-  page=location.hash.slice(1)||'home';if(!pages.some(p=>p[0]===page)&&page!=='settings')page='home';render();checkNotifications();checkServerAuth();
+  const pathCandidate=(typeof location!=='undefined'&&location.pathname)?location.pathname.replace(/^\/(app\/)?/,'').replace(/\/$/,''):'';
+  page=(typeof location!=='undefined'&&location.hash)?location.hash.slice(1):(pages.some(p=>p[0]===pathCandidate)?pathCandidate:'home');
+  if(!pages.some(p=>p[0]===page)&&page!=='settings')page='home';
+  render();checkNotifications();checkServerAuth();
   if(typeof fetch==='function'&&state.fx.auto&&Date.now()-Math.max(Date.parse(state.fx.updatedAt||'1970-01-01'),Date.parse(state.fx.lastAttempt||'1970-01-01'))>8*3600000)refreshFX();
 })();

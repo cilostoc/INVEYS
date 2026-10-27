@@ -29,6 +29,10 @@ def build():
     if landing_src.exists():
         (project_root / "landing.html").write_text(landing_src.read_text())
 
+    icon_src = src_dir / "icon.svg"
+    if icon_src.exists():
+        (project_root / "icon.svg").write_bytes(icon_src.read_bytes())
+
     # Recalculate checksum & update manifest
     new_hash = hashlib.sha256(destination.read_bytes()).hexdigest()
     manifest_files = [

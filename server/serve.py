@@ -697,13 +697,13 @@ class Handler(SimpleHTTPRequestHandler):
         clean = path.split('?', 1)[0].split('#', 1)[0]
         if clean in ('/', '/landing', '/landing.html'):
             return str(SRC_DIR / 'landing.html')
-        if clean in ('/app', '/app/', '/vault', '/dashboard', '/index.html'):
+        if clean in ('/app', '/app/', '/vault', '/vault/', '/dashboard', '/dashboard/', '/admin', '/admin/', '/index.html'):
             return str(SRC_DIR / 'index.html')
         if clean == '/inveys-app.html':
             return str(PROJECT_ROOT / 'inveys-app.html')
-        if clean.startswith('/app/'):
-            sub = clean[5:].lstrip('/')
-            if sub:
+        if clean.startswith(('/app/', '/admin/', '/vault/', '/dashboard/')):
+            sub = clean.split('/', 2)[-1].lstrip('/')
+            if sub and (SRC_DIR / sub).exists():
                 return str(SRC_DIR / sub)
         return super().translate_path(path)
 
@@ -1127,28 +1127,30 @@ class Handler(SimpleHTTPRequestHandler):
 
         allowed_static = (
             '/', '/index.html', '/inveys-app.html', '/landing.html', '/landing',
-            '/app', '/app/', '/vault', '/dashboard', '/admin',
+            '/app', '/app/', '/vault', '/vault/', '/dashboard', '/dashboard/', '/admin', '/admin/',
             '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js',
             '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js',
             '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest',
             '/sw.js', '/icon.svg'
         )
         clean = self.path.split('?')[0].split('#')[0]
-        if clean not in allowed_static and not (clean.startswith('/app/') and ('/' + clean[5:].lstrip('/')) in allowed_static):
+        clean_prefix = clean.split('/')[1] if clean.startswith('/') else ''
+        if clean not in allowed_static and not (clean_prefix in ('app', 'admin', 'vault', 'dashboard') and ('/' + clean.split('/', 2)[-1]) in allowed_static):
             return self.send_json({'error': 'Not found'}, 404)
         super().do_GET()
 
     def do_HEAD(self):
         allowed_static = (
             '/', '/index.html', '/inveys-app.html', '/landing.html', '/landing',
-            '/app', '/app/', '/vault', '/dashboard', '/admin',
+            '/app', '/app/', '/vault', '/vault/', '/dashboard', '/dashboard/', '/admin', '/admin/',
             '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js',
             '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js',
             '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest',
             '/sw.js', '/icon.svg'
         )
         clean = self.path.split('?')[0].split('#')[0]
-        if not self.allowed() or (clean not in allowed_static and not (clean.startswith('/app/') and ('/' + clean[5:].lstrip('/')) in allowed_static)):
+        clean_prefix = clean.split('/')[1] if clean.startswith('/') else ''
+        if not self.allowed() or (clean not in allowed_static and not (clean_prefix in ('app', 'admin', 'vault', 'dashboard') and ('/' + clean.split('/', 2)[-1]) in allowed_static)):
             return self.send_json({'error': 'Not found'}, 404)
         super().do_HEAD()
 

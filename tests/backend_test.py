@@ -214,12 +214,13 @@ class Backend(unittest.TestCase):
             self.assertIn('INVEYS — Financial OS', body)
 
         # 3. GET /app must serve index.html (the financial app shell)
-        req = urllib.request.Request(self.url + '/app', headers={'Host': '127.0.0.1:3000'})
-        with urllib.request.urlopen(req) as resp:
-            self.assertEqual(resp.status, 200)
-            body = resp.read().decode('utf-8', errors='ignore')
-            self.assertIn('app-shell', body)
-            self.assertIn('navigation', body)
+        for p in ('/app', '/app/', '/admin', '/admin/', '/vault', '/dashboard'):
+            req = urllib.request.Request(self.url + p, headers={'Host': '127.0.0.1:3000'})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                body = resp.read().decode('utf-8', errors='ignore')
+                self.assertIn('app-shell', body)
+                self.assertIn('navigation', body)
 
     def test_vps_segments_and_1click_update(self):
         # 1. GET /api/vps/segments

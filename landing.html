@@ -2803,7 +2803,11 @@
             const boxY = pr.y - 10 * pr.scale;
 
             ctx.beginPath();
-            ctx.roundRect(boxX, boxY, textWidth + padX * 2, 18 * pr.scale + padY, 5 * pr.scale);
+            if (typeof ctx.roundRect === 'function') {
+              ctx.roundRect(boxX, boxY, textWidth + padX * 2, 18 * pr.scale + padY, 5 * pr.scale);
+            } else {
+              ctx.rect(boxX, boxY, textWidth + padX * 2, 18 * pr.scale + padY);
+            }
             ctx.fill();
             ctx.stroke();
 
