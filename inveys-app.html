@@ -4942,7 +4942,7 @@ dialog.has-key-mgr > #modal-body {
     <div class="sidebar-bottom">
       <button class="bottom-link" id="about-button" aria-label="About INVEYS" title="About INVEYS"><span class="sidebar-icon">✧</span><span class="nav-text">About INVEYS</span></button>
       <button class="bottom-link" data-page="settings" id="settings-button" aria-label="Settings & data" title="Settings & data"><span class="sidebar-icon">⚙</span><span class="nav-text">Settings & data</span></button>
-      <div class="profile-wrap"><button class="profile" id="profile-button" aria-label="Open account menu" aria-expanded="false"><span class="avatar">HF</span><span class="profile-copy"><b>Hendra Febriansyah</b><small>Vault Owner</small></span><span class="profile-status"></span><span class="profile-chevron">›</span></button><div class="profile-popover" id="profile-popover"><div class="profile-popover-header"><span class="avatar">HF</span><div><b class="profile-popover-name">Hendra Febriansyah</b><small class="profile-popover-email">Vault Owner</small></div></div><div class="profile-popover-divider"></div><button class="profile-popover-item" data-page="settings" data-close="1"><span>⚙</span><span>Pengaturan Akun</span></button><button class="profile-popover-item" id="popover-landing-btn" onclick="window.location.href='/'"><span>🌐</span><span>Halaman Utama (Landing Page)</span></button><button class="profile-popover-item" id="popover-lock-btn"><span>🔒</span><span>Kunci Vault</span></button><button class="profile-popover-item profile-popover-danger" id="popover-logout-btn"><span>⏻</span><span>Keluar / Logout</span></button><div class="profile-popover-divider"></div><div class="profile-popover-footer"><small>INVEYS v0.23.0</small></div></div></div>
+      <div class="profile-wrap"><button class="profile" id="profile-button" aria-label="Open account menu" aria-expanded="false"><span class="avatar">HF</span><span class="profile-copy"><b>Hendra Febriansyah</b><small>Local demo account</small></span><span class="profile-status"></span><span class="profile-chevron">›</span></button><div class="profile-popover" id="profile-popover"><div class="profile-popover-header"><span class="avatar">HF</span><div><b class="profile-popover-name">Hendra Febriansyah</b><small class="profile-popover-email">Local demo account</small></div></div><div class="profile-popover-divider"></div><button class="profile-popover-item" data-page="settings" data-close="1"><span>⚙</span><span>Account Settings</span></button><button class="profile-popover-item" id="popover-landing-btn" onclick="window.location.href='/'"><span>🌐</span><span>Landing Page</span></button><button class="profile-popover-item" id="popover-lock-btn"><span>🔒</span><span>Lock Vault</span></button><button class="profile-popover-item profile-popover-danger" id="popover-logout-btn"><span>⏻</span><span>Log Out</span></button><div class="profile-popover-divider"></div><div class="profile-popover-footer"><small>INVEYS v0.23.0</small></div></div></div>
     </div>
   </aside>
   <button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" tabindex="-1"></button>
@@ -6150,6 +6150,7 @@ const api={catalog,features,allowed,quote,validate};if(typeof module!=='undefine
 (function(root){
 'use strict';
 const id={
+'Account Settings':'Pengaturan Akun','Landing Page':'Halaman Utama','Lock Vault':'Kunci Vault','Log Out':'Keluar','Vault Owner':'Pemilik Vault','Local account':'Akun lokal',
 'Pin navigation':'Sematkan navigasi','Unpin navigation':'Lepas sematan navigasi','Close navigation':'Tutup navigasi','About INVEYS':'Tentang INVEYS','Open household workspace':'Buka ruang keluarga',
 'Shared Views':'Tampilan bersama','Reports':'Laporan','Forecast':'Proyeksi',
 'Capture':'Pencatatan cepat','Integrations':'Integrasi','Version updates':'Pembaruan versi',
@@ -7577,12 +7578,12 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     const demoTag=$('.demo-tag');if(demoTag)demoTag.textContent=isServerMode?(currentUser?.plan?currentUser.plan.toUpperCase():'VAULT'):(state.demo?'ACTIVE':'LOCAL');
     $('footer span:last-child').textContent=`${isServerMode?'Production':(state.demo?'Demo':'Production')} workspace · ${isServerMode?'Hostinger VPS · SQLite Vault':'Local records'} · v0.23.0`;
     $('.profile b').textContent=activeOwnerName;
-    const profileRole=isServerMode?(currentUser?.plan?`${currentUser.plan.toUpperCase()} · Vault Owner`:'Vault Owner'):(state.demo?'Vault Owner':'Local workspace');
+    const profileRole=isServerMode?(currentUser?.plan?`${currentUser.plan.toUpperCase()} · ${L('Pemilik Vault','Vault Owner')}`:L('Pemilik Vault','Vault Owner')):(state.demo?L('Akun demo lokal','Local demo account'):L('Ruang kerja lokal','Local workspace'));
     $('.profile small').textContent=profileRole;
     const initials=activeOwnerName.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase()||'HF';
     $$('.avatar').filter(el=>el.closest('.profile')).forEach(el=>el.textContent=initials);
     const popName=$('.profile-popover-name');if(popName)popName.textContent=activeOwnerName;
-    const popEmail=$('.profile-popover-email');if(popEmail)popEmail.textContent=currentUser?.email||(isServerMode?'Vault Owner':'Local account');
+    const popEmail=$('.profile-popover-email');if(popEmail)popEmail.textContent=currentUser?.email||(isServerMode?L('Pemilik Vault','Vault Owner'):(state.demo?L('Akun demo lokal','Local demo account'):L('Akun lokal','Local account')));
     $$('.profile-popover-header .avatar').forEach(el=>el.textContent=initials);
     if(isServerMode&&isAuthenticated)syncToServer();
   }

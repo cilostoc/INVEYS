@@ -154,12 +154,12 @@
     const demoTag=$('.demo-tag');if(demoTag)demoTag.textContent=isServerMode?(currentUser?.plan?currentUser.plan.toUpperCase():'VAULT'):(state.demo?'ACTIVE':'LOCAL');
     $('footer span:last-child').textContent=`${isServerMode?'Production':(state.demo?'Demo':'Production')} workspace · ${isServerMode?'Hostinger VPS · SQLite Vault':'Local records'} · v0.23.0`;
     $('.profile b').textContent=activeOwnerName;
-    const profileRole=isServerMode?(currentUser?.plan?`${currentUser.plan.toUpperCase()} · Vault Owner`:'Vault Owner'):(state.demo?'Vault Owner':'Local workspace');
+    const profileRole=isServerMode?(currentUser?.plan?`${currentUser.plan.toUpperCase()} · ${L('Pemilik Vault','Vault Owner')}`:L('Pemilik Vault','Vault Owner')):(state.demo?L('Akun demo lokal','Local demo account'):L('Ruang kerja lokal','Local workspace'));
     $('.profile small').textContent=profileRole;
     const initials=activeOwnerName.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase()||'HF';
     $$('.avatar').filter(el=>el.closest('.profile')).forEach(el=>el.textContent=initials);
     const popName=$('.profile-popover-name');if(popName)popName.textContent=activeOwnerName;
-    const popEmail=$('.profile-popover-email');if(popEmail)popEmail.textContent=currentUser?.email||(isServerMode?'Vault Owner':'Local account');
+    const popEmail=$('.profile-popover-email');if(popEmail)popEmail.textContent=currentUser?.email||(isServerMode?L('Pemilik Vault','Vault Owner'):(state.demo?L('Akun demo lokal','Local demo account'):L('Akun lokal','Local account')));
     $$('.profile-popover-header .avatar').forEach(el=>el.textContent=initials);
     if(isServerMode&&isAuthenticated)syncToServer();
   }

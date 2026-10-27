@@ -1,6 +1,7 @@
 (function(root){
 'use strict';
 const id={
+'Account Settings':'Pengaturan Akun','Landing Page':'Halaman Utama','Lock Vault':'Kunci Vault','Log Out':'Keluar','Vault Owner':'Pemilik Vault','Local account':'Akun lokal',
 'Pin navigation':'Sematkan navigasi','Unpin navigation':'Lepas sematan navigasi','Close navigation':'Tutup navigasi','About INVEYS':'Tentang INVEYS','Open household workspace':'Buka ruang keluarga',
 'Shared Views':'Tampilan bersama','Reports':'Laporan','Forecast':'Proyeksi',
 'Capture':'Pencatatan cepat','Integrations':'Integrasi','Version updates':'Pembaruan versi',
