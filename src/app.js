@@ -147,11 +147,11 @@
     const member=state.members[0]||{name:currentUser?.name||'Hendra Febriansyah',initials:'HF'};
     const activeOwnerName=currentUser?.name||member.name;
     const wsName=(state.name&&state.name!=='Morgan household')?state.name:(activeOwnerName.includes(' ')?`${activeOwnerName.split(' ')[0]}'s Vault`:`${activeOwnerName}'s Vault`);
-    $('#workspace-name').textContent=wsName;
+    const wsNameEl=$('#workspace-name');if(wsNameEl)wsNameEl.textContent=wsName;
     const wsInitials=activeOwnerName.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase()||'HF';
     const wsAvatar=$('.workspace-avatar');
     if(wsAvatar)wsAvatar.textContent=wsInitials;
-    $('.demo-tag').textContent=isServerMode?(currentUser?.plan?currentUser.plan.toUpperCase():'VAULT'):(state.demo?'ACTIVE':'LOCAL');
+    const demoTag=$('.demo-tag');if(demoTag)demoTag.textContent=isServerMode?(currentUser?.plan?currentUser.plan.toUpperCase():'VAULT'):(state.demo?'ACTIVE':'LOCAL');
     $('footer span:last-child').textContent=`${isServerMode?'Production':(state.demo?'Demo':'Production')} workspace · ${isServerMode?'Hostinger VPS · SQLite Vault':'Local records'} · v0.23.0`;
     $('.profile b').textContent=activeOwnerName;
     const profileRole=isServerMode?(currentUser?.plan?`${currentUser.plan.toUpperCase()} · Vault Owner`:'Vault Owner'):(state.demo?'Vault Owner':'Local workspace');
@@ -1954,7 +1954,7 @@
     ];
     return item('home')+groups.map(([label,ic,ids])=>`<details class="nav-section ${ids.includes(page)||(ids.includes('scenarios')&&page==='montecarlo')?'active-section':''}" ${ids.includes(page)||(ids.includes('scenarios')&&page==='montecarlo')?'open':''}><summary title="${escape(label)}" aria-label="${escape(label)}">${icon(ic)}<span class="nav-text">${label}</span><span class="nav-disclosure">⌄</span></summary><div class="nav-submenu">${ids.map(item).join('')}</div></details>`).join('')+item('copilot');
   }
-  const financialPages=new Set(['home','accounts','transactions','categories','calendar','budget','cashflow','goals','debt','cards','shared','reports','forecast','scenarios','montecarlo','copilot']);
+  const financialPages=new Set(['shared']);
   function viewBar(){if(!financialPages.has(page))return '';return `<section class="view-bar" aria-label="${L('Perspektif keuangan','Financial perspective')}"><div>${icon('household')}<b>${L('Shared Views','Shared Views')}</b></div><label class="sr-only" for="active-owner">${L('Perspektif pemilik','Ownership perspective')}</label><select id="active-owner">${ownerOptions(state.activeView.owner,true)}</select><label><input type="checkbox" id="include-shared" ${state.activeView.includeShared?'checked':''} ${['all','shared'].includes(state.activeView.owner)?'disabled':''}> ${L('Sertakan milik bersama','Include shared ownership')}</label>${button(L('Simpan tampilan','Save view'),'view-save')}<span class="view-caption">${L('Filter analisis lokal · semua pengguna browser tetap dapat melihat data','Local analysis filter · browser users retain access to all data')}</span></section>`;}
 
   let quickMinimized=false,quickAttachment=null,quickAttachmentGeneration=0,quickFileBusy=false;
@@ -6153,7 +6153,7 @@
   document.addEventListener('change',event=>{const el=event.target;if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='import-file')importFile(el.files[0]);});
   document.addEventListener('submit',event=>{if(event.target.id==='quick-form'){event.preventDefault();const d=Object.fromEntries(new FormData(event.target));quickSend(d.text,d.accountId);return;}if(event.target.id==='chat-form'){event.preventDefault();ask($('#chat-question').value.trim());}});
   $('#close-modal').addEventListener('click',()=>$('#modal').close());$('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=$('#modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('#modal').close();}});
-  $('#menu-button').addEventListener('click',()=>{setSidebarOpen(!sidebarOpen);if(sidebarOpen)$('#navigation button')?.focus();});$('#search-button').addEventListener('click',searchModal);$('#notification-button').addEventListener('click',openReminders);$('#workspace-button').addEventListener('click',()=>navigate('home'));
+  $('#menu-button').addEventListener('click',()=>{setSidebarOpen(!sidebarOpen);if(sidebarOpen)$('#navigation button')?.focus();});$('#search-button').addEventListener('click',searchModal);$('#notification-button').addEventListener('click',openReminders);$('#workspace-button')?.addEventListener('click',()=>navigate('home'));
   $('#about-button').addEventListener('click',()=>openModal('Your financial life, connected.',`<p class="dialog-copy">INVEYS stands for <b>INtelligent VElocity for Your Financial System</b>. Connect your financial picture, anticipate commitments, plan meaningful goals, and coordinate your next steps.</p><p class="note">This is a local-first MVP with sample data. No funds are moved, no institutions are connected, and external providers require separate configuration and explicit consent.</p><div class="form-actions">${button('Explore your workspace','modal-close','primary')}</div>`));
   /* --- Profile popover toggle --- */
   const profileBtn=$('#profile-button'),profilePopover=$('#profile-popover');
