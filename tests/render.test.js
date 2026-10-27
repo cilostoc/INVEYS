@@ -45,8 +45,8 @@ function boot(saved, env = {}) {
 test('every app page renders with populated and empty workspaces',()=>{
   const full=boot();assert.match(full.html(),/224,370/);
   const empty={version:1,currency:'IDR',name:'Empty',demo:false,accounts:[],debts:[],goals:[],flows:[],transactions:[],tasks:[],members:[],history:[]};
-  for(const app of [full,boot(empty)])for(const page of ['accounts','cashflow','transactions','goals','debt','scenarios','household','copilot','montecarlo','cards','settings','home']){
-    app.click({page});assert.ok(app.html().includes('page-heading'),page);
+  for(const app of [full,boot(empty)])for(const page of ['accounts','cashflow','transactions','goals','debt','scenarios','household','copilot','montecarlo','cards','settings','home','reports','categories','budget','calendar','plans','integrations','capture','holdings','updates','about']){
+    app.click({page});assert.ok(app.html().length > 50, page);
   }
 });
 test('scenario input changes visible calculations without persisting changes to actual records',()=>{

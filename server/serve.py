@@ -1228,6 +1228,7 @@ class Handler(SimpleHTTPRequestHandler):
 
             ts_str = datetime.datetime.now().strftime('%Y-%m-%d-%H%M')
             filename = f"inveys-backup-{ts_str}.sqlite"
+            record_audit(user.get('id'), 'admin.database.export', f'bytes={len(db_bytes)}, filename={filename}', self.get_client_ip(), self.headers.get('User-Agent'))
             self.send_response(200)
             self.send_header('Content-Type', 'application/vnd.sqlite3')
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
@@ -1235,7 +1236,6 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
             self.end_headers()
             self.wfile.write(db_bytes)
-            record_audit(user.get('id'), 'admin.database.export', f'bytes={len(db_bytes)}, filename={filename}', self.get_client_ip(), self.headers.get('User-Agent'))
             now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             size_kb = round(len(db_bytes) / 1024, 1)
             notify_admin_telegram(
