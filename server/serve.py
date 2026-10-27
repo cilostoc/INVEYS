@@ -176,7 +176,7 @@ def db():
     c.execute('CREATE TABLE IF NOT EXISTS inbox (id INTEGER PRIMARY KEY, text TEXT NOT NULL, date INTEGER, reviewed INTEGER DEFAULT 0)')
     c.execute('CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value INTEGER)')
     c.execute('CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY CHECK (id=1), password_hash TEXT NOT NULL, salt TEXT NOT NULL, created_at INTEGER NOT NULL)')
-    c.execute('CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, salt TEXT NOT NULL, name TEXT, plan TEXT DEFAULT "plus", created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)')
+    c.execute('CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, salt TEXT NOT NULL, name TEXT, plan TEXT DEFAULT "plus", role TEXT DEFAULT "user", status TEXT DEFAULT "active", created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)')
     c.execute('CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id TEXT, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, ip TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, user_id TEXT, name TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, data TEXT NOT NULL, checksum TEXT NOT NULL, updated_at TEXT NOT NULL)')
     c.execute('CREATE TABLE IF NOT EXISTS backups (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, workspace_id TEXT NOT NULL, data TEXT NOT NULL, created_at TEXT NOT NULL, note TEXT)')
@@ -186,7 +186,9 @@ def db():
     for col_alter in (
         'ALTER TABLE sessions ADD COLUMN user_id TEXT',
         'ALTER TABLE workspaces ADD COLUMN user_id TEXT',
-        'ALTER TABLE backups ADD COLUMN user_id TEXT'
+        'ALTER TABLE backups ADD COLUMN user_id TEXT',
+        'ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"',
+        'ALTER TABLE users ADD COLUMN status TEXT DEFAULT "active"'
     ):
         try: c.execute(col_alter)
         except Exception: pass
@@ -780,12 +782,22 @@ class Handler(SimpleHTTPRequestHandler):
                 return None
             user_id = sess[1]
             if user_id and user_id != 'master':
-                user = c.execute('SELECT id, email, name, plan FROM users WHERE id=?', (user_id,)).fetchone()
+                user = c.execute('SELECT id, email, name, plan, role, status FROM users WHERE id=?', (user_id,)).fetchone()
                 if user:
-                    return {'id': user[0], 'email': user[1], 'name': user[2] or user[1].split('@')[0], 'plan': user[3] or 'plus'}
+                    status = user[5] or 'active'
+                    if status == 'suspended':
+                        return None
+                    return {
+                        'id': user[0],
+                        'email': user[1],
+                        'name': user[2] or user[1].split('@')[0],
+                        'plan': user[3] or 'plus',
+                        'role': user[4] or 'user',
+                        'status': status
+                    }
             has_auth = bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
             if has_auth or user_id == 'master':
-                return {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra'}
+                return {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra', 'role': 'admin', 'status': 'active'}
             return None
 
     def is_authenticated(self):
@@ -1021,9 +1033,101 @@ class Handler(SimpleHTTPRequestHandler):
                     rows = c.execute('SELECT id, workspace_id, created_at, note, length(data) FROM backups WHERE user_id = ? ORDER BY id DESC LIMIT 30', (user['id'],)).fetchall()
             return self.send_json({'ok': True, 'backups': [{'id': r[0], 'workspaceId': r[1], 'createdAt': r[2], 'note': r[3], 'sizeBytes': r[4]} for r in rows]})
 
+        if self.path == '/api/admin/overview':
+            user = self.get_authenticated_user()
+            if not user: return self.send_json({'error': 'Unauthorized'}, 401)
+            if user.get('role') != 'admin' and user.get('id') != 'master':
+                return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+            now = int(time.time())
+            with db() as c:
+                total_users = c.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+                active_users = c.execute('SELECT COUNT(*) FROM users WHERE status != "suspended"').fetchone()[0]
+                suspended_users = c.execute('SELECT COUNT(*) FROM users WHERE status = "suspended"').fetchone()[0]
+                admin_users = c.execute('SELECT COUNT(*) FROM users WHERE role = "admin"').fetchone()[0]
+                active_sessions = c.execute('SELECT COUNT(DISTINCT user_id) FROM sessions WHERE expires_at > ?', (now,)).fetchone()[0]
+                total_workspaces = c.execute('SELECT COUNT(*) FROM workspaces').fetchone()[0]
+                total_backups = c.execute('SELECT COUNT(*) FROM backups').fetchone()[0]
+                plans = {}
+                for row in c.execute('SELECT plan, COUNT(*) FROM users GROUP BY plan').fetchall():
+                    plans[row[0] or 'plus'] = row[1]
+            db_size = 0
+            try:
+                if DB.exists(): db_size = DB.stat().st_size
+            except Exception: pass
+            return self.send_json({
+                'ok': True,
+                'overview': {
+                    'totalUsers': total_users,
+                    'activeUsers': active_users,
+                    'suspendedUsers': suspended_users,
+                    'adminUsers': admin_users,
+                    'activeSessions': active_sessions,
+                    'totalWorkspaces': total_workspaces,
+                    'totalBackups': total_backups,
+                    'databaseSizeBytes': db_size,
+                    'plans': plans,
+                    'server': {
+                        'domain': 'inveys.io',
+                        'ip': '187.77.134.249',
+                        'port': 3000,
+                        'version': VERSION,
+                        'time': datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    }
+                }
+            })
+
+        if self.path.startswith('/api/admin/users'):
+            user = self.get_authenticated_user()
+            if not user: return self.send_json({'error': 'Unauthorized'}, 401)
+            if user.get('role') != 'admin' and user.get('id') != 'master':
+                return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+            parsed = urllib.parse.urlsplit(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            search_query = qs.get('q', [''])[0].strip().lower()
+            now = int(time.time())
+            with db() as c:
+                if search_query:
+                    rows = c.execute('''
+                        SELECT id, email, name, plan, role, status, created_at, updated_at
+                        FROM users
+                        WHERE lower(email) LIKE ? OR lower(name) LIKE ?
+                        ORDER BY created_at DESC
+                    ''', (f'%{search_query}%', f'%{search_query}%')).fetchall()
+                else:
+                    rows = c.execute('''
+                        SELECT id, email, name, plan, role, status, created_at, updated_at
+                        FROM users
+                        ORDER BY created_at DESC
+                    ''').fetchall()
+                users_list = []
+                for r in rows:
+                    u_id = r[0]
+                    last_sess = c.execute('SELECT created_at, ip FROM sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', (u_id,)).fetchone()
+                    active_sess_count = c.execute('SELECT COUNT(*) FROM sessions WHERE user_id = ? AND expires_at > ?', (u_id, now)).fetchone()[0]
+                    ws = c.execute('SELECT updated_at, length(data) FROM workspaces WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1', (u_id,)).fetchone()
+                    backup_count = c.execute('SELECT COUNT(*) FROM backups WHERE user_id = ?', (u_id,)).fetchone()[0]
+                    users_list.append({
+                        'id': u_id,
+                        'email': r[1],
+                        'name': r[2] or r[1].split('@')[0],
+                        'plan': r[3] or 'plus',
+                        'role': r[4] or 'user',
+                        'status': r[5] or 'active',
+                        'createdAt': r[6],
+                        'updatedAt': r[7],
+                        'lastActive': last_sess[0] if last_sess else None,
+                        'lastIp': last_sess[1] if last_sess else None,
+                        'activeSessions': active_sess_count,
+                        'hasWorkspace': bool(ws),
+                        'workspaceUpdatedAt': ws[0] if ws else None,
+                        'workspaceSizeBytes': ws[1] if ws else 0,
+                        'backupsCount': backup_count
+                    })
+            return self.send_json({'ok': True, 'users': users_list})
+
         allowed_static = (
             '/', '/index.html', '/inveys-app.html', '/landing.html', '/landing',
-            '/app', '/app/', '/vault', '/dashboard',
+            '/app', '/app/', '/vault', '/dashboard', '/admin',
             '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js',
             '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js',
             '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest',
@@ -1037,7 +1141,7 @@ class Handler(SimpleHTTPRequestHandler):
     def do_HEAD(self):
         allowed_static = (
             '/', '/index.html', '/inveys-app.html', '/landing.html', '/landing',
-            '/app', '/app/', '/vault', '/dashboard',
+            '/app', '/app/', '/vault', '/dashboard', '/admin',
             '/styles.css', '/engine.js', '/finance.js', '/investment.js', '/appearance.js',
             '/plans.js', '/i18n.js', '/recording.js', '/releases.js', '/assistant.js',
             '/operations.js', '/app.js', '/releases.json', '/manifest.webmanifest',
@@ -1079,15 +1183,18 @@ class Handler(SimpleHTTPRequestHandler):
                     user_id = 'usr_' + secrets.token_hex(8)
                     h, salt = hash_password(pw)
                     now = int(time.time())
-                    c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                              (user_id, email, h, salt, name, plan, now, now))
+                    user_count = c.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+                    role = 'admin' if user_count == 0 else 'user'
+                    user_plan = 'ultra' if user_count == 0 else plan
+                    c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, "active", ?, ?)',
+                              (user_id, email, h, salt, name, user_plan, role, now, now))
                     token = secrets.token_urlsafe(32)
                     expires = now + 30 * 86400
                     c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                               (token, user_id, now, expires, self.get_client_ip()))
 
                 cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
-                user_data = {'id': user_id, 'email': email, 'name': name, 'plan': plan}
+                user_data = {'id': user_id, 'email': email, 'name': name, 'plan': user_plan, 'role': role, 'status': 'active'}
                 return self.send_json({'ok': True, 'token': token, 'user': user_data}, headers={'Set-Cookie': cookie})
 
             # Multi-User & Master Password Login
@@ -1099,14 +1206,18 @@ class Handler(SimpleHTTPRequestHandler):
 
                 if email:
                     with db() as c:
-                        row = c.execute('SELECT id, password_hash, salt, name, plan FROM users WHERE email=?', (email,)).fetchone()
+                        row = c.execute('SELECT id, password_hash, salt, name, plan, role, status FROM users WHERE email=?', (email,)).fetchone()
                     if not row or not verify_password(pw, row[1], row[2]):
                         record_failed_login(ip)
                         return self.send_json({'error': 'Email atau password salah'}, 401)
+                    if (row[6] or 'active') == 'suspended':
+                        return self.send_json({'error': 'Akun Anda ditangguhkan oleh administrator. Hubungi admin untuk bantuan.'}, 403)
                     clear_failed_login(ip)
                     user_id = row[0]
                     user_name = row[3] or email.split('@')[0]
                     user_plan = row[4] or 'plus'
+                    user_role = row[5] or 'user'
+                    user_status = row[6] or 'active'
                     token = secrets.token_urlsafe(32)
                     now = int(time.time())
                     expires = now + 30 * 86400
@@ -1115,7 +1226,7 @@ class Handler(SimpleHTTPRequestHandler):
                         c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                                   (token, user_id, now, expires, ip))
                     cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
-                    user_data = {'id': user_id, 'email': email, 'name': user_name, 'plan': user_plan}
+                    user_data = {'id': user_id, 'email': email, 'name': user_name, 'plan': user_plan, 'role': user_role, 'status': user_status}
                     return self.send_json({'ok': True, 'token': token, 'user': user_data}, headers={'Set-Cookie': cookie})
 
                 # Fallback to master password
@@ -1133,7 +1244,7 @@ class Handler(SimpleHTTPRequestHandler):
                     c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                               (token, 'master', now, expires, ip))
                 cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
-                return self.send_json({'ok': True, 'token': token, 'user': {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra'}}, headers={'Set-Cookie': cookie})
+                return self.send_json({'ok': True, 'token': token, 'user': {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra', 'role': 'admin', 'status': 'active'}}, headers={'Set-Cookie': cookie})
 
             # Setup initial password / owner
             if self.path == '/api/auth/setup':
@@ -1151,12 +1262,12 @@ class Handler(SimpleHTTPRequestHandler):
                         if existing: return self.send_json({'error': 'Email already registered'}, 400)
                         user_id = 'usr_' + secrets.token_hex(8)
                         h, salt = hash_password(pw)
-                        c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                                  (user_id, email, h, salt, name, 'ultra', now, now))
+                        c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, "ultra", "admin", "active", ?, ?)',
+                                  (user_id, email, h, salt, name, now, now))
                         c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                                   (token, user_id, now, expires, self.get_client_ip()))
                         cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
-                        return self.send_json({'ok': True, 'token': token, 'user': {'id': user_id, 'email': email, 'name': name, 'plan': 'ultra'}}, headers={'Set-Cookie': cookie})
+                        return self.send_json({'ok': True, 'token': token, 'user': {'id': user_id, 'email': email, 'name': name, 'plan': 'ultra', 'role': 'admin', 'status': 'active'}}, headers={'Set-Cookie': cookie})
                     else:
                         if c.execute('SELECT id FROM auth WHERE id=1').fetchone():
                             return self.send_json({'error': 'Master password already configured'}, 400)
@@ -1165,7 +1276,7 @@ class Handler(SimpleHTTPRequestHandler):
                         c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                                   (token, 'master', now, expires, self.get_client_ip()))
                         cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
-                        return self.send_json({'ok': True, 'token': token, 'user': {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra'}}, headers={'Set-Cookie': cookie})
+                        return self.send_json({'ok': True, 'token': token, 'user': {'id': 'master', 'email': 'admin@inveys.local', 'name': 'Master Admin', 'plan': 'ultra', 'role': 'admin', 'status': 'active'}}, headers={'Set-Cookie': cookie})
 
             # Logout
             if self.path == '/api/auth/logout':
@@ -1217,6 +1328,151 @@ class Handler(SimpleHTTPRequestHandler):
                                   (user_id, ws_id, raw_json, now_iso))
                         c.execute('DELETE FROM backups WHERE user_id = ? AND id NOT IN (SELECT id FROM backups WHERE user_id = ? ORDER BY id DESC LIMIT 30)', (user_id, user_id))
                 return self.send_json({'ok': True, 'checksum': checksum, 'updatedAt': now_iso})
+
+            # Administrator User Management Endpoints
+            if self.path == '/api/admin/users/create':
+                user = self.get_authenticated_user()
+                if not user or (user.get('role') != 'admin' and user.get('id') != 'master'):
+                    return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+
+                email = str(data.get('email', '')).strip().lower()
+                pw = str(data.get('password', '')).strip()
+                name = str(data.get('name', '')).strip()
+                plan = str(data.get('plan', 'plus')).strip().lower()
+                role = str(data.get('role', 'user')).strip().lower()
+
+                if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+                    return self.send_json({'error': 'Format email tidak valid'}, 400)
+                if len(pw) < 6:
+                    return self.send_json({'error': 'Password minimal 6 karakter'}, 400)
+                if plan not in ('plus', 'pro', 'ultra', 'lifetime'):
+                    plan = 'plus'
+                if role not in ('admin', 'user'):
+                    role = 'user'
+                if not name:
+                    name = email.split('@')[0].capitalize()
+
+                with db() as c:
+                    existing = c.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+                    if existing:
+                        return self.send_json({'error': 'Email sudah terdaftar'}, 400)
+                    user_id = 'usr_' + secrets.token_hex(8)
+                    h, salt = hash_password(pw)
+                    now = int(time.time())
+                    c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, "active", ?, ?)',
+                              (user_id, email, h, salt, name, plan, role, now, now))
+
+                return self.send_json({
+                    'ok': True,
+                    'user': {
+                        'id': user_id,
+                        'email': email,
+                        'name': name,
+                        'plan': plan,
+                        'role': role,
+                        'status': 'active',
+                        'createdAt': now
+                    }
+                })
+
+            if self.path == '/api/admin/users/update':
+                user = self.get_authenticated_user()
+                if not user or (user.get('role') != 'admin' and user.get('id') != 'master'):
+                    return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+
+                target_id = str(data.get('id', '')).strip()
+                if not target_id:
+                    return self.send_json({'error': 'User ID required'}, 400)
+
+                name = str(data.get('name', '')).strip()
+                plan = str(data.get('plan', '')).strip().lower()
+                role = str(data.get('role', '')).strip().lower()
+                status = str(data.get('status', '')).strip().lower()
+
+                with db() as c:
+                    target = c.execute('SELECT id, email, name, plan, role, status FROM users WHERE id = ?', (target_id,)).fetchone()
+                    if not target:
+                        return self.send_json({'error': 'Pengguna tidak ditemukan'}, 404)
+
+                    if role == 'user' and target[4] == 'admin':
+                        admin_count = c.execute('SELECT COUNT(*) FROM users WHERE role = "admin"').fetchone()[0]
+                        if admin_count <= 1:
+                            return self.send_json({'error': 'Tidak dapat mencabut hak admin karena ini adalah satu-satunya akun Administrator'}, 400)
+
+                    new_name = name or target[2]
+                    new_plan = plan if plan in ('plus', 'pro', 'ultra', 'lifetime') else target[3]
+                    new_role = role if role in ('admin', 'user') else target[4]
+                    new_status = status if status in ('active', 'suspended') else target[5]
+                    now = int(time.time())
+
+                    c.execute('UPDATE users SET name=?, plan=?, role=?, status=?, updated_at=? WHERE id=?',
+                              (new_name, new_plan, new_role, new_status, now, target_id))
+
+                    if new_status == 'suspended':
+                        c.execute('DELETE FROM sessions WHERE user_id = ?', (target_id,))
+
+                return self.send_json({
+                    'ok': True,
+                    'user': {
+                        'id': target_id,
+                        'email': target[1],
+                        'name': new_name,
+                        'plan': new_plan,
+                        'role': new_role,
+                        'status': new_status
+                    }
+                })
+
+            if self.path == '/api/admin/users/reset-password':
+                user = self.get_authenticated_user()
+                if not user or (user.get('role') != 'admin' and user.get('id') != 'master'):
+                    return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+
+                target_id = str(data.get('id', '')).strip()
+                new_pw = str(data.get('newPassword', '')).strip()
+                if not target_id or len(new_pw) < 6:
+                    return self.send_json({'error': 'Password minimal 6 karakter'}, 400)
+
+                with db() as c:
+                    target = c.execute('SELECT id FROM users WHERE id = ?', (target_id,)).fetchone()
+                    if not target:
+                        return self.send_json({'error': 'Pengguna tidak ditemukan'}, 404)
+
+                    h, salt = hash_password(new_pw)
+                    now = int(time.time())
+                    c.execute('UPDATE users SET password_hash=?, salt=?, updated_at=? WHERE id=?', (h, salt, now, target_id))
+                    c.execute('DELETE FROM sessions WHERE user_id = ?', (target_id,))
+
+                return self.send_json({'ok': True, 'message': 'Password berhasil direset'})
+
+            if self.path == '/api/admin/users/delete':
+                user = self.get_authenticated_user()
+                if not user or (user.get('role') != 'admin' and user.get('id') != 'master'):
+                    return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+
+                target_id = str(data.get('id', '')).strip()
+                if not target_id:
+                    return self.send_json({'error': 'User ID required'}, 400)
+                if target_id == user.get('id') or target_id == 'master':
+                    return self.send_json({'error': 'Anda tidak dapat menghapus akun Anda sendiri'}, 400)
+
+                with db() as c:
+                    target = c.execute('SELECT id, email, role FROM users WHERE id = ?', (target_id,)).fetchone()
+                    if not target:
+                        return self.send_json({'error': 'Pengguna tidak ditemukan'}, 404)
+                    if target[2] == 'admin':
+                        admin_count = c.execute('SELECT COUNT(*) FROM users WHERE role = "admin"').fetchone()[0]
+                        if admin_count <= 1:
+                            return self.send_json({'error': 'Tidak dapat menghapus satu-satunya akun Administrator'}, 400)
+
+                    c.execute('DELETE FROM sessions WHERE user_id = ?', (target_id,))
+                    c.execute('DELETE FROM workspaces WHERE user_id = ?', (target_id,))
+                    c.execute('DELETE FROM backups WHERE user_id = ?', (target_id,))
+                    c.execute('DELETE FROM orders WHERE user_id = ? OR email = ?', (target_id, target[1]))
+                    c.execute('DELETE FROM licenses WHERE user_id = ? OR email = ?', (target_id, target[1]))
+                    c.execute('DELETE FROM users WHERE id = ?', (target_id,))
+
+                return self.send_json({'ok': True, 'message': f'Pengguna {target[1]} berhasil dihapus'})
 
             # Commercial Payment & Licensing Endpoints
             if self.path == '/api/payment/create':

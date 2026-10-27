@@ -56,6 +56,8 @@
   paths.coins='<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"/>';
   paths.growth='<path d="m3 17 6-6 4 4 8-8m-6 0h6v6"/>';
   paths.receipt='<path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2-3-2Zm4 6h8m-8 4h8m-8 4h5"/>';
+  paths.admin='<path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 5a3 3 0 0 1 6 0v3H9V7Zm3 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/>';
+  paths.users='<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>';
   const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.about}</svg>`;
   const seed = () => ({
     version:1,currency:'USD',name:"Hendra's Vault",demo:true,
@@ -119,7 +121,7 @@
   const button = (text, action, type='', ic='') => `<button class="btn ${type}" data-action="${action}">${ic?icon(ic):''}${text}</button>`;
   const link = (text, target) => `<button class="quiet-link" data-page="${target}">${text}${icon('arrow')}</button>`;
   function toast(message){$('#toast').classList.remove('success');$('#toast').textContent=t(message);$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
-  let isServerMode=false, isAuthenticated=true, serverSyncBusy=false, currentUser=null;
+  let isServerMode=Boolean(typeof globalThis!=='undefined'&&globalThis.__INVEYS_SERVER_MODE__), isAuthenticated=true, serverSyncBusy=false, currentUser=(typeof globalThis!=='undefined'&&globalThis.__INVEYS_CURRENT_USER__)||null;
   async function syncToServer(){
     if(serverSyncBusy||!isServerMode||!isAuthenticated)return;
     try{
@@ -154,16 +156,18 @@
     const demoTag=$('.demo-tag');if(demoTag)demoTag.textContent=isServerMode?(currentUser?.plan?currentUser.plan.toUpperCase():'VAULT'):(state.demo?'ACTIVE':'LOCAL');
     $('footer span:last-child').textContent=`${isServerMode?'Production':(state.demo?'Demo':'Production')} workspace · ${isServerMode?'Hostinger VPS · SQLite Vault':'Local records'} · v0.23.0`;
     $('.profile b').textContent=activeOwnerName;
-    const profileRole=isServerMode?(currentUser?.plan?`${currentUser.plan.toUpperCase()} · ${L('Pemilik Vault','Vault Owner')}`:L('Pemilik Vault','Vault Owner')):(state.demo?L('Akun demo lokal','Local demo account'):L('Ruang kerja lokal','Local workspace'));
+    const isMasterOrAdmin=currentUser?.role==='admin'||currentUser?.id==='master';
+    const profileRole=isServerMode?(isMasterOrAdmin?`ADMIN · ${currentUser?.plan?currentUser.plan.toUpperCase()+' · ':''}${L('Administrator','Administrator')}`:(currentUser?.plan?`${currentUser.plan.toUpperCase()} · ${L('Pemilik Vault','Vault Owner')}`:L('Pemilik Vault','Vault Owner'))):(state.demo?L('Akun demo lokal','Local demo account'):L('Ruang kerja lokal','Local workspace'));
     $('.profile small').textContent=profileRole;
     const initials=activeOwnerName.split(' ').filter(Boolean).map(s=>s[0]).join('').slice(0,2).toUpperCase()||'HF';
     $$('.avatar').filter(el=>el.closest('.profile')).forEach(el=>el.textContent=initials);
     const popName=$('.profile-popover-name');if(popName)popName.textContent=activeOwnerName;
     const popEmail=$('.profile-popover-email');if(popEmail)popEmail.textContent=currentUser?.email||(isServerMode?L('Pemilik Vault','Vault Owner'):(state.demo?L('Akun demo lokal','Local demo account'):L('Akun lokal','Local account')));
+    const popAdmin=$('#popover-admin-btn');if(popAdmin?.style)popAdmin.style.display=(isServerMode&&isMasterOrAdmin)?'flex':'none';
     $$('.profile-popover-header .avatar').forEach(el=>el.textContent=initials);
     if(isServerMode&&isAuthenticated)syncToServer();
   }
-  const pages=[['operations','Operations'],['home','Overview'],['shared','Shared Views'],['reports','Reports'],['forecast','Forecast'],['accounts','Accounts'],['investment','Investment'],['calendar','Bills & Subscriptions'],['budget','Budget'],['cashflow','Cash flow'],['transactions','Transactions'],['categories','Categories'],['goals','Goals & plans'],['debt','Debt management'],['scenarios','Scenarios'],['montecarlo','Monte Carlo'],['cards','Credit cards'],['household','Household'],['copilot','Financial copilot'],['capture','Capture'],['integrations','Integrations'],['updates','Version updates'],['plans','Plans & membership']];
+  const pages=[['operations','Operations'],['home','Overview'],['shared','Shared Views'],['reports','Reports'],['forecast','Forecast'],['accounts','Accounts'],['investment','Investment'],['calendar','Bills & Subscriptions'],['budget','Budget'],['cashflow','Cash flow'],['transactions','Transactions'],['categories','Categories'],['goals','Goals & plans'],['debt','Debt management'],['scenarios','Scenarios'],['montecarlo','Monte Carlo'],['cards','Credit cards'],['household','Household'],['copilot','Financial copilot'],['capture','Capture'],['integrations','Integrations'],['updates','Version updates'],['plans','Plans & membership'],['admin','Admin Control Panel']];
   function navigate(target){page=pages.some(p=>p[0]===target)||target==='settings'?target:'home';location.hash=page;render();setSidebarOpen(false);window.scrollTo({top:0,behavior:'instant'});}
   function header(title, subtitle, actions='', eyebrow='YOUR FINANCIAL LIFE, CONNECTED') {return `<div class="page-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${subtitle}</p></div><div class="heading-actions">${actions}</div></div>`;}
   function metric(label,value,foot,ic='accounts'){return `<div class="metric metric-${ic}"><div class="metric-label"><span>${label}</span><span class="metric-icon-wrap">${icon(ic)}</span></div><div class="metric-value">${value}</div><div class="metric-foot">${foot}</div></div>`;}
@@ -1946,11 +1950,13 @@
       const label=t(pages.find(p=>p[0]===id)?.[1]||id);
       return `<button class="nav-item ${page===id?'active':''}" data-page="${id}" ${page===id?'aria-current="page"':''} aria-label="${escape(label)}" title="${escape(label)}">${icon(id)}<span class="nav-text">${label}</span></button>`;
     };
+    const manageIds=['operations','household','integrations','plans','updates'];
+    if(isServerMode&&(currentUser?.role==='admin'||currentUser?.id==='master'))manageIds.push('admin');
     const groups=[
       [L('Keuangan','Finances'),'finance-group',['accounts','transactions','calendar','budget','capture','cashflow','cards','debt']],
       [L('Perencanaan','Planning'),'planning-group',['forecast','goals','scenarios']],
       [L('Analisis','Insights'),'insights-group',['reports','investment','shared']],
-      [L('Kelola','Manage'),'manage-group',['operations','household','integrations','plans','updates']]
+      [L('Kelola','Manage'),'manage-group',manageIds]
     ];
     return item('home')+groups.map(([label,ic,ids])=>`<details class="nav-section ${ids.includes(page)||(ids.includes('scenarios')&&page==='montecarlo')?'active-section':''}" ${ids.includes(page)||(ids.includes('scenarios')&&page==='montecarlo')?'open':''}><summary title="${escape(label)}" aria-label="${escape(label)}">${icon(ic)}<span class="nav-text">${label}</span><span class="nav-disclosure">⌄</span></summary><div class="nav-submenu">${ids.map(item).join('')}</div></details>`).join('')+item('copilot');
   }
@@ -5152,12 +5158,532 @@
     }
   }
 
+  let adminData = {
+    overview: null,
+    users: [],
+    query: '',
+    roleFilter: 'all',
+    planFilter: 'all',
+    statusFilter: 'all',
+    loading: false,
+    error: null,
+    lastFetched: 0
+  };
+
+  async function fetchAdminData(q = '') {
+    if (adminData.loading) return;
+    adminData.loading = true;
+    adminData.error = null;
+    const token = localStorage.getItem('inveys_token');
+    const headers = token ? {'Authorization': 'Bearer ' + token} : {};
+    try {
+      const [ovRes, usrRes] = await Promise.all([
+        fetch('/api/admin/overview', { headers }),
+        fetch(`/api/admin/users${q ? '?q=' + encodeURIComponent(q) : ''}`, { headers })
+      ]);
+      if (!ovRes.ok || !usrRes.ok) {
+        if (ovRes.status === 403 || usrRes.status === 403) {
+          throw new Error(L('Akses ditolak: Anda harus login sebagai Administrator.', 'Access denied: Administrator privileges required.'));
+        }
+        throw new Error(L('Gagal memuat data dari server VPS.', 'Failed to load data from VPS server.'));
+      }
+      const ovJson = await ovRes.json();
+      const usrJson = await usrRes.json();
+      adminData.overview = ovJson.overview;
+      adminData.users = usrJson.users || [];
+      adminData.lastFetched = Date.now();
+    } catch (err) {
+      adminData.error = err.message;
+    } finally {
+      adminData.loading = false;
+      if (page === 'admin') render();
+    }
+  }
+
+  function adminUserRows() {
+    let list = adminData.users || [];
+    if (adminData.query) {
+      const q = adminData.query;
+      list = list.filter(u => (u.email || '').toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q));
+    }
+    if (adminData.roleFilter !== 'all') {
+      list = list.filter(u => (u.role || 'user') === adminData.roleFilter);
+    }
+    if (adminData.planFilter !== 'all') {
+      list = list.filter(u => (u.plan || 'plus') === adminData.planFilter);
+    }
+    if (adminData.statusFilter !== 'all') {
+      list = list.filter(u => (u.status || 'active') === adminData.statusFilter);
+    }
+    if (!list.length) {
+      return `<tr><td colspan="7" class="admin-table-empty" style="text-align:center;padding:32px;color:var(--muted);">${escape(L('Tidak ada pengguna yang cocok dengan kriteria filter.', 'No users found matching filter criteria.'))}</td></tr>`;
+    }
+    return list.map(u => {
+      const initials = (u.name || u.email || 'US').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'US';
+      const isAdmin = u.role === 'admin';
+      const isSuspended = u.status === 'suspended';
+      const planClass = `badge-plan-${u.plan || 'plus'}`;
+      const dateFormatted = u.createdAt ? new Date(u.createdAt * 1000).toLocaleDateString() : '—';
+      const lastActiveFormatted = u.lastActive ? new Date(u.lastActive * 1000).toLocaleDateString() : L('Belum login', 'Never');
+      const wsText = u.hasWorkspace ? `<span class="admin-ws-badge ok">✓ ${((u.workspaceSizeBytes || 0) / 1024).toFixed(0)} KB</span>` : `<span class="admin-ws-badge empty">—</span>`;
+
+      return `
+        <tr class="admin-user-row ${isSuspended ? 'is-suspended' : ''}">
+          <td>
+            <div class="admin-user-cell">
+              <span class="avatar ${isAdmin ? 'admin-avatar' : ''}">${escape(initials)}</span>
+              <div class="admin-user-info">
+                <b>${escape(u.name || '—')}</b>
+                <small>${escape(u.email)}</small>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="admin-role-badge ${isAdmin ? 'role-admin' : 'role-user'}">${isAdmin ? '🛡️ ADMIN' : 'USER'}</span>
+          </td>
+          <td>
+            <span class="admin-plan-badge ${planClass}">${escape((u.plan || 'plus').toUpperCase())}</span>
+          </td>
+          <td>
+            <span class="admin-status-pill ${isSuspended ? 'suspended' : 'active'}">
+              <i></i> ${isSuspended ? L('Ditangguhkan', 'Suspended') : L('Aktif', 'Active')}
+            </span>
+          </td>
+          <td>${wsText}</td>
+          <td>
+            <div class="admin-date-cell">
+              <span>${lastActiveFormatted}</span>
+              <small>${L('Terdaftar:', 'Joined:')} ${dateFormatted}</small>
+            </div>
+          </td>
+          <td>
+            <div class="admin-actions-cell">
+              <button type="button" class="icon-button admin-action-btn" data-action="admin-edit-user:${u.id}" title="${L('Ubah Peran / Paket / Status', 'Edit Role / Plan / Status')}">✏️</button>
+              <button type="button" class="icon-button admin-action-btn" data-action="admin-reset-pw:${u.id}" title="${L('Reset Password', 'Reset Password')}">🔑</button>
+              <button type="button" class="icon-button admin-action-btn danger" data-action="admin-delete-user:${u.id}" title="${L('Hapus Akun Pengguna', 'Delete Account')}">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function adminPanel() {
+    if (!isServerMode) {
+      return `
+        ${header(L('Kontrol Panel Administrator', 'Administrator Control Panel'), L('Pusat monitoring pengguna multi-tenant & database SQLite VPS.', 'Multi-tenant user monitoring & VPS SQLite database management.'))}
+        <div class="panel admin-banner-card" style="text-align:center;padding:48px 24px;">
+          <div style="font-size:42px;margin-bottom:12px;">🛡️</div>
+          <h2 style="font-size:20px;margin-bottom:8px;">${L('Mode Server VPS Hostinger Diperlukan', 'Hostinger VPS Server Mode Required')}</h2>
+          <p style="max-width:540px;margin:0 auto 18px;color:var(--muted);line-height:1.7;">
+            ${L('Kontrol Panel Administrator memonitor pengguna terdaftar dan brankas finansial di database SQLite VPS Hostinger (187.77.134.249). Akses INVEYS melalui URL resmi untuk menggunakan panel ini.', 'The Administrator Control Panel monitors registered users and multi-tenant vaults on your Hostinger VPS SQLite database (187.77.134.249). Access INVEYS through your official domain to use this panel.')}
+          </p>
+          <div style="display:flex;gap:12px;justify-content:center;">
+            <a href="https://www.inveys.io" class="btn primary" target="_blank" rel="noopener">🌐 Buka www.inveys.io</a>
+            <button type="button" class="btn" onclick="navigate('home')">${L('Kembali ke Beranda', 'Return to Overview')}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.id === 'master';
+    if (!isAdmin) {
+      return `
+        ${header(L('Kontrol Panel Administrator', 'Administrator Control Panel'), L('Akses Terbatas', 'Restricted Access'))}
+        <div class="panel admin-banner-card" style="text-align:center;padding:48px 24px;">
+          <div style="font-size:42px;color:var(--red,#ef4444);margin-bottom:12px;">🚫</div>
+          <h2 style="font-size:20px;margin-bottom:8px;">${L('Hak Akses Administrator Diperlukan', 'Administrator Privileges Required')}</h2>
+          <p style="max-width:500px;margin:0 auto 20px;color:var(--muted);line-height:1.7;">
+            ${L('Akun Anda saat ini masuk sebagai pengguna biasa. Halaman kontrol panel ini hanya dapat diakses oleh akun Administrator atau pemegang kunci Master.', 'Your account is logged in as a standard member. This panel is restricted to Administrator accounts or Master key holders.')}
+          </p>
+          <button type="button" class="btn primary" onclick="navigate('home')">${L('Kembali ke Beranda', 'Return to Overview')}</button>
+        </div>
+      `;
+    }
+
+    if (!adminData.overview && !adminData.loading && !adminData.error) {
+      setTimeout(() => fetchAdminData(), 20);
+    }
+
+    const ov = adminData.overview || {};
+    const totalUsers = ov.totalUsers ?? '…';
+    const activeUsers = ov.activeUsers ?? '…';
+    const suspendedUsers = ov.suspendedUsers ?? 0;
+    const adminUsers = ov.adminUsers ?? 1;
+    const activeSessions = ov.activeSessions ?? '…';
+    const totalWs = ov.totalWorkspaces ?? '…';
+    const totalBk = ov.totalBackups ?? '…';
+    const dbKb = ov.databaseSizeBytes ? (ov.databaseSizeBytes / 1024).toFixed(1) + ' KB' : '…';
+    const planCounts = ov.plans || {};
+
+    const actions = `
+      <span class="vps-status-pill online" style="margin-right:8px;"><i></i> Hostinger Node 187.77.134.249</span>
+      <button type="button" class="btn primary" data-action="admin-create-user">
+        ${icon('plus')} ${L('Tambah Pengguna', 'Add User')}
+      </button>
+      <button type="button" class="btn" data-action="admin-refresh" title="${L('Muat Ulang Data', 'Refresh Data')}">
+        🔄 ${adminData.loading ? L('Memuat…', 'Loading…') : L('Segarkan', 'Refresh')}
+      </button>
+    `;
+
+    return `
+      ${header(L('Kontrol Panel Administrator', 'Administrator Control Panel'), L('Pusat kendali & monitoring pengguna, lisensi paket, brankas multi-tenant, dan database VPS Hostinger.', 'Central hub for monitoring users, plans, multi-tenant vaults, and Hostinger VPS database.'), actions, 'HOSTINGER VPS ROOT · CONTROL PANEL')}
+
+      ${adminData.error ? `<div class="panel form-error" style="padding:14px;margin-bottom:20px;display:block;">⚠️ ${escape(adminData.error)}</div>` : ''}
+
+      <div class="metrics-grid admin-metrics-grid" style="margin-bottom:24px;">
+        <div class="metric metric-users">
+          <div class="metric-label"><span>${L('Total Pengguna', 'Total Users')}</span><span class="metric-icon-wrap">${icon('users')}</span></div>
+          <div class="metric-value">${totalUsers}</div>
+          <div class="metric-foot"><span class="positive">${activeUsers} ${L('Aktif', 'Active')}</span> · <span>${adminUsers} Admin</span> · <span class="${suspendedUsers > 0 ? 'negative' : ''}">${suspendedUsers} ${L('Ditangguhkan', 'Suspended')}</span></div>
+        </div>
+        <div class="metric metric-sessions">
+          <div class="metric-label"><span>${L('Sesi Aktif Realtime', 'Active Sessions')}</span><span class="metric-icon-wrap">${icon('lightning')}</span></div>
+          <div class="metric-value">${activeSessions}</div>
+          <div class="metric-foot"><span class="positive">${L('Perangkat terhubung saat ini', 'Connected devices right now')}</span></div>
+        </div>
+        <div class="metric metric-vault">
+          <div class="metric-label"><span>${L('Brankas & Penyimpanan', 'Vaults & Storage')}</span><span class="metric-icon-wrap">${icon('vault')}</span></div>
+          <div class="metric-value">${dbKb}</div>
+          <div class="metric-foot"><span>${totalWs} ${L('Brankas', 'Vaults')}</span> · <span>${totalBk} ${L('Snapshot Cadangan', 'Backups')}</span></div>
+        </div>
+        <div class="metric metric-license">
+          <div class="metric-label"><span>${L('Distribusi Lisensi', 'Plan Breakdown')}</span><span class="metric-icon-wrap">${icon('shield')}</span></div>
+          <div class="metric-value">Ultra: ${planCounts.ultra || 0}</div>
+          <div class="metric-foot"><span>Pro: ${planCounts.pro || 0}</span> · <span>Plus: ${planCounts.plus || 0}</span></div>
+        </div>
+      </div>
+
+      <div class="panel admin-users-panel" style="margin-bottom:24px;">
+        <div class="panel-pad">
+          <div class="panel-head" style="margin-bottom:18px;">
+            <div>
+              <h2 class="panel-title">${icon('users')} ${L('Manajemen & Monitoring Pengguna', 'User Management & Monitoring')}</h2>
+              <p>${L('Daftar seluruh akun yang terdaftar pada node VPS Hostinger ini beserta status brankas dan aktivitasnya.', 'List of all registered accounts on this Hostinger VPS node, including vault sync and activity status.')}</p>
+            </div>
+          </div>
+
+          <div class="admin-filter-bar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
+            <input type="search" id="admin-search-input" class="input-search" placeholder="${L('Cari nama atau email pengguna…', 'Search name or email…')}" value="${escape(adminData.query)}" style="flex:1;min-width:220px;">
+            <select id="admin-role-filter" class="admin-select-filter" aria-label="Filter Role">
+              <option value="all" ${adminData.roleFilter === 'all' ? 'selected' : ''}>${L('Semua Peran', 'All Roles')}</option>
+              <option value="admin" ${adminData.roleFilter === 'admin' ? 'selected' : ''}>🛡️ ${L('Administrator', 'Administrator')}</option>
+              <option value="user" ${adminData.roleFilter === 'user' ? 'selected' : ''}>👤 ${L('User Biasa', 'Standard User')}</option>
+            </select>
+            <select id="admin-plan-filter" class="admin-select-filter" aria-label="Filter Paket">
+              <option value="all" ${adminData.planFilter === 'all' ? 'selected' : ''}>${L('Semua Paket', 'All Plans')}</option>
+              <option value="ultra" ${adminData.planFilter === 'ultra' ? 'selected' : ''}>ULTRA</option>
+              <option value="pro" ${adminData.planFilter === 'pro' ? 'selected' : ''}>PRO</option>
+              <option value="plus" ${adminData.planFilter === 'plus' ? 'selected' : ''}>PLUS</option>
+            </select>
+            <select id="admin-status-filter" class="admin-select-filter" aria-label="Filter Status">
+              <option value="all" ${adminData.statusFilter === 'all' ? 'selected' : ''}>${L('Semua Status', 'All Statuses')}</option>
+              <option value="active" ${adminData.statusFilter === 'active' ? 'selected' : ''}>● ${L('Aktif', 'Active')}</option>
+              <option value="suspended" ${adminData.statusFilter === 'suspended' ? 'selected' : ''}>● ${L('Ditangguhkan', 'Suspended')}</option>
+            </select>
+          </div>
+
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>${L('Pengguna', 'User')}</th>
+                  <th>${L('Peran', 'Role')}</th>
+                  <th>${L('Paket Lisensi', 'Plan')}</th>
+                  <th>${L('Status', 'Status')}</th>
+                  <th>${L('Brankas (Vault)', 'Vault')}</th>
+                  <th>${L('Aktivitas', 'Activity')}</th>
+                  <th style="text-align:right;">${L('Aksi', 'Actions')}</th>
+                </tr>
+              </thead>
+              <tbody id="admin-user-tbody">
+                ${adminUserRows()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel admin-diagnostics-panel">
+        <div class="panel-pad">
+          <div class="panel-head" style="margin-bottom:14px;">
+            <h2 class="panel-title">${icon('settings')} ${L('Diagnostik Server & Database VPS', 'VPS Server & Database Diagnostics')}</h2>
+            <p>${L('Status lingkungan operasional server dan integritas sistem berkas SQLite.', 'Server operational environment and SQLite filesystem integrity.')}</p>
+          </div>
+          <div class="admin-diag-grid">
+            <div class="admin-diag-item">
+              <small>${L('Node Server VPS', 'VPS Server Node')}</small>
+              <b>Hostinger VPS · IP: 187.77.134.249</b>
+            </div>
+            <div class="admin-diag-item">
+              <small>${L('Domain Terhubung', 'Connected Domain')}</small>
+              <b>inveys.io · www.inveys.io (HTTPS Caddy Reverse Proxy)</b>
+            </div>
+            <div class="admin-diag-item">
+              <small>${L('Database Backend', 'Backend Database')}</small>
+              <b>SQLite 3 (WAL Mode · server/inveys.db · 0600)</b>
+            </div>
+            <div class="admin-diag-item">
+              <small>${L('Versi Aplikasi', 'App Version')}</small>
+              <b>INVEYS v0.23.0 (Production Multi-User Vault)</b>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function adminAction(name, id, extra) {
+    if (name === 'admin-panel') {
+      const profilePopover = $('#profile-popover');
+      const profileBtn = $('#profile-button');
+      if (profilePopover) profilePopover.classList.remove('open');
+      if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
+      navigate('admin');
+      return;
+    }
+
+    if (name === 'admin-refresh') {
+      fetchAdminData(adminData.query);
+      toast(L('Memuat ulang data pengguna…', 'Refreshing user data…'));
+      return;
+    }
+
+    if (name === 'admin-create-user') {
+      openModal(L('Tambah Pengguna Baru', 'Create New User'), `
+        <form id="admin-create-user-form">
+          <div class="field" style="margin-bottom:14px;">
+            <label for="adm-c-name">${L('Nama Lengkap', 'Full Name')}</label>
+            <input type="text" id="adm-c-name" name="name" placeholder="Contoh: Hendra" required>
+          </div>
+          <div class="field" style="margin-bottom:14px;">
+            <label for="adm-c-email">${L('Alamat Email', 'Email Address')}</label>
+            <input type="email" id="adm-c-email" name="email" placeholder="nama@domain.com" required>
+          </div>
+          <div class="field" style="margin-bottom:14px;">
+            <label for="adm-c-pw">${L('Password (minimal 6 karakter)', 'Password (min 6 chars)')}</label>
+            <input type="password" id="adm-c-pw" name="password" minlength="6" required>
+          </div>
+          <div class="form-grid" style="margin-bottom:16px;">
+            <div class="field">
+              <label for="adm-c-plan">${L('Paket Lisensi', 'License Plan')}</label>
+              <select id="adm-c-plan" name="plan">
+                <option value="plus">INVEYS Plus</option>
+                <option value="pro" selected>INVEYS Pro</option>
+                <option value="ultra">INVEYS Ultra</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="adm-c-role">${L('Peran Akun', 'Account Role')}</label>
+              <select id="adm-c-role" name="role">
+                <option value="user" selected>👤 ${L('User Biasa', 'Standard User')}</option>
+                <option value="admin">🛡️ ${L('Administrator', 'Administrator')}</option>
+              </select>
+            </div>
+          </div>
+          <p id="adm-c-error" class="form-error" style="display:none;"></p>
+          <div class="form-actions">
+            <button type="button" class="btn" data-action="modal-close">${L('Batal', 'Cancel')}</button>
+            <button type="submit" class="btn primary" id="adm-c-submit-btn">${L('Buat Pengguna', 'Create User')}</button>
+          </div>
+        </form>
+      `);
+
+      setTimeout(() => {
+        const form = $('#admin-create-user-form');
+        form?.addEventListener('submit', async e => {
+          e.preventDefault();
+          const btn = $('#adm-c-submit-btn');
+          const errEl = $('#adm-c-error');
+          if (errEl) errEl.style.display = 'none';
+          if (btn) { btn.disabled = true; btn.textContent = L('Menyimpan…', 'Saving…'); }
+          const token = localStorage.getItem('inveys_token');
+          try {
+            const payload = Object.fromEntries(new FormData(form));
+            const res = await fetch('/api/admin/users/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Gagal membuat pengguna');
+            $('#modal').close();
+            toast(L('Pengguna berhasil dibuat!', 'User created successfully!'));
+            fetchAdminData();
+          } catch (err) {
+            if (errEl) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+          } finally {
+            if (btn) { btn.disabled = false; btn.textContent = L('Buat Pengguna', 'Create User'); }
+          }
+        });
+      }, 50);
+      return;
+    }
+
+    if (name === 'admin-edit-user') {
+      const u = (adminData.users || []).find(x => x.id === id);
+      if (!u) { toast(L('Pengguna tidak ditemukan', 'User not found')); return; }
+      openModal(L('Edit Pengguna', 'Edit User') + ` · ${u.email}`, `
+        <form id="admin-edit-user-form">
+          <input type="hidden" name="id" value="${escape(u.id)}">
+          <div class="field" style="margin-bottom:14px;">
+            <label for="adm-e-email">${L('Alamat Email (Tetap)', 'Email (Read-only)')}</label>
+            <input type="email" id="adm-e-email" value="${escape(u.email)}" disabled style="opacity:0.75;">
+          </div>
+          <div class="field" style="margin-bottom:14px;">
+            <label for="adm-e-name">${L('Nama Lengkap', 'Full Name')}</label>
+            <input type="text" id="adm-e-name" name="name" value="${escape(u.name || '')}" required>
+          </div>
+          <div class="form-grid" style="margin-bottom:16px;">
+            <div class="field">
+              <label for="adm-e-plan">${L('Paket Lisensi', 'License Plan')}</label>
+              <select id="adm-e-plan" name="plan">
+                <option value="plus" ${u.plan === 'plus' ? 'selected' : ''}>INVEYS Plus</option>
+                <option value="pro" ${u.plan === 'pro' ? 'selected' : ''}>INVEYS Pro</option>
+                <option value="ultra" ${u.plan === 'ultra' ? 'selected' : ''}>INVEYS Ultra</option>
+                <option value="lifetime" ${u.plan === 'lifetime' ? 'selected' : ''}>Lifetime Ultra</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="adm-e-role">${L('Peran Akun', 'Account Role')}</label>
+              <select id="adm-e-role" name="role">
+                <option value="user" ${u.role === 'user' ? 'selected' : ''}>👤 ${L('User Biasa', 'Standard User')}</option>
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>🛡️ ${L('Administrator', 'Administrator')}</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:18px;">
+            <label for="adm-e-status">${L('Status Akun', 'Account Status')}</label>
+            <select id="adm-e-status" name="status">
+              <option value="active" ${u.status !== 'suspended' ? 'selected' : ''}>🟢 ${L('Aktif (Bisa Login & Sinkron)', 'Active (Can login & sync)')}</option>
+              <option value="suspended" ${u.status === 'suspended' ? 'selected' : ''}>🔴 ${L('Ditangguhkan (Blokir Akses)', 'Suspended (Block access)')}</option>
+            </select>
+          </div>
+          <p id="adm-e-error" class="form-error" style="display:none;"></p>
+          <div class="form-actions">
+            <button type="button" class="btn" data-action="modal-close">${L('Batal', 'Cancel')}</button>
+            <button type="submit" class="btn primary" id="adm-e-submit-btn">${L('Simpan Perubahan', 'Save Changes')}</button>
+          </div>
+        </form>
+      `);
+
+      setTimeout(() => {
+        const form = $('#admin-edit-user-form');
+        form?.addEventListener('submit', async e => {
+          e.preventDefault();
+          const btn = $('#adm-e-submit-btn');
+          const errEl = $('#adm-e-error');
+          if (errEl) errEl.style.display = 'none';
+          if (btn) { btn.disabled = true; btn.textContent = L('Menyimpan…', 'Saving…'); }
+          const token = localStorage.getItem('inveys_token');
+          try {
+            const payload = Object.fromEntries(new FormData(form));
+            const res = await fetch('/api/admin/users/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Gagal memperbarui pengguna');
+            $('#modal').close();
+            toast(L('Data pengguna berhasil diperbarui!', 'User updated successfully!'));
+            fetchAdminData();
+          } catch (err) {
+            if (errEl) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+          } finally {
+            if (btn) { btn.disabled = false; btn.textContent = L('Simpan Perubahan', 'Save Changes'); }
+          }
+        });
+      }, 50);
+      return;
+    }
+
+    if (name === 'admin-reset-pw') {
+      const u = (adminData.users || []).find(x => x.id === id);
+      if (!u) { toast(L('Pengguna tidak ditemukan', 'User not found')); return; }
+      openModal(L('Reset Password', 'Reset Password') + ` · ${u.email}`, `
+        <form id="admin-reset-pw-form">
+          <input type="hidden" name="id" value="${escape(u.id)}">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+            ${L('Tetapkan kata sandi baru untuk akun ini. Seluruh sesi login pengguna saat ini akan otomatis dikeluarkan.', 'Set a new password for this account. All existing active sessions for this user will be revoked immediately.')}
+          </p>
+          <div class="field" style="margin-bottom:16px;">
+            <label for="adm-r-pw">${L('Password Baru (minimal 6 karakter)', 'New Password (min 6 chars)')}</label>
+            <input type="password" id="adm-r-pw" name="newPassword" minlength="6" required autofocus>
+          </div>
+          <p id="adm-r-error" class="form-error" style="display:none;"></p>
+          <div class="form-actions">
+            <button type="button" class="btn" data-action="modal-close">${L('Batal', 'Cancel')}</button>
+            <button type="submit" class="btn primary" id="adm-r-submit-btn">${L('Reset Password Sekarang', 'Reset Password Now')}</button>
+          </div>
+        </form>
+      `);
+
+      setTimeout(() => {
+        const form = $('#admin-reset-pw-form');
+        form?.addEventListener('submit', async e => {
+          e.preventDefault();
+          const btn = $('#adm-r-submit-btn');
+          const errEl = $('#adm-r-error');
+          if (errEl) errEl.style.display = 'none';
+          if (btn) { btn.disabled = true; btn.textContent = L('Menyimpan…', 'Saving…'); }
+          const token = localStorage.getItem('inveys_token');
+          try {
+            const payload = Object.fromEntries(new FormData(form));
+            const res = await fetch('/api/admin/users/reset-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Gagal mereset password');
+            $('#modal').close();
+            toast(L('Password pengguna berhasil direset!', 'User password reset successfully!'));
+          } catch (err) {
+            if (errEl) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+          } finally {
+            if (btn) { btn.disabled = false; btn.textContent = L('Reset Password Sekarang', 'Reset Password Now'); }
+          }
+        });
+      }, 50);
+      return;
+    }
+
+    if (name === 'admin-delete-user') {
+      const u = (adminData.users || []).find(x => x.id === id);
+      if (!u) { toast(L('Pengguna tidak ditemukan', 'User not found')); return; }
+      confirmAction(
+        L('Hapus Akun Pengguna?', 'Delete User Account?'),
+        `${L('Yakin ingin menghapus pengguna', 'Are you sure you want to delete user')} <b>${escape(u.email)}</b>? ${L('Seluruh data brankas, portofolio, dan backup miliknya di database VPS Hostinger akan dihapus secara permanen.', 'All personal vaults, portfolios, and backup records on this Hostinger VPS database will be permanently wiped.')}`,
+        async () => {
+          const token = localStorage.getItem('inveys_token');
+          try {
+            const res = await fetch('/api/admin/users/delete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) },
+              body: JSON.stringify({ id: u.id })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Gagal menghapus pengguna');
+            toast(L('Pengguna berhasil dihapus.', 'User deleted successfully.'));
+            fetchAdminData();
+          } catch (err) {
+            toast(err.message);
+          }
+        },
+        L('Hapus Pengguna', 'Delete User')
+      );
+      return;
+    }
+  }
+
   function budgetMonthNav(delta){
     const d = new Date(budgetYear, budgetMonth + delta, 1);
     budgetYear = d.getFullYear();
     budgetMonth = d.getMonth();
     render();
   }
+
   function budgetMonthToday(){
     const d = new Date();
     budgetYear = d.getFullYear();
@@ -5550,7 +6076,7 @@
     });
   }
 
-  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
+  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates,admin:adminPanel}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
   function refreshCharts(){
     if(page==='scenarios'){updateScenario();localize();return;}
     if(page==='montecarlo'){if(mcResult&&$('#mc-chart'))$('#mc-chart').innerHTML=mcChart();return;}
@@ -6112,7 +6638,7 @@
   function exportCSV(){const sanitize=v=>{let str=String(v??'');if(/^[=+@-]/.test(str))str="'"+str;return '"'+str.replaceAll('"','""')+'"';};const rows=[['Date','Description','Type','Amount','Currency','Account','Destination','Category'],...state.transactions.map(t=>[t.date,t.name,t.kind,(t.amount/100).toFixed(2),t.currency,getAccount(t.accountId)?.name||'',getAccount(t.targetId)?.name||'',t.category])];download('inveys-transactions.csv',rows.map(r=>r.map(sanitize).join(',')).join('\r\n'),'text/csv');toast('Transaction CSV exported.');}
   function importFile(file){if(!file)return;if(file.size>5000000){toast('Choose a JSON file smaller than 5 MB.');return;}file.text().then(text=>{const candidate=E.validate(JSON.parse(text));const p=E.position(candidate);confirmAction('Restore this workspace?',`${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, ${candidate.goals.length} goals. Reporting currency: ${escape(candidate.currency)}. This replaces all current local records. Export your current workspace first if needed.`,()=>{state=candidate;resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;save();toast('Workspace restored.');},'Replace workspace');}).catch(error=>toast('Import failed: '+error.message));}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
-  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'budget-setup':openBudgetSetupModal();break;
     case 'budget-edit':openBudgetSetupModal(id);break;
     case 'budget-remove':removeBudgetCategory(id);break;
@@ -6149,8 +6675,8 @@
     case 'review':navigate('accounts');toast('Start by verifying your account balances and dates.');break;
   }}
   document.addEventListener('click',event=>{const target=event.target.closest('button,[data-action]');if(!target)return;if(target.dataset.page){if(target.dataset.close)$('#modal').close();navigate(target.dataset.page);}else if(target.dataset.action)act(target.dataset.action);else if(target.dataset.question)ask(target.dataset.question);else if(target.dataset.starter){const box=$('#quick-text');if(box){box.value=target.dataset.starter;quickText=target.dataset.starter;box.focus();if(box.style){box.style.height='auto';box.style.height=Math.min(132,box.scrollHeight)+'px';}}}else if(target.dataset.quickFill){const box=$('#quick-text');if(box){box.value=target.dataset.quickFill;quickText=target.dataset.quickFill;box.focus();if(box.style){box.style.height='auto';box.style.height=Math.min(132,box.scrollHeight)+'px';}}}});
-  document.addEventListener('input',event=>{const el=event.target;if(el.id==='forecast-preview-year'){forecastSelectedYear=Math.max(0,Math.min(selectedPlan().years,Number(el.value)||0));if(forecastResult)$('#forecast-preview').innerHTML=forecastPreview(forecastResult,selectedPlan());}if(el.id==='gold-spot-price-slider'||el.id==='gold-spot-price-input'){const val=Number(el.value);if(Number.isFinite(val)&&val>0){state.goldInstallment.customSpotPrice=val;if(state.goldInstallment.synced){const h=state.holdings.find(h=>h.id==='h-gold-galeri24');if(h){h.price=val;h.quoteDate=date();}const acc=state.accounts.find(a=>a.id==='acc-gold-pegadaian');if(acc){acc.balance=Math.round(50*val*100);acc.updated=date();}}render();}}if(el.id==='gold-paid-months-slider'){const val=Math.max(0,Math.min(60,Number(el.value)||0));state.goldInstallment.paidMonths=val;render();}if(el.id==='quick-text'){quickText=el.value;if(el.style){el.style.height='auto';el.style.height=Math.min(132,el.scrollHeight)+'px';}}if(el.dataset.scenario){scenario[el.dataset.scenario]=E.cents(el.value);$('#value-'+el.dataset.scenario).textContent=money(scenario[el.dataset.scenario]);updateScenario();}if(el.dataset.debtId){const id=el.dataset.debtId;const d=state.debts.find(d=>d.id===id);$('#extra-label-'+id).textContent=money(E.cents(el.value),false,d.currency);$('#debt-results-'+id).innerHTML=debtResult(d,E.cents(el.value));}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';}if(el.id==='transaction-search'){txQuery=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='category-manager-search'){const q=el.value.toLowerCase().trim();$$('.monarch-settings-cat-row').forEach(row=>{const text=((row.dataset.catRow||'')+' '+(row.dataset.catDisplay||'')).toLowerCase();row.style.display=!q||text.includes(q)?'flex':'none';});}});
-  document.addEventListener('change',event=>{const el=event.target;if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='import-file')importFile(el.files[0]);});
+  document.addEventListener('input',event=>{const el=event.target;if(el.id==='admin-search-input'){adminData.query=el.value.toLowerCase().trim();const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='forecast-preview-year'){forecastSelectedYear=Math.max(0,Math.min(selectedPlan().years,Number(el.value)||0));if(forecastResult)$('#forecast-preview').innerHTML=forecastPreview(forecastResult,selectedPlan());}if(el.id==='gold-spot-price-slider'||el.id==='gold-spot-price-input'){const val=Number(el.value);if(Number.isFinite(val)&&val>0){state.goldInstallment.customSpotPrice=val;if(state.goldInstallment.synced){const h=state.holdings.find(h=>h.id==='h-gold-galeri24');if(h){h.price=val;h.quoteDate=date();}const acc=state.accounts.find(a=>a.id==='acc-gold-pegadaian');if(acc){acc.balance=Math.round(50*val*100);acc.updated=date();}}render();}}if(el.id==='gold-paid-months-slider'){const val=Math.max(0,Math.min(60,Number(el.value)||0));state.goldInstallment.paidMonths=val;render();}if(el.id==='quick-text'){quickText=el.value;if(el.style){el.style.height='auto';el.style.height=Math.min(132,el.scrollHeight)+'px';}}if(el.dataset.scenario){scenario[el.dataset.scenario]=E.cents(el.value);$('#value-'+el.dataset.scenario).textContent=money(scenario[el.dataset.scenario]);updateScenario();}if(el.dataset.debtId){const id=el.dataset.debtId;const d=state.debts.find(d=>d.id===id);$('#extra-label-'+id).textContent=money(E.cents(el.value),false,d.currency);$('#debt-results-'+id).innerHTML=debtResult(d,E.cents(el.value));}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';}if(el.id==='transaction-search'){txQuery=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='category-manager-search'){const q=el.value.toLowerCase().trim();$$('.monarch-settings-cat-row').forEach(row=>{const text=((row.dataset.catRow||'')+' '+(row.dataset.catDisplay||'')).toLowerCase();row.style.display=!q||text.includes(q)?'flex':'none';});}});
+  document.addEventListener('change',event=>{const el=event.target;if(['admin-role-filter','admin-plan-filter','admin-status-filter'].includes(el.id)){if(el.id==='admin-role-filter')adminData.roleFilter=el.value;if(el.id==='admin-plan-filter')adminData.planFilter=el.value;if(el.id==='admin-status-filter')adminData.statusFilter=el.value;const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='import-file')importFile(el.files[0]);});
   document.addEventListener('submit',event=>{if(event.target.id==='quick-form'){event.preventDefault();const d=Object.fromEntries(new FormData(event.target));quickSend(d.text,d.accountId);return;}if(event.target.id==='chat-form'){event.preventDefault();ask($('#chat-question').value.trim());}});
   $('#close-modal').addEventListener('click',()=>$('#modal').close());$('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=$('#modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('#modal').close();}});
   $('#menu-button').addEventListener('click',()=>{setSidebarOpen(!sidebarOpen);if(sidebarOpen)$('#navigation button')?.focus();});$('#search-button').addEventListener('click',searchModal);$('#notification-button').addEventListener('click',openReminders);$('#workspace-button')?.addEventListener('click',()=>navigate('home'));

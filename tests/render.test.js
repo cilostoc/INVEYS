@@ -7,13 +7,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {randomUUID} = require('node:crypto');
 
-function boot(saved) {
+function boot(saved, env = {}) {
   const elements=new Map(), events=new Map(), store=new Map();
   if(saved)store.set('inveys-workspace-v1',JSON.stringify(saved));
   const element=selector=>{
     if(elements.has(selector))return elements.get(selector);
     const classes=new Set(), handlers=new Map();
-    const node={innerHTML:'',textContent:'',value:'',open:false,dataset:{},scrollHeight:100,handlers,attributes:new Map(),setAttribute(name,value){this.attributes.set(name,value);},
+    const node={innerHTML:'',textContent:'',value:'',open:false,dataset:{},style:{},scrollHeight:100,handlers,attributes:new Map(),setAttribute(name,value){this.attributes.set(name,value);},
       classList:{add:v=>classes.add(v),remove:v=>classes.delete(v),toggle:(v,force)=>force===undefined?(classes.has(v)?classes.delete(v):classes.add(v)):(force?classes.add(v):classes.delete(v))},
       addEventListener:(name,fn)=>handlers.set(name,fn),
       querySelector:q=>element(selector+' '+q),querySelectorAll:()=>[],
@@ -24,7 +24,10 @@ function boot(saved) {
   const document={querySelector:element,querySelectorAll:()=>[],body:element('body'),activeElement:{tagName:'BODY'},
     addEventListener:(name,fn)=>{if(!events.has(name))events.set(name,[]);events.get(name).push(fn);}};
   const context=vm.createContext({document,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},
-    location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
+    location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,
+    __INVEYS_SERVER_MODE__: env.isServerMode || false,
+    __INVEYS_CURRENT_USER__: env.currentUser || null,
+    FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
   for(const file of ['engine.js','finance.js','investment.js','appearance.js','plans.js','i18n.js','recording.js','releases.js','assistant.js','operations.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..','src',file),'utf8'),context,{filename:file});
@@ -765,5 +768,30 @@ test('quick composer renders Vey cyber-vault mascot chatbot with animated SVG an
   assert.match(app.html(), /vey-mascot-svg/);
   assert.match(app.html(), /<strong class="vey-name">Vey<\/strong>/);
 });
+
+test('administrator control panel renders access restriction in local mode and full control hub in admin server mode', () => {
+  const localApp = boot();
+  localApp.click({page: 'admin'});
+  // In local mode (not server mode), VPS server mode required notice is displayed
+  assert.match(localApp.html(), /Mode Server VPS Hostinger Diperlukan|Hostinger VPS Server Mode Required/);
+
+  // In server mode as standard user, restricted access is displayed
+  const userApp = boot(null, { isServerMode: true, currentUser: { id: 'usr-2', email: 'member@inveys.io', role: 'user', plan: 'plus' } });
+  userApp.click({page: 'admin'});
+  assert.match(userApp.html(), /Akses Terbatas|Restricted Access/);
+  assert.match(userApp.html(), /Hak Akses Administrator Diperlukan|Administrator Privileges Required/);
+
+  // In server mode with admin role, full monitoring control panel is displayed
+  const adminApp = boot(null, { isServerMode: true, currentUser: { id: 'usr-1', email: 'admin@inveys.io', role: 'admin', plan: 'ultra' } });
+  adminApp.click({page: 'admin'});
+  assert.match(adminApp.html(), /Kontrol Panel Administrator|Administrator Control Panel/);
+  assert.match(adminApp.html(), /admin-metrics-grid/);
+  assert.match(adminApp.html(), /Hostinger Node 187\.77\.134\.249/);
+  assert.match(adminApp.html(), /admin-search-input/);
+  assert.match(adminApp.html(), /admin-table/);
+  assert.match(adminApp.html(), /admin-user-tbody/);
+  assert.match(adminApp.html(), /SQLite 3/);
+});
+
 
 

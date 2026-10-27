@@ -531,4 +531,111 @@ class Backend(unittest.TestCase):
             self.assertEqual(res_check['order']['plan'], 'lifetime')
             self.assertTrue(res_check['order']['licenseKey'].startswith('IV-ULTRA-'))
 
+    def test_admin_user_roles_and_control_panel_api(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'admin_test.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+
+            # 1. First user registers -> automatically becomes Admin with ULTRA plan
+            st_adm, res_adm = self.request('/api/auth/register', {
+                'email': 'admin@inveys.io',
+                'password': 'password123',
+                'name': 'Main Administrator'
+            }, headers_csrf)
+            self.assertEqual(st_adm, 200)
+            self.assertEqual(res_adm['user']['role'], 'admin')
+            self.assertEqual(res_adm['user']['plan'], 'ultra')
+            admin_token = res_adm['token']
+            admin_headers = {**headers_csrf, 'Authorization': f'Bearer {admin_token}'}
+
+            # 2. Second user registers -> regular user with PLUS plan
+            st_usr, res_usr = self.request('/api/auth/register', {
+                'email': 'regular@inveys.io',
+                'password': 'password123',
+                'name': 'Regular Member'
+            }, headers_csrf)
+            self.assertEqual(st_usr, 200)
+            self.assertEqual(res_usr['user']['role'], 'user')
+            self.assertEqual(res_usr['user']['plan'], 'plus')
+            user_token = res_usr['token']
+            user_headers = {**headers_csrf, 'Authorization': f'Bearer {user_token}'}
+
+            # 3. Regular user tries to access /api/admin/overview -> 403 Forbidden
+            st_denied, _ = self.request('/api/admin/overview', headers=user_headers)
+            self.assertEqual(st_denied, 403)
+
+            # 4. Admin accesses /api/admin/overview -> 200 OK with accurate counts
+            st_ov, res_ov = self.request('/api/admin/overview', headers=admin_headers)
+            self.assertEqual(st_ov, 200)
+            self.assertTrue(res_ov['ok'])
+            self.assertEqual(res_ov['overview']['totalUsers'], 2)
+            self.assertEqual(res_ov['overview']['adminUsers'], 1)
+            self.assertEqual(res_ov['overview']['activeUsers'], 2)
+
+            # 5. Admin queries /api/admin/users
+            st_users, res_users = self.request('/api/admin/users', headers=admin_headers)
+            self.assertEqual(st_users, 200)
+            self.assertEqual(len(res_users['users']), 2)
+
+            # 6. Admin creates a new user directly
+            st_cr, res_cr = self.request('/api/admin/users/create', {
+                'email': 'client@domain.com',
+                'password': 'password456',
+                'name': 'VIP Client',
+                'plan': 'pro',
+                'role': 'user'
+            }, admin_headers)
+            self.assertEqual(st_cr, 200)
+            self.assertEqual(res_cr['user']['plan'], 'pro')
+            vip_id = res_cr['user']['id']
+
+            # 7. Admin updates VIP Client to ULTRA plan and suspends
+            st_up, res_up = self.request('/api/admin/users/update', {
+                'id': vip_id,
+                'name': 'VIP Client Updated',
+                'plan': 'ultra',
+                'role': 'user',
+                'status': 'suspended'
+            }, admin_headers)
+            self.assertEqual(st_up, 200)
+            self.assertEqual(res_up['user']['status'], 'suspended')
+            self.assertEqual(res_up['user']['plan'], 'ultra')
+
+            # 8. Suspended user login fails with 403
+            st_sus, res_sus = self.request('/api/auth/login', {
+                'email': 'client@domain.com',
+                'password': 'password456'
+            }, headers_csrf)
+            self.assertEqual(st_sus, 403)
+            self.assertIn('ditangguhkan', res_sus['error'])
+
+            # 9. Admin resets password and reactivates user
+            st_act, _ = self.request('/api/admin/users/update', {
+                'id': vip_id,
+                'status': 'active'
+            }, admin_headers)
+            self.assertEqual(st_act, 200)
+
+            st_pw, _ = self.request('/api/admin/users/reset-password', {
+                'id': vip_id,
+                'newPassword': 'brandNewPassword999'
+            }, admin_headers)
+            self.assertEqual(st_pw, 200)
+
+            # 10. Login with new password succeeds
+            st_relog, res_relog = self.request('/api/auth/login', {
+                'email': 'client@domain.com',
+                'password': 'brandNewPassword999'
+            }, headers_csrf)
+            self.assertEqual(st_relog, 200)
+            self.assertEqual(res_relog['user']['status'], 'active')
+
+            # 11. Admin deletes the user
+            st_del, res_del = self.request('/api/admin/users/delete', {'id': vip_id}, admin_headers)
+            self.assertEqual(st_del, 200)
+            self.assertTrue(res_del['ok'])
+
+            # 12. Admin cannot delete self
+            st_self_del, _ = self.request('/api/admin/users/delete', {'id': res_adm['user']['id']}, admin_headers)
+            self.assertEqual(st_self_del, 400)
+
 if __name__=='__main__':unittest.main()
