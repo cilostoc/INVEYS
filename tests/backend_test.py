@@ -758,4 +758,66 @@ class Backend(unittest.TestCase):
             self.assertEqual(res_pub['broadcast']['tone'], 'warning')
             self.assertIn('Pemeliharaan server', res_pub['broadcast']['message'])
 
+    def test_admin_telegram_notifications(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'inbox.sqlite3'):
+            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            
+            # 1. Unauthenticated test call -> 401
+            st_unauth, _ = self.request('/api/admin/telegram/test', {})
+            self.assertEqual(st_unauth, 401)
+
+            # Register Admin & User
+            _, res_adm = self.request('/api/auth/register', {
+                'email': 'admin_tg@inveys.io',
+                'password': 'passAdmin123'
+            }, headers_csrf)
+            adm_headers = {'Authorization': 'Bearer ' + res_adm['token'], 'Origin': 'http://127.0.0.1:3000'}
+
+            _, res_usr = self.request('/api/auth/register', {
+                'email': 'user_tg@inveys.io',
+                'password': 'passAdmin123'
+            }, headers_csrf)
+            usr_headers = {'Authorization': 'Bearer ' + res_usr['token'], 'Origin': 'http://127.0.0.1:3000'}
+
+            # 2. Regular user cannot trigger telegram test -> 403
+            st_forbid, _ = self.request('/api/admin/telegram/test', {}, usr_headers)
+            self.assertEqual(st_forbid, 403)
+
+            # 3. Admin call without bot token / chat ID -> 400
+            st_missing, res_missing = self.request('/api/admin/telegram/test', {}, adm_headers)
+            self.assertEqual(st_missing, 400)
+            self.assertFalse(res_missing['ok'])
+            self.assertIn('belum dikonfigurasi', res_missing['error'])
+
+            # 4. Admin call with mocked send_telegram_message -> 200 & audit recorded
+            with patch.object(s, 'send_telegram_message', return_value={'message_id': 12345}):
+                st_ok, res_ok = self.request('/api/admin/telegram/test', {
+                    'botToken': '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
+                    'chatId': '987654321'
+                }, adm_headers)
+                self.assertEqual(st_ok, 200)
+                self.assertTrue(res_ok['ok'])
+                self.assertIn('Notifikasi uji coba berhasil dikirim', res_ok['message'])
+
+            # 5. Check audit logs contain admin.telegram.test
+            st_logs, res_logs = self.request('/api/admin/audit-logs', headers=adm_headers)
+            self.assertEqual(st_logs, 200)
+            actions = [log['action'] for log in res_logs['logs']]
+            self.assertIn('admin.telegram.test', actions)
+
+            # 6. Overview includes telegram status
+            st_ov, res_ov = self.request('/api/admin/overview', headers=adm_headers)
+            self.assertEqual(st_ov, 200)
+            self.assertIn('telegram', res_ov['overview'])
+            self.assertIn('configured', res_ov['overview']['telegram'])
+
+            # 7. Asynchronous notify_admin_telegram helper test
+            with patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'test_tok', 'TELEGRAM_CHAT_ID': '123456'}):
+                with patch.object(s, 'send_telegram_message') as mock_send:
+                    s.notify_admin_telegram("<b>Alert Test</b>")
+                    # Allow daemon thread execution
+                    import time
+                    time.sleep(0.15)
+                    mock_send.assert_called_once()
+
 if __name__=='__main__':unittest.main()

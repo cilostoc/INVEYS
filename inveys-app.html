@@ -5387,6 +5387,51 @@ dialog.has-key-mgr > #modal-body {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* Administrator Telegram & Webhook Automation */
+.admin-telegram-panel {
+  border: 1px solid var(--line);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.admin-tg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+  background: var(--bg-hover, #f8fafc);
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+[data-theme=dark] .admin-tg-grid {
+  background: rgba(255, 255, 255, 0.03);
+}
+.admin-tg-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-tg-item small {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.admin-tg-item b {
+  font-size: 13px;
+  color: var(--ink);
+}
+.admin-tg-item code {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+[data-theme=dark] .admin-tg-item code {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 
 </style>
 </head>
@@ -13349,6 +13394,9 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     const dbKb = ov.databaseSizeBytes ? (ov.databaseSizeBytes / 1024).toFixed(1) + ' KB' : '…';
     const planCounts = ov.plans || {};
     const bcast = adminData.broadcast || { active: false, message: '', tone: 'info' };
+    const tgInfo = ov.telegram || { configured: !!service.telegram, chatId: '' };
+    const tgConfigured = !!tgInfo.configured || !!service.telegram;
+    const tgChatId = tgInfo.chatId || '';
 
     const actions = `
       <span class="vps-status-pill online" style="margin-right:8px;"><i></i> Hostinger Node 187.77.134.249</span>
@@ -13460,6 +13508,42 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
               <button type="submit" class="btn primary" id="adm-broadcast-save-btn">📢 ${L('Simpan & Siarkan Pengumuman', 'Publish Broadcast')}</button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <div class="panel admin-telegram-panel" style="margin-bottom:24px;">
+        <div class="panel-pad">
+          <div class="panel-head" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+            <div>
+              <h2 class="panel-title">🤖 ${L('Otomasi Notifikasi Bot Telegram & Webhook', 'Telegram Bot Admin Notifications & Webhooks')}</h2>
+              <p>${L('Kirim peringatan realtime instan langsung ke akun/grup Telegram Administrator saat terjadi pendaftaran pengguna baru, pembayaran lisensi, backup database, atau upaya brute-force mencurigakan.', 'Instant real-time alerts sent to your Telegram whenever a new user registers, orders a license, backs up the database, or triggers security lockouts.')}</p>
+            </div>
+            <div>
+              <span class="vps-status-pill ${tgConfigured ? 'online' : ''}">${tgConfigured ? '● ' + L('Aktif & Terhubung', 'Active & Connected') : '○ ' + L('Belum Dikonfigurasi', 'Not Configured')}</span>
+            </div>
+          </div>
+          <div class="admin-tg-grid">
+            <div class="admin-tg-item">
+              <small>${L('Status Bot Telegram', 'Telegram Bot Status')}</small>
+              <b>${tgConfigured ? '✅ ' + L('Bot Siap Menerima & Mengirim', 'Bot Ready to Dispatch') : '⚠️ ' + L('Kredensial Belum Lengkap', 'Incomplete Credentials')}</b>
+            </div>
+            <div class="admin-tg-item">
+              <small>${L('Target Admin Chat ID', 'Target Admin Chat ID')}</small>
+              <code>${escape(tgChatId || L('(Belum diatur)', '(Not set)'))}</code>
+            </div>
+            <div class="admin-tg-item">
+              <small>${L('Pemicu Otomatis (Event Triggers)', 'Automated Event Triggers')}</small>
+              <span style="font-size:12px;color:var(--text-bright);">🔔 Register · 💳 Payment · 💾 Backup · 🚨 Brute Force</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            <button type="button" class="btn" data-action="admin-config-telegram">
+              ⚙️ ${L('Atur Token & Chat ID', 'Configure Bot Token & Chat ID')}
+            </button>
+            <button type="button" class="btn primary" data-action="admin-test-telegram" id="adm-test-tg-btn">
+              🚀 ${L('Kirim Pesan Uji Coba (Test Notification)', 'Send Test Notification')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -13627,6 +13711,46 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
           render();
         })
         .catch(err => toast(err.message));
+      return;
+    }
+
+    if (name === 'admin-config-telegram') {
+      openApiKeysModal('telegram');
+      return;
+    }
+
+    if (name === 'admin-test-telegram') {
+      const btn = $('#adm-test-tg-btn') || $('[data-action="admin-test-telegram"]');
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ ' + L('Mengirim Uji Coba…', 'Sending Test…');
+      }
+      const token = localStorage.getItem('inveys_token');
+      const headers = { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) };
+      fetch('/api/admin/telegram/test', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({})
+      })
+        .then(async res => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || L('Gagal mengirim notifikasi uji coba', 'Failed to send test notification'));
+          return data;
+        })
+        .then(data => {
+          toast('✅ ' + (data.message || L('Notifikasi uji coba berhasil dikirim ke Telegram Admin!', 'Test notification sent to Telegram Admin!')));
+          fetchAdminData();
+        })
+        .catch(err => {
+          toast('⚠️ ' + err.message);
+        })
+        .finally(() => {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText || ('🚀 ' + L('Kirim Pesan Uji Coba (Test Notification)', 'Send Test Notification'));
+          }
+        });
       return;
     }
 

@@ -11,7 +11,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from contextlib import contextmanager
 import sys
-import os, json, urllib.request, urllib.error, urllib.parse, base64, tempfile, subprocess, shutil, secrets, sqlite3, threading, time, hashlib, hmac, datetime, re
+import os, json, urllib.request, urllib.error, urllib.parse, base64, tempfile, subprocess, shutil, secrets, sqlite3, threading, time, hashlib, hmac, datetime, re, html
 
 SERVER_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SERVER_DIR.parent
@@ -62,6 +62,15 @@ def record_failed_login(ip: str):
     attempts = LOGIN_ATTEMPTS.get(ip, [])
     attempts.append(time.time())
     LOGIN_ATTEMPTS[ip] = attempts
+    if len(attempts) == MAX_FAILED_ATTEMPTS:
+        now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        msg = (
+            f"🚨 <b>INVEYS Security Alert: Percobaan Brute Force Terdeteksi!</b>\n\n"
+            f"🌐 <b>IP Address:</b> <code>{html.escape(ip)}</code>\n"
+            f"⚠️ <b>Status:</b> Alamat IP ini diblokir sementara selama 15 menit ({MAX_FAILED_ATTEMPTS} kali percobaan login gagal berturut-turut).\n"
+            f"⏰ <b>Waktu:</b> {now_str}"
+        )
+        notify_admin_telegram(msg)
 
 
 def clear_failed_login(ip: str):
@@ -423,6 +432,17 @@ def complete_order_and_activate(order_id: str, payment_method: str = 'qris', raw
         c.execute('INSERT INTO licenses (id, license_key, user_id, email, plan, expires_at, signature, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                   (lic_id, lic_key, user_id, email, assigned_plan, expires_at, sig, now))
 
+    now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    notify_admin_telegram(
+        f"🎉 <b>INVEYS Commercial Alert: Pembayaran Berhasil!</b>\n\n"
+        f"📋 <b>Order ID:</b> <code>{order_id}</code>\n"
+        f"👤 <b>Email:</b> {html.escape(email or 'user@inveys.io')}\n"
+        f"📦 <b>Paket:</b> {assigned_plan.upper()} ({cycle.capitalize()})\n"
+        f"💳 <b>Metode:</b> {payment_method}\n"
+        f"🔑 <b>Lisensi:</b> <code>{lic_key}</code>\n"
+        f"⏰ <b>Waktu:</b> {now_str}"
+    )
+
     return {
         'ok': True,
         'orderId': order_id,
@@ -545,6 +565,41 @@ def test_api_key_connection(provider_name: str, payload: dict) -> dict:
         return {'ok': False, 'error': f'Koneksi gagal ({err.code}): {msg}'}
     except Exception as err:
         return {'ok': False, 'error': f'Koneksi gagal: {str(err)}'}
+
+
+def send_telegram_message(text: str, chat_id: str = None, token: str = None, parse_mode: str = 'HTML') -> dict:
+    tok = (token or os.environ.get('TELEGRAM_BOT_TOKEN', '')).strip()
+    cid = (chat_id or os.environ.get('TELEGRAM_CHAT_ID', '')).strip()
+    if not tok or not cid:
+        raise ValueError('Telegram Bot Token dan Chat ID belum dikonfigurasi')
+    url = f"https://api.telegram.org/bot{tok}/sendMessage"
+    payload = {
+        'chat_id': cid,
+        'text': text,
+        'parse_mode': parse_mode,
+        'disable_web_page_preview': True
+    }
+    headers = {'Content-Type': 'application/json', 'User-Agent': f'INVEYS/{VERSION}'}
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, headers=headers)
+    with urllib.request.urlopen(req, timeout=10) as r:
+        res = json.loads(r.read(MAX + 1))
+        if not res.get('ok'):
+            raise ValueError(res.get('description', 'Telegram API menolak permintaan'))
+        return res.get('result', {})
+
+
+def notify_admin_telegram(text: str, parse_mode: str = 'HTML'):
+    tok = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
+    cid = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
+    if not tok or not cid:
+        return
+    def _send():
+        try:
+            send_telegram_message(text, chat_id=cid, token=tok, parse_mode=parse_mode)
+        except Exception as e:
+            print(f"[!] Warning sending admin telegram notification: {e}", flush=True)
+    threading.Thread(target=_send, daemon=True).start()
 
 
 def telegram(method, payload):
@@ -1070,6 +1125,8 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 if DB.exists(): db_size = DB.stat().st_size
             except Exception: pass
+            tg_configured = bool(os.environ.get('TELEGRAM_BOT_TOKEN') and os.environ.get('TELEGRAM_CHAT_ID'))
+            tg_chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
             return self.send_json({
                 'ok': True,
                 'overview': {
@@ -1082,6 +1139,11 @@ class Handler(SimpleHTTPRequestHandler):
                     'totalBackups': total_backups,
                     'databaseSizeBytes': db_size,
                     'plans': plans,
+                    'telegram': {
+                        'configured': tg_configured,
+                        'chatId': tg_chat_id if tg_configured else '',
+                        'botConfigured': bool(os.environ.get('TELEGRAM_BOT_TOKEN'))
+                    },
                     'server': {
                         'domain': 'inveys.io',
                         'ip': '187.77.134.249',
@@ -1174,6 +1236,16 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(db_bytes)
             record_audit(user.get('id'), 'admin.database.export', f'bytes={len(db_bytes)}, filename={filename}', self.get_client_ip(), self.headers.get('User-Agent'))
+            now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            size_kb = round(len(db_bytes) / 1024, 1)
+            notify_admin_telegram(
+                f"💾 <b>INVEYS Security Alert: Database Snapshot Diunduh</b>\n\n"
+                f"👤 <b>Admin:</b> {html.escape(user.get('email') or user.get('name') or user.get('id'))}\n"
+                f"📦 <b>Ukuran File:</b> {size_kb} KB ({len(db_bytes):,} bytes)\n"
+                f"📁 <b>Filename:</b> <code>{filename}</code>\n"
+                f"🌐 <b>IP:</b> {html.escape(self.get_client_ip())}\n"
+                f"⏰ <b>Waktu:</b> {now_str}"
+            )
             return
 
         if self.path.startswith('/api/admin/audit-logs'):
@@ -1295,6 +1367,17 @@ class Handler(SimpleHTTPRequestHandler):
                     c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
                               (token, user_id, now, expires, self.get_client_ip()))
                     record_audit(user_id, 'auth.register', f'email={email}, role={role}, plan={user_plan}', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
+
+                now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                notify_admin_telegram(
+                    f"🔔 <b>INVEYS Alert: Pengguna Baru Terdaftar</b>\n\n"
+                    f"👤 <b>Nama:</b> {html.escape(name)}\n"
+                    f"📧 <b>Email:</b> {html.escape(email)}\n"
+                    f"🏷️ <b>Paket:</b> {user_plan.upper()}\n"
+                    f"🛡️ <b>Role:</b> {role.upper()}\n"
+                    f"🌐 <b>IP:</b> {html.escape(self.get_client_ip())}\n"
+                    f"⏰ <b>Waktu:</b> {now_str}"
+                )
 
                 cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
                 user_data = {'id': user_id, 'email': email, 'name': name, 'plan': user_plan, 'role': role, 'status': 'active'}
@@ -1476,6 +1559,18 @@ class Handler(SimpleHTTPRequestHandler):
                               (user_id, email, h, salt, name, plan, role, now, now))
                     record_audit(user['id'], 'admin.user.create', f'target_email={email}, target_id={user_id}, role={role}, plan={plan}', self.get_client_ip(), self.headers.get('User-Agent'), conn=c)
 
+                now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                notify_admin_telegram(
+                    f"👤 <b>INVEYS Admin Alert: Akun Pengguna Dibuat</b>\n\n"
+                    f"👤 <b>Nama:</b> {html.escape(name)}\n"
+                    f"📧 <b>Email:</b> {html.escape(email)}\n"
+                    f"🏷️ <b>Paket:</b> {plan.upper()}\n"
+                    f"🛡️ <b>Role:</b> {role.upper()}\n"
+                    f"👮 <b>Dibuat oleh:</b> {html.escape(user.get('email') or user.get('name') or user.get('id'))}\n"
+                    f"🌐 <b>IP:</b> {html.escape(self.get_client_ip())}\n"
+                    f"⏰ <b>Waktu:</b> {now_str}"
+                )
+
                 return self.send_json({
                     'ok': True,
                     'user': {
@@ -1617,6 +1712,45 @@ class Handler(SimpleHTTPRequestHandler):
                 record_audit(user['id'], 'admin.broadcast.update', f'active={active}, tone={tone}', self.get_client_ip(), self.headers.get('User-Agent'))
                 return self.send_json({'ok': True, 'broadcast': b_payload})
 
+            # Administrator Telegram Test Endpoint
+            if self.path == '/api/admin/telegram/test':
+                user = self.get_authenticated_user()
+                if not user:
+                    return self.send_json({'error': 'Unauthorized'}, 401)
+                if user.get('role') != 'admin' and user.get('id') != 'master':
+                    return self.send_json({'error': 'Akses ditolak: Hak akses Administrator diperlukan'}, 403)
+
+                bot_token = (data.get('botToken') or os.environ.get('TELEGRAM_BOT_TOKEN', '')).strip()
+                chat_id = (data.get('chatId') or os.environ.get('TELEGRAM_CHAT_ID', '')).strip()
+                if not bot_token or not chat_id:
+                    return self.send_json({
+                        'ok': False,
+                        'error': 'Telegram Bot Token dan Chat ID belum dikonfigurasi di server.'
+                    }, 400)
+
+                now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                test_msg = (
+                    f"🤖 <b>INVEYS Hostinger Node: Uji Coba Notifikasi Berhasil!</b>\n\n"
+                    f"✅ <b>Status:</b> Bot Telegram & Webhook Notifikasi Terhubung\n"
+                    f"🌐 <b>Host Node:</b> Hostinger KVM VPS ({self.headers.get('Host', '187.77.134.249')})\n"
+                    f"👤 <b>Penguji:</b> {html.escape(user.get('email') or user.get('name') or user.get('id'))}\n"
+                    f"⏰ <b>Waktu Uji Coba:</b> {now_str}\n\n"
+                    f"<i>Sistem notifikasi otomatis aktif untuk pendaftaran user baru, pembayaran paket, backup database, dan peringatan keamanan.</i>"
+                )
+                try:
+                    res = send_telegram_message(test_msg, chat_id=chat_id, token=bot_token, parse_mode='HTML')
+                    record_audit(user.get('id'), 'admin.telegram.test', f'chat_id={chat_id}', self.get_client_ip(), self.headers.get('User-Agent'))
+                    return self.send_json({
+                        'ok': True,
+                        'message': f'Notifikasi uji coba berhasil dikirim ke Telegram Chat ID: {chat_id}',
+                        'result': res
+                    })
+                except Exception as e:
+                    return self.send_json({
+                        'ok': False,
+                        'error': f'Gagal mengirim notifikasi Telegram: {str(e)}'
+                    }, 400)
+
             # Commercial Payment & Licensing Endpoints
             if self.path == '/api/payment/create':
                 user = self.get_authenticated_user()
@@ -1656,6 +1790,17 @@ class Handler(SimpleHTTPRequestHandler):
                         VALUES (?, ?, ?, ?, ?, ?, 'IDR', ?, 'pending', ?, ?, ?, ?, ?)
                     """, (order_id, user_id, email, plan, cycle, amount, 'midtrans' if mid.get('isLive') else 'simulator',
                           'snap' if mid.get('isLive') else 'qris', snap_token, payment_url, now, now))
+
+                now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                notify_admin_telegram(
+                    f"🛒 <b>INVEYS Commercial Alert: Pesanan Baru Dibuat</b>\n\n"
+                    f"📋 <b>Order ID:</b> <code>{order_id}</code>\n"
+                    f"👤 <b>Email:</b> {html.escape(email)}\n"
+                    f"📦 <b>Paket:</b> {plan.upper()} ({cycle.capitalize()})\n"
+                    f"💰 <b>Nominal:</b> Rp {amount:,}\n"
+                    f"⚡ <b>Gateway:</b> {'Midtrans Snap Live' if mid.get('isLive') else 'Simulator / QRIS Manual'}\n"
+                    f"⏰ <b>Waktu:</b> {now_str}"
+                )
 
                 return self.send_json({
                     'ok': True,

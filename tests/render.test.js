@@ -794,6 +794,9 @@ test('administrator control panel renders access restriction in local mode and f
   assert.match(adminApp.html(), /admin-export-db/);
   assert.match(adminApp.html(), /admin-broadcast-panel/);
   assert.match(adminApp.html(), /admin-broadcast-form/);
+  assert.match(adminApp.html(), /admin-telegram-panel/);
+  assert.match(adminApp.html(), /admin-test-telegram/);
+  assert.match(adminApp.html(), /admin-config-telegram/);
   assert.match(adminApp.html(), /admin-audit-panel/);
   assert.match(adminApp.html(), /audit-table/);
 });
