@@ -66,14 +66,14 @@ Salin template konfigurasi lingkungan dan sesuaikan variabel Anda:
 cp .env.example .env
 ```
 
-Isi berkas `.env` dengan kredensial Anda:
+Isi berkas `.env` dengan konfigurasi Anda (kunci API bersifat opsional dan dapat diatur langsung di dalam aplikasi):
 ```env
 # Domain & Keamanan Jaringan
 DOMAIN=inveys.io
 ALLOWED_HOSTS=inveys.io,www.inveys.io,187.77.134.249,127.0.0.1,localhost
 
-# AI Gateway (9Router / Gemini / OpenAI)
-NINEROUTER_API_KEY=sk-4bcae7c02ecceeb2-uh4vw9-e53871ae
+# AI Gateway (9Router / Gemini / OpenAI) - Masukkan API Key Anda jika ada
+NINEROUTER_API_KEY=
 NINEROUTER_MODEL=ag/gemini-3.8-flash
 NINEROUTER_BASE_URL=https://9router-uef5.srv2048942.hstgr.cloud/v1
 
@@ -81,6 +81,11 @@ NINEROUTER_BASE_URL=https://9router-uef5.srv2048942.hstgr.cloud/v1
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 ```
+
+> [!TIP]
+> **Pengaturan Kunci API Fleksibel & Mandiri di Aplikasi:**
+> Anda dapat mengatur, menguji koneksi (*live test*), dan menyimpan API Key (Google Gemini, OpenAI, 9Router, Meta AI Muse, dan Bot Telegram) secara mandiri kapan saja langsung di UI aplikasi: buka menu **Pengaturan (Settings)** ➔ **Kunci API AI & Telegram Bot** ➔ **Kelola Kunci API & Bot** (atau melalui ikon pengaturan pada Asisten AI).
+
 
 #### B. Menjalankan via Docker Compose
 Jalankan perintah berikut pada server VPS Anda:
