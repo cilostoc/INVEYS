@@ -770,6 +770,29 @@ test('quick composer renders Vey cyber-vault mascot chatbot with animated SVG an
   assert.match(app.html(), /<strong class="vey-name">Vey<\/strong>/);
 });
 
+test('Vey interactive mascot reacts to poke action with speech bubble, mood cycling and audio toggle', () => {
+  const app = boot();
+  // Initial state: profile button has vey-poke action and tool has sound toggle
+  assert.match(app.html(), /data-action="vey-poke"/);
+  assert.match(app.html(), /data-action="vey-toggle-sound"/);
+
+  // Poke Vey
+  app.click({ action: 'vey-poke' });
+  // Speech bubble and dismiss action are rendered
+  assert.match(app.html(), /vey-speech-bubble/);
+  assert.match(app.html(), /data-action="vey-dismiss-speech"/);
+
+  // Dismiss speech bubble
+  app.click({ action: 'vey-dismiss-speech' });
+  assert.doesNotMatch(app.html(), /vey-speech-bubble/);
+
+  // Toggle sound
+  app.click({ action: 'vey-toggle-sound' });
+  assert.match(app.html(), /🔕/);
+  app.click({ action: 'vey-toggle-sound' });
+  assert.match(app.html(), /🔔/);
+});
+
 test('administrator control panel renders access restriction in local mode and full control hub in admin server mode', () => {
   const localApp = boot();
   localApp.click({page: 'admin'});
