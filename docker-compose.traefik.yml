@@ -27,6 +27,12 @@ services:
       - NINEROUTER_BASE_URL=${NINEROUTER_BASE_URL:-https://9router-uef5.srv2048942.hstgr.cloud/v1}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-support@inveys.io}
+      - SMTP_TLS=${SMTP_TLS:-true}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

@@ -8027,20 +8027,51 @@
     if(pwInput)pwInput.value='';
     if(errEl)errEl.style.display='none';
 
+    const pwWrap=$('#auth-pw-wrap');
+    const otpWrap=$('#auth-otp-wrap');
+    const otpInput=$('#auth-otp-code');
+    const tabOtp=$('#auth-tab-otp');
+
+    if(tabLogin){tabLogin.style.background='transparent';tabLogin.style.color='inherit';}
+    if(tabOtp){tabOtp.style.background='transparent';tabOtp.style.color='inherit';}
+    if(tabRegister){tabRegister.style.background='transparent';tabRegister.style.color='inherit';}
+
     if(mode==='setup'){
       if(tabs)tabs.style.display='none';
       if(nameInput)nameInput.style.display='none';
       if(emailInput)emailInput.style.display='block';
+      if(pwWrap)pwWrap.style.display='block';
+      if(pwInput)pwInput.required=true;
+      if(otpWrap)otpWrap.style.display='none';
+      if(otpInput)otpInput.required=false;
       if(switchP)switchP.style.display='none';
       $('#auth-title').textContent='Setup Akun Master Vault';
       $('#auth-desc').textContent='Selamat datang di INVEYS Cloud. Atur email dan password aman untuk brankas finansial Anda.';
       if(submitBtn)submitBtn.textContent='Buat Akun Pemilik';
+    }else if(mode==='otp'){
+      if(tabs)tabs.style.display='flex';
+      if(tabOtp){tabOtp.style.background='var(--accent,#34d399)';tabOtp.style.color='#05241d';}
+      if(nameInput)nameInput.style.display='none';
+      if(emailInput)emailInput.style.display='block';
+      if(pwWrap)pwWrap.style.display='none';
+      if(pwInput)pwInput.required=false;
+      if(otpWrap)otpWrap.style.display='block';
+      if(otpInput)otpInput.required=true;
+      if(switchP)switchP.style.display='block';
+      const switchBtn=$('#auth-mode-switch');
+      if(switchBtn)switchBtn.textContent='Masuk dengan Password';
+      $('#auth-title').textContent='Login Kode OTP Email';
+      $('#auth-desc').textContent='Masukkan email dan minta kode OTP untuk masuk lebih aman ke brankas finansial.';
+      if(submitBtn)submitBtn.textContent='Verifikasi & Masuk';
     }else if(mode==='register'){
       if(tabs)tabs.style.display='flex';
-      if(tabLogin){tabLogin.style.background='transparent';tabLogin.style.color='inherit';}
       if(tabRegister){tabRegister.style.background='var(--accent,#34d399)';tabRegister.style.color='#05241d';}
       if(nameInput)nameInput.style.display='block';
       if(emailInput)emailInput.style.display='block';
+      if(pwWrap)pwWrap.style.display='block';
+      if(pwInput)pwInput.required=true;
+      if(otpWrap)otpWrap.style.display='none';
+      if(otpInput)otpInput.required=false;
       if(switchP)switchP.style.display='block';
       const switchBtn=$('#auth-mode-switch');
       if(switchBtn)switchBtn.textContent='Sudah punya akun? Masuk di sini';
@@ -8050,9 +8081,12 @@
     }else{
       if(tabs)tabs.style.display='flex';
       if(tabLogin){tabLogin.style.background='var(--accent,#34d399)';tabLogin.style.color='#05241d';}
-      if(tabRegister){tabRegister.style.background='transparent';tabRegister.style.color='inherit';}
       if(nameInput)nameInput.style.display='none';
       if(emailInput)emailInput.style.display='block';
+      if(pwWrap)pwWrap.style.display='block';
+      if(pwInput)pwInput.required=true;
+      if(otpWrap)otpWrap.style.display='none';
+      if(otpInput)otpInput.required=false;
       if(switchP)switchP.style.display='block';
       const switchBtn=$('#auth-mode-switch');
       if(switchBtn)switchBtn.textContent='Belum punya akun? Daftar gratis';
@@ -8067,10 +8101,54 @@
     if(overlay)overlay.style.display='none';
   }
   $('#auth-tab-login')?.addEventListener('click',()=>{showAuthScreen('login');});
+  $('#auth-tab-otp')?.addEventListener('click',()=>{showAuthScreen('otp');});
   $('#auth-tab-register')?.addEventListener('click',()=>{showAuthScreen('register');});
   $('#auth-mode-switch')?.addEventListener('click',()=>{
     const currentMode=$('#auth-form')?.dataset.mode||'login';
-    showAuthScreen(currentMode==='login'?'register':'login');
+    showAuthScreen(currentMode==='login'?'otp':(currentMode==='otp'?'register':'login'));
+  });
+  let otpCooldownTimer = null;
+  $('#auth-send-otp-btn')?.addEventListener('click', async () => {
+    const email = ($('#auth-email')?.value || '').trim();
+    const statusEl = $('#auth-otp-status');
+    const errEl = $('#auth-error');
+    const sendBtn = $('#auth-send-otp-btn');
+    if (errEl) errEl.style.display = 'none';
+    if (!email || !email.includes('@')) {
+      if (errEl) { errEl.textContent = 'Masukkan alamat email yang valid terlebih dahulu.'; errEl.style.display = 'block'; }
+      $('#auth-email')?.focus();
+      return;
+    }
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Mengirim…'; }
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal mengirim kode OTP');
+      if (statusEl) {
+        statusEl.innerHTML = `✅ <span style="color:var(--accent,#34d399);">Kode OTP 6 digit telah dikirim ke <b>${escape(email)}</b>.</span> Periksa kotak masuk atau spam email Anda.`;
+      }
+      $('#auth-otp-code')?.focus();
+      toast('Kode OTP berhasil dikirim!');
+
+      let seconds = 60;
+      if (otpCooldownTimer) clearInterval(otpCooldownTimer);
+      otpCooldownTimer = setInterval(() => {
+        seconds--;
+        if (seconds <= 0) {
+          clearInterval(otpCooldownTimer);
+          if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim Ulang'; }
+        } else {
+          if (sendBtn) sendBtn.textContent = `${seconds}s`;
+        }
+      }, 1000);
+    } catch (err) {
+      if (errEl) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+      if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim OTP'; }
+    }
   });
   document.addEventListener('submit',async event=>{
     if(event.target.id==='auth-form'){
@@ -8090,7 +8168,13 @@
       try{
         let endpoint='/api/auth/login';
         let payload={password:pw};
-        if(mode==='register'){
+        if(mode==='otp'){
+          const otpCode=($('#auth-otp-code')?.value||'').trim();
+          if(!email)throw new Error('Alamat email wajib diisi.');
+          if(!otpCode)throw new Error('Masukkan 6 digit kode OTP yang dikirim ke email.');
+          endpoint='/api/auth/verify-otp';
+          payload={email,otp:otpCode};
+        }else if(mode==='register'){
           if(!email)throw new Error('Alamat email wajib diisi.');
           endpoint='/api/auth/register';
           payload={email,password:pw,name:name||email.split('@')[0]};

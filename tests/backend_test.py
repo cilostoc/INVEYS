@@ -833,4 +833,53 @@ class Backend(unittest.TestCase):
                     time.sleep(0.15)
                     mock_send.assert_called_once()
 
+    def test_email_otp_generation_verification_and_security_lockout(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'otp_test.sqlite3'):
+            headers_csrf = {'Host': '127.0.0.1:3000', 'Origin': 'http://127.0.0.1:3000'}
+            # Register user
+            st_reg, res_reg = self.request('/api/auth/register', {
+                'email': 'support@inveys.io',
+                'password': 'PasswordSecure123',
+                'name': 'inveys'
+            }, headers_csrf)
+            self.assertEqual(st_reg, 200)
+
+            # Invalid email format -> 400
+            st_bad, res_bad = self.request('/api/auth/send-otp', {'email': 'invalid-email'}, headers_csrf)
+            self.assertEqual(st_bad, 400)
+
+            # Non-existent email -> 404
+            st_notfound, res_notfound = self.request('/api/auth/send-otp', {'email': 'unknown@inveys.io'}, headers_csrf)
+            self.assertEqual(st_notfound, 404)
+
+            # Valid send-otp
+            with patch.object(s, 'send_email_otp', return_value=(True, 'Sent')) as mock_send:
+                st_send, res_send = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_csrf)
+                self.assertEqual(st_send, 200)
+                self.assertTrue(res_send['ok'])
+                mock_send.assert_called_once()
+                otp_code = mock_send.call_args[0][1]
+                self.assertEqual(len(otp_code), 6)
+
+            # Rate-limiting: sending again within 60s -> 429
+            st_rate, res_rate = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_csrf)
+            self.assertEqual(st_rate, 429)
+
+            # Verify with wrong OTP -> 400
+            st_wrong, res_wrong = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': '000000'}, headers_csrf)
+            self.assertEqual(st_wrong, 400)
+            self.assertIn('tidak sesuai', res_wrong['error'])
+
+            # Verify with correct OTP -> 200
+            st_ok, res_ok = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_csrf)
+            self.assertEqual(st_ok, 200)
+            self.assertTrue(res_ok['ok'])
+            self.assertEqual(res_ok['user']['email'], 'support@inveys.io')
+            self.assertEqual(res_ok['user']['role'], 'admin')
+            self.assertTrue(res_ok['token'])
+
+            # Re-verify already used OTP -> 400
+            st_used, res_used = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_csrf)
+            self.assertEqual(st_used, 400)
+
 if __name__=='__main__':unittest.main()

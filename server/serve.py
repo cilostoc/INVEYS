@@ -216,6 +216,8 @@ def db(timeout=10.0):
     c.execute('CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, user_id TEXT, email TEXT, plan TEXT NOT NULL, cycle TEXT NOT NULL, amount INTEGER NOT NULL, currency TEXT DEFAULT "IDR", provider TEXT NOT NULL, status TEXT NOT NULL, payment_method TEXT, snap_token TEXT, payment_url TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)')
     c.execute('CREATE TABLE IF NOT EXISTS licenses (id TEXT PRIMARY KEY, license_key TEXT UNIQUE NOT NULL, user_id TEXT, email TEXT, plan TEXT NOT NULL, expires_at INTEGER, signature TEXT NOT NULL, created_at INTEGER NOT NULL)')
     c.execute('CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, action TEXT NOT NULL, details TEXT, ip TEXT, user_agent TEXT, created_at INTEGER NOT NULL)')
+    c.execute('CREATE TABLE IF NOT EXISTS email_otps (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, otp_code TEXT NOT NULL, expires_at INTEGER NOT NULL, attempts INTEGER DEFAULT 0, used INTEGER DEFAULT 0, ip TEXT, created_at INTEGER NOT NULL)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_email_otps ON email_otps(email, expires_at)')
     for col_alter in (
         'ALTER TABLE sessions ADD COLUMN user_id TEXT',
         'ALTER TABLE workspaces ADD COLUMN user_id TEXT',
@@ -622,6 +624,128 @@ def notify_admin_telegram(text: str, parse_mode: str = 'HTML'):
         except Exception as e:
             print(f"[!] Warning sending admin telegram notification: {e}", flush=True)
     threading.Thread(target=_send, daemon=True).start()
+
+
+def send_email_otp(to_email: str, otp_code: str, name: str = '', ip: str = None) -> tuple:
+    """
+    Sends a 6-digit OTP code to the recipient email address via SMTP if configured.
+    If SMTP is not configured or in local/dev mode, logs the OTP safely and dispatches to Telegram if available.
+    Returns (success: bool, info: str).
+    """
+    smtp_host = os.environ.get('SMTP_HOST', '').strip()
+    smtp_port = int(os.environ.get('SMTP_PORT', '587').strip() or '587')
+    smtp_user = os.environ.get('SMTP_USER', '').strip()
+    smtp_pass = os.environ.get('SMTP_PASS', '').strip()
+    smtp_from = os.environ.get('SMTP_FROM', '').strip() or (smtp_user or 'support@inveys.io')
+    smtp_tls = os.environ.get('SMTP_TLS', 'true').strip().lower() in ('1', 'true', 'yes')
+
+    display_name = name or to_email.split('@')[0]
+    subject = f"[INVEYS] Kode Verifikasi Login OTP: {otp_code}"
+
+    text_content = f"""Halo {display_name},
+
+Kode verifikasi OTP login INVEYS Anda adalah:
+
+{otp_code}
+
+Kode ini berlaku selama 10 menit.
+Demi keamanan brankas finansial Anda, jangan pernah membagikan kode OTP ini kepada siapa pun termasuk staf atau pihak yang mengaku dari INVEYS.
+
+Permintaan login dari IP: {ip or 'tidak diketahui'}
+Waktu: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}
+
+Jika Anda tidak merasa melakukan permintaan ini, segera abaikan email ini.
+
+Salam aman,
+Tim Keamanan INVEYS
+https://inveys.io
+"""
+
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Kode OTP INVEYS</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background-color:#071713;color:#e6f4ef;padding:30px 15px;margin:0;">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:520px;background:#0d261e;border:1px solid rgba(52,211,153,0.3);border-radius:16px;padding:32px;box-shadow:0 12px 36px rgba(0,0,0,0.5);">
+    <tr>
+      <td style="text-align:center;padding-bottom:20px;">
+        <span style="font-size:32px;font-weight:bold;color:#34d399;letter-spacing:-1px;">ıv. INVEYS</span>
+        <div style="font-size:12px;color:#85a89d;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">Sovereign Financial Vault</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="border-top:1px solid rgba(52,211,153,0.15);padding-top:20px;">
+        <p style="font-size:15px;line-height:1.6;color:#e6f4ef;margin:0 0 16px;">Halo <b>{html.escape(display_name)}</b>,</p>
+        <p style="font-size:14px;line-height:1.6;color:#a3c7bc;margin:0 0 24px;">Gunakan kode verifikasi berikut untuk masuk ke brankas finansial Anda:</p>
+        
+        <div style="background:#051712;border:1.5px dashed #34d399;border-radius:12px;padding:18px 24px;text-align:center;margin:0 0 24px;">
+          <span style="font-size:36px;font-weight:800;letter-spacing:8px;color:#34d399;font-family:Courier,monospace;">{otp_code}</span>
+          <div style="font-size:11px;color:#6ee7b7;margin-top:8px;">Berlaku selama 10 menit</div>
+        </div>
+
+        <p style="font-size:12px;line-height:1.6;color:#fb7185;margin:0 0 16px;">
+          ⚠️ <b>Peringatan Keamanan:</b> Jangan pernah membagikan kode ini kepada siapa pun. Staf INVEYS tidak akan pernah meminta kode OTP Anda.
+        </p>
+
+        <p style="font-size:11px;line-height:1.6;color:#6b8b80;margin:0;border-top:1px solid rgba(52,211,153,0.1);padding-top:16px;">
+          Permintaan dari IP: <code>{html.escape(ip or 'Unknown')}</code> · {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}<br>
+          Jika Anda tidak merasa melakukan permintaan ini, segera abaikan email ini.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+    # If SMTP is configured, attempt sending via smtplib
+    if smtp_host:
+        try:
+            import smtplib
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = smtp_from
+            msg['To'] = to_email
+            msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
+            msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+            if smtp_port == 465:
+                import ssl
+                context = ssl.create_default_context()
+                with smtplib.SMTP_SSL(smtp_host, smtp_port, context=context, timeout=15) as server:
+                    if smtp_user and smtp_pass:
+                        server.login(smtp_user, smtp_pass)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                    if smtp_tls:
+                        import ssl
+                        server.starttls(context=ssl.create_default_context())
+                    if smtp_user and smtp_pass:
+                        server.login(smtp_user, smtp_pass)
+                    server.send_message(msg)
+
+            print(f"[INVEYS SMTP] ✅ OTP successfully sent via SMTP ({smtp_host}) to {to_email}", flush=True)
+            return True, "Email sent via SMTP"
+        except Exception as e:
+            print(f"[INVEYS SMTP] ❌ Failed to send email via SMTP ({smtp_host}): {e}", flush=True)
+
+    # Fallback logging (dev mode or unconfigured SMTP)
+    print(f"\n=======================================================", flush=True)
+    print(f"[INVEYS SECURITY OTP] ✉️ Kode OTP untuk {to_email}: {otp_code}", flush=True)
+    print(f"=======================================================\n", flush=True)
+
+    # If Telegram bot is configured, also dispatch alert to Admin Telegram
+    notify_admin_telegram(
+        f"🔐 <b>[INVEYS OTP LOGIN]</b>\n"
+        f"📧 <b>Target:</b> <code>{html.escape(to_email)}</code>\n"
+        f"🔑 <b>Kode OTP:</b> <code>{otp_code}</code>\n"
+        f"🌐 <b>IP:</b> <code>{html.escape(ip or 'Unknown')}</code>"
+    )
+
+    return True, "OTP logged and dispatched"
+
 
 
 def telegram(method, payload):
@@ -1404,6 +1528,100 @@ class Handler(SimpleHTTPRequestHandler):
                 cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
                 user_data = {'id': user_id, 'email': email, 'name': name, 'plan': user_plan, 'role': role, 'status': 'active'}
                 return self.send_json({'ok': True, 'token': token, 'user': user_data}, headers={'Set-Cookie': cookie})
+
+            # Send Email OTP for Login / 2FA
+            if self.path == '/api/auth/send-otp':
+                ip = self.get_client_ip()
+                if not check_rate_limit(ip):
+                    return self.send_json({'error': 'Terlalu banyak permintaan. Silakan coba lagi setelah 15 menit.'}, 429)
+                email = str(data.get('email', '')).strip().lower()
+                if not email or not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+                    return self.send_json({'error': 'Alamat email tidak valid'}, 400)
+                
+                now = int(time.time())
+                with db() as c:
+                    recent = c.execute('SELECT created_at FROM email_otps WHERE email = ? AND created_at > ? ORDER BY created_at DESC LIMIT 1',
+                                      (email, now - 60)).fetchone()
+                    if recent:
+                        wait_sec = 60 - (now - recent[0])
+                        return self.send_json({'error': f'Mohon tunggu {wait_sec} detik sebelum meminta kode OTP baru.'}, 429)
+                    
+                    user_row = c.execute('SELECT id, name, role, status FROM users WHERE email = ?', (email,)).fetchone()
+                    total_users = c.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+                    if not user_row and total_users > 0:
+                        return self.send_json({'error': 'Email belum terdaftar di sistem. Silakan daftar akun terlebih dahulu.'}, 404)
+                    if user_row and (user_row[3] or 'active') == 'suspended':
+                        return self.send_json({'error': 'Akun Anda ditangguhkan oleh administrator.'}, 403)
+                    
+                    otp_code = f"{secrets.randbelow(900000) + 100000}"
+                    expires_at = now + 600  # 10 minutes
+                    c.execute('UPDATE email_otps SET used = 1 WHERE email = ? AND used = 0', (email,))
+                    c.execute('INSERT INTO email_otps (email, otp_code, expires_at, attempts, used, ip, created_at) VALUES (?, ?, ?, 0, 0, ?, ?)',
+                              (email, otp_code, expires_at, ip, now))
+                
+                user_name = user_row[1] if user_row else email.split('@')[0]
+                send_email_otp(email, otp_code, user_name, ip)
+                record_audit(user_row[0] if user_row else None, 'auth.otp.send', f'email={email}', ip, self.headers.get('User-Agent'))
+                return self.send_json({'ok': True, 'message': 'Kode OTP telah dikirim ke email Anda', 'email': email, 'expiresIn': 600})
+
+            # Verify Email OTP & Login
+            if self.path == '/api/auth/verify-otp':
+                ip = self.get_client_ip()
+                if not check_rate_limit(ip):
+                    return self.send_json({'error': 'Terlalu banyak percobaan gagal. Silakan coba lagi setelah 15 menit.'}, 429)
+                email = str(data.get('email', '')).strip().lower()
+                otp = str(data.get('otp', '')).strip()
+                if not email or not otp:
+                    return self.send_json({'error': 'Email dan kode OTP wajib diisi'}, 400)
+                
+                now = int(time.time())
+                with db() as c:
+                    row = c.execute('SELECT id, otp_code, expires_at, attempts FROM email_otps WHERE email = ? AND used = 0 ORDER BY created_at DESC LIMIT 1', (email,)).fetchone()
+                    if not row:
+                        record_failed_login(ip)
+                        return self.send_json({'error': 'Kode OTP tidak ditemukan atau telah kedaluwarsa. Silakan minta kode baru.'}, 400)
+                    otp_id, expected_code, expires_at, attempts = row
+                    if now > expires_at:
+                        c.execute('UPDATE email_otps SET used = 1 WHERE id = ?', (otp_id,))
+                        return self.send_json({'error': 'Kode OTP telah kedaluwarsa. Silakan minta kode baru.'}, 400)
+                    if attempts >= 5:
+                        c.execute('UPDATE email_otps SET used = 1 WHERE id = ?', (otp_id,))
+                        record_failed_login(ip)
+                        return self.send_json({'error': 'Terlalu banyak percobaan salah. Kode OTP ini dibatalkan demi keamanan.'}, 429)
+                    
+                    if not hmac.compare_digest(str(expected_code).strip(), otp):
+                        c.execute('UPDATE email_otps SET attempts = attempts + 1 WHERE id = ?', (otp_id,))
+                        record_failed_login(ip)
+                        remaining = 5 - (attempts + 1)
+                        return self.send_json({'error': f'Kode OTP tidak sesuai. Sisa kesempatan: {max(0, remaining)} kali.'}, 400)
+                    
+                    c.execute('UPDATE email_otps SET used = 1 WHERE id = ?', (otp_id,))
+                    clear_failed_login(ip)
+                    
+                    user_row = c.execute('SELECT id, email, name, plan, role, status FROM users WHERE email = ?', (email,)).fetchone()
+                    if not user_row:
+                        user_count = c.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+                        role = 'admin' if user_count == 0 else 'user'
+                        user_id = 'usr-' + secrets.token_hex(8)
+                        salt = secrets.token_hex(16)
+                        dummy_pw = secrets.token_urlsafe(24)
+                        h, salt = hash_password(dummy_pw, salt)
+                        name = email.split('@')[0].capitalize()
+                        c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, "ultra", ?, "active", ?, ?)',
+                                  (user_id, email, h, salt, name, role, now, now))
+                        user_data = {'id': user_id, 'email': email, 'name': name, 'plan': 'ultra', 'role': role, 'status': 'active'}
+                    else:
+                        if (user_row[5] or 'active') == 'suspended':
+                            return self.send_json({'error': 'Akun Anda ditangguhkan oleh administrator.'}, 403)
+                        user_data = {'id': user_row[0], 'email': user_row[1], 'name': user_row[2] or user_row[1].split('@')[0], 'plan': user_row[3] or 'plus', 'role': user_row[4] or 'user', 'status': user_row[5] or 'active'}
+                    
+                    token = secrets.token_urlsafe(32)
+                    expires = now + 30 * 86400
+                    c.execute('INSERT INTO sessions (token, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)',
+                              (token, user_data['id'], now, expires, ip))
+                    record_audit(user_data['id'], 'auth.login.otp.success', f"email={email}, role={user_data['role']}", ip, self.headers.get('User-Agent'), conn=c)
+                    cookie = f'inveys_session={token}; Path=/; Max-Age={30*86400}; SameSite=Lax; HttpOnly'
+                    return self.send_json({'ok': True, 'token': token, 'user': user_data}, headers={'Set-Cookie': cookie})
 
             # Multi-User & Master Password Login
             if self.path == '/api/auth/login':

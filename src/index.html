@@ -22,13 +22,23 @@
     <h2 id="auth-title">INVEYS Cloud Vault</h2>
     <p id="auth-desc">Masuk ke akun Anda untuk menyinkronkan seluruh catatan finansial.</p>
     <div class="auth-tabs" id="auth-tabs" style="display:flex;gap:6px;background:rgba(0,0,0,0.06);padding:4px;border-radius:10px;margin-bottom:16px;">
-      <button type="button" class="btn active" id="auth-tab-login" style="flex:1;padding:8px 12px;font-size:12px;background:var(--accent,#34d399);color:#05241d;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Masuk</button>
-      <button type="button" class="btn" id="auth-tab-register" style="flex:1;padding:8px 12px;font-size:12px;background:transparent;color:inherit;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Daftar Akun</button>
+      <button type="button" class="btn active" id="auth-tab-login" style="flex:1;padding:8px 8px;font-size:12px;background:var(--accent,#34d399);color:#05241d;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Password</button>
+      <button type="button" class="btn" id="auth-tab-otp" style="flex:1;padding:8px 8px;font-size:12px;background:transparent;color:inherit;border:none;border-radius:8px;font-weight:600;cursor:pointer;">🔑 Kode OTP</button>
+      <button type="button" class="btn" id="auth-tab-register" style="flex:1;padding:8px 8px;font-size:12px;background:transparent;color:inherit;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Daftar</button>
     </div>
     <form id="auth-form" data-mode="login">
       <input type="text" id="auth-name" placeholder="Nama Lengkap (contoh: Hendra)" style="display:none;margin-bottom:12px;text-align:left;" autocomplete="name">
-      <input type="email" id="auth-email" placeholder="Alamat Email (contoh: nama@domain.com)" style="margin-bottom:12px;text-align:left;" autocomplete="email">
-      <input type="password" id="auth-password" placeholder="Password (minimal 6 karakter)" required autocomplete="current-password" autofocus style="margin-bottom:14px;text-align:left;">
+      <input type="email" id="auth-email" placeholder="Alamat Email (contoh: support@inveys.io)" style="margin-bottom:12px;text-align:left;" autocomplete="email" required>
+      <div id="auth-pw-wrap">
+        <input type="password" id="auth-password" placeholder="Password (minimal 6 karakter)" autocomplete="current-password" autofocus style="margin-bottom:14px;text-align:left;">
+      </div>
+      <div id="auth-otp-wrap" style="display:none;margin-bottom:14px;">
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" id="auth-otp-code" placeholder="6 Digit Kode OTP" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" style="flex:1;text-align:center;font-size:18px;letter-spacing:4px;font-weight:bold;margin:0;">
+          <button type="button" class="btn primary" id="auth-send-otp-btn" style="white-space:nowrap;padding:8px 12px;font-size:12px;">Kirim OTP</button>
+        </div>
+        <small id="auth-otp-status" style="display:block;font-size:11px;color:var(--muted);line-height:1.4;text-align:left;"></small>
+      </div>
       <button type="submit" class="btn primary" id="auth-submit-btn">Masuk ke Vault</button>
       <p id="auth-error" class="form-error" style="margin-top:10px;display:none;color:#ef4444;font-size:12px;" role="alert"></p>
       <p style="margin-top:16px;margin-bottom:0;font-size:11px;" id="auth-switch-p">
