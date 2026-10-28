@@ -133,14 +133,36 @@ def extract(data):
     raw = decode(data)
     with tempfile.TemporaryDirectory() as d:
         path = Path(d) / 'input'
+        if b'%PDF-' in raw[:1024]:
+            raw = raw[raw.find(b'%PDF-'):]
         path.write_bytes(raw)
-        if raw.startswith(b'%PDF-'):
-            if not shutil.which('pdftotext'): raise ValueError('Install Poppler for PDF extraction')
-            subprocess.run(['pdftotext', '-f', '1', '-l', '30', '-layout', str(path), str(Path(d) / 'out.txt')], check=True, timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            text = (Path(d) / 'out.txt').read_text(errors='replace')[:100000]
-            if not text.strip(): raise ValueError('PDF has no readable text. Export pages as images for OCR.')
         file_type = str(data.get('type', '')).lower()
         file_name = str(data.get('name', '')).lower()
+        if raw.startswith(b'%PDF-') or 'pdf' in file_type or file_name.endswith('.pdf'):
+            if not shutil.which('pdftotext') and not shutil.which('pdftoppm'):
+                raise ValueError('Install Poppler (pdftotext/pdftoppm) for PDF extraction')
+            text = ''
+            if shutil.which('pdftotext'):
+                try:
+                    subprocess.run(['pdftotext', '-f', '1', '-l', '30', '-layout', str(path), str(Path(d) / 'out.txt')], check=True, timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    text = (Path(d) / 'out.txt').read_text(errors='replace')[:100000]
+                except Exception:
+                    text = ''
+            if not text.strip():
+                if shutil.which('pdftoppm') and shutil.which('tesseract'):
+                    try:
+                        subprocess.run(['pdftoppm', '-png', '-r', '150', '-f', '1', '-l', '5', str(path), str(Path(d) / 'page')], check=True, timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        ocr_pages = []
+                        for p_img in sorted(Path(d).glob('page-*.png')):
+                            res = subprocess.run(['tesseract', str(p_img), 'stdout', '-l', 'eng+ind'], capture_output=True, timeout=30)
+                            if res.stdout:
+                                ocr_pages.append(res.stdout.decode(errors='replace'))
+                        text = '\n'.join(ocr_pages)[:100000]
+                    except Exception:
+                        pass
+            if not text.strip():
+                raise ValueError('PDF has no readable text. Export pages as images for OCR.')
+            return text
         if 'csv' in file_type or 'text' in file_type or file_name.endswith('.csv') or file_name.endswith('.txt'):
             try: return raw.decode('utf-8')[:100000]
             except UnicodeDecodeError: return raw.decode('latin-1', errors='replace')[:100000]

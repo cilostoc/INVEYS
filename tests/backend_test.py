@@ -119,6 +119,19 @@ class Backend(unittest.TestCase):
         text=s.extract({'data':base64.b64encode(csv_bytes).decode(),'type':'text/csv','name':'mutasi.csv'})
         self.assertIn('Salary',text)
         self.assertIn('Coffee',text)
+    def test_extract_pdf_direct(self):
+        stream = b'BT /F1 12 Tf 72 712 Td (INVEYS Bank Statement 500000) Tj ET'
+        pdf = (
+            b'%PDF-1.4\n1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj\n'
+            b'2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>> endobj\n'
+            b'3 0 obj <</Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources <</Font <</F1 4 0 R>>>> /Contents 5 0 R>> endobj\n'
+            b'4 0 obj <</Type /Font /Subtype /Type1 /BaseFont /Helvetica>> endobj\n'
+            b'5 0 obj <</Length ' + str(len(stream)).encode() + b'>> stream\n' + stream + b'\nendstream endobj\n'
+            b'xref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000226 00000 n \n0000000293 00000 n \n'
+            b'trailer <</Size 6 /Root 1 0 R>>\nstartxref\n380\n%%EOF'
+        )
+        text=s.extract({'data':base64.b64encode(pdf).decode(),'type':'application/pdf','name':'BRImo_statement.pdf'})
+        self.assertIn('INVEYS Bank Statement 500000',text)
     def test_ai_extract_statement_logic(self):
         with patch.dict(os.environ,{'GEMINI_API_KEY':'test-key'}):
             ai_reply=json.dumps({

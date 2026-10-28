@@ -101,7 +101,7 @@ def validate(data):
   try:raw=base64.b64decode(file['data'],validate=True)
   except Exception:raise ValueError('Invalid attachment encoding') from None
   if not raw or len(raw)>8*1024*1024:raise ValueError('Attachment must be 1 byte–8 MB')
-  if file['type']=='application/pdf' and not raw.startswith(b'%PDF-'):raise ValueError('Invalid PDF')
+  if file['type']=='application/pdf' and not (raw.startswith(b'%PDF-') or b'%PDF-' in raw[:1024]):raise ValueError('Invalid PDF')
   if file['type'].startswith('image/'):
    from PIL import Image
    import io
@@ -283,7 +283,7 @@ def extract_statement(data, extract):
    raise ValueError('Invalid attachment encoding') from None
   if not raw_bytes or len(raw_bytes) > 8 * 1024 * 1024:
    raise ValueError('Attachment must be 1 byte–8 MB')
-  if file.get('type') == 'application/pdf' and not raw_bytes.startswith(b'%PDF-'):
+  if file.get('type') == 'application/pdf' and not (raw_bytes.startswith(b'%PDF-') or b'%PDF-' in raw_bytes[:1024]):
    raise ValueError('Invalid PDF')
 
  key = os.environ[{'openai': 'OPENAI_API_KEY', 'gemini': 'GEMINI_API_KEY', 'muse': 'MODEL_API_KEY', '9router': 'NINEROUTER_API_KEY'}[name]]
