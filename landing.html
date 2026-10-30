@@ -17,6 +17,16 @@
   <link rel="canonical" href="https://inveys.io/">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
 
+  <!-- Instant Hash Routing Redirect for App and Admin Hash URLs -->
+  <script>
+    (function(){
+      var h = window.location.hash;
+      if (h && (h === '#admin' || h === '#login' || h === '#app' || h.indexOf('#admin') === 0)) {
+        window.location.replace('/app' + h);
+      }
+    })();
+  </script>
+
   <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://inveys.io/">
@@ -2554,6 +2564,7 @@
     <div class="container">
       <div class="footer-links">
         <a href="/app">Buka Aplikasi</a>
+        <a href="/admin">Admin Portal</a>
         <a href="#fitur">Fitur Lengkap</a>
         <a href="#ekosistem">Semua Bank</a>
         <a href="#pricing">Paket Harga</a>
