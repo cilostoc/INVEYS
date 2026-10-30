@@ -120,6 +120,8 @@ class Backend(unittest.TestCase):
         self.assertIn('Salary',text)
         self.assertIn('Coffee',text)
     def test_extract_pdf_direct(self):
+        if not shutil.which('pdftotext') and not shutil.which('pdftoppm'):
+            self.skipTest('Poppler (pdftotext/pdftoppm) not installed in test environment')
         stream = b'BT /F1 12 Tf 72 712 Td (INVEYS Bank Statement 500000) Tj ET'
         pdf = (
             b'%PDF-1.4\n1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj\n'
