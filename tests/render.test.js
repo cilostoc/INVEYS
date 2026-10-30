@@ -752,13 +752,12 @@ test('capture page renders AI smart extract button and handles ai-extract-statem
   assert.match(app.html(),/9Router Gateway/);
 });
 
-test('quick composer renders Vey cyber-vault mascot chatbot with animated SVG and status indicators', () => {
+test('quick composer renders INVI financial copilot mascot chatbot with animated SVG and status indicators', () => {
   const app = boot();
   // Expanded state
   assert.match(app.html(), /vey-top-bar/);
-  assert.match(app.html(), /Cyber-Vault Guardian/);
-  assert.match(app.html(), /vey-mascot-svg/);
-  assert.match(app.html(), /vey-orbit-ring/);
+  assert.match(app.html(), /(?:Financial Copilot|Cyber-Vault Guardian)/);
+  assert.match(app.html(), /invi-mascot-svg|vey-mascot-svg/);
   assert.match(app.html(), /vey-levitate/);
   assert.match(app.html(), /vey-live-badge/);
 
@@ -766,17 +765,17 @@ test('quick composer renders Vey cyber-vault mascot chatbot with animated SVG an
   app.outside();
   assert.match(app.html(), /quick-launcher/);
   assert.match(app.html(), /vey-launcher-avatar/);
-  assert.match(app.html(), /vey-mascot-svg/);
-  assert.match(app.html(), /<strong class="vey-name">Vey<\/strong>/);
+  assert.match(app.html(), /invi-mascot-svg|vey-mascot-svg/);
+  assert.match(app.html(), /<strong class="vey-name">(?:INVI|Vey)<\/strong>/);
 });
 
-test('Vey interactive mascot reacts to poke action with speech bubble, mood cycling and audio toggle', () => {
+test('INVI interactive mascot reacts to poke action with speech bubble, mood cycling and audio toggle', () => {
   const app = boot();
   // Initial state: profile button has vey-poke action and tool has sound toggle
   assert.match(app.html(), /data-action="vey-poke"/);
   assert.match(app.html(), /data-action="vey-toggle-sound"/);
 
-  // Poke Vey
+  // Poke INVI
   app.click({ action: 'vey-poke' });
   // Speech bubble and dismiss action are rendered
   assert.match(app.html(), /vey-speech-bubble/);
@@ -791,6 +790,39 @@ test('Vey interactive mascot reacts to poke action with speech bubble, mood cycl
   assert.match(app.html(), /🔕/);
   app.click({ action: 'vey-toggle-sound' });
   assert.match(app.html(), /🔔/);
+});
+
+test('INVI mascot studio modal and in-app illustration cards render PRD traits and expressions', () => {
+  const app = boot();
+  
+  // Navigate to copilot page to check INVI hero banner and illustration cards
+  app.click({ page: 'copilot' });
+  assert.match(app.html(), /invi-hero-banner/);
+  assert.match(app.html(), /The Intelligent Guardian/);
+  assert.match(app.html(), /Intelligent/);
+  assert.match(app.html(), /Trustworthy/);
+  assert.match(app.html(), /Calm/);
+  assert.match(app.html(), /Proactive/);
+  assert.match(app.html(), /Approachable/);
+  assert.match(app.html(), /data-action="invi-showcase"/);
+  
+  // In-app illustration cards
+  assert.match(app.html(), /Halo, Saya INVI|Hello, I am INVI/);
+  assert.match(app.html(), /Insight untuk Anda|Insights for You/);
+  assert.match(app.html(), /Target Tercapai!|Target Achieved!/);
+
+  // Open INVI Character Studio modal
+  app.click({ action: 'invi-showcase' });
+  assert.equal(app.elements.get('#modal').open, true);
+  assert.match(app.elements.get('#modal-title').textContent, /INVI/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /invi-studio-moods/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /data-action="invi-mood:thinking"/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /data-action="invi-mood:analyze"/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /data-action="invi-mood:celebrate"/);
+
+  // Switch mood to thinking in studio
+  app.click({ action: 'invi-mood:thinking' });
+  assert.match(app.elements.get('#modal-body').innerHTML, /mood-thinking/);
 });
 
 test('administrator control panel renders access restriction in local mode and full control hub in admin server mode', () => {

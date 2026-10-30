@@ -568,7 +568,35 @@
   function slider(id,label,min,max,step,value,desc){return `<div><label class="slider-label" for="${id}"><span>${label}<small>${desc}</small></span><output id="value-${id}">${money(value*100)}</output></label><input type="range" id="${id}" data-scenario="${id}" min="${min}" max="${max}" step="${step}" value="${value}"></div>`;}
   function updateScenario(){const base=E.forecast(viewState()),sim=E.forecast(viewState(),scenario),end=sim.at(-1).balance,delta=end-base.at(-1).balance;$('#scenario-chart').innerHTML=lineChart(base.map(v=>v.balance),forecastLabels(),{second:sim.map(v=>v.balance),name:'Liquid funds',secondName:'Scenario liquid funds',width:$('#scenario-chart').clientWidth||660});$('#scenario-outcome').innerHTML=`<div class="note">${sim.some(v=>v.balance<0)?'<b class="negative">A projected liquidity shortfall appears in this scenario.</b> Review timing, reserves, and commitments.':`Your scenario ends with <b>${money(end)}</b> in projected liquid funds. This includes the goal contributions in your current plan.`}</div>`;$('#scenario-summary').innerHTML=metric('Six-month scenario balance',amount(end),'Projection, not a guarantee','accounts')+metric('Difference vs. current plan',`<span class="${delta>=0?'positive':'negative'}">${delta>=0?'+':''}${amount(delta)}</span>`,'Same assumptions, different decisions','scenarios')+metric('Scenario monthly capacity',amount(E.position(viewState()).available+scenario.incomeDelta-scenario.expenseDelta),'Before the one-time purchase','cashflow');}
   function household(){return header('A shared life. An intentional plan.','Coordinate responsibilities and keep your household priorities visible.',button('Add a task','task-new','primary','plus'),'HOUSEHOLD')+sharedSwitcher('household')+`<div class="content-grid"><section class="panel panel-pad"><div class="panel-head"><h2>Your planning circle</h2><span class="badge">Local workspace</span></div>${state.members.map(m=>`<div class="member-row"><span class="avatar">${escape(m.initials)}</span><div><b>${user(m.name)}</b><small>${escape(m.role)}</small></div><span class="badge">${m.id==='m1'?'Owner':'Demo member'}</span></div>`).join('')}<div class="note">These are local planning labels. This MVP has no sign-in, invitations, or per-member access control. Everyone using this browser profile can access this workspace.</div></section><section class="panel panel-pad"><div class="panel-head"><h2>Financial to-dos</h2><span class="badge">${state.tasks.filter(t=>!t.done).length} open</span></div>${state.tasks.map(t=>`<div class="task-row ${t.done?'done':''}"><input type="checkbox" data-task="${t.id}" ${t.done?'checked':''} aria-label="Complete ${escape(t.name)}"><div><b>${user(t.name)}</b><small>${escape(t.owner)} · ${escape(t.due||'No date')}</small></div><button data-action="task-delete:${t.id}" aria-label="Remove ${escape(t.name)}">×</button></div>`).join('')||'<div class="empty">Create your first shared responsibility.</div>'}</section><section class="panel panel-pad full"><div class="panel-head"><div><h2>Your monthly operating rhythm</h2><p>Review, decide, coordinate, and keep moving.</p></div>${button('Start a review','review','primary','shield')}</div><div class="details-list"><div class="detail-line"><span>1. Verify your financial picture</span><b>Review account balances and dates</b></div><div class="detail-line"><span>2. Look ahead</span><b>Check obligations and liquidity</b></div><div class="detail-line"><span>3. Choose a meaningful next step</span><b>Fund a goal or compare a scenario</b></div><div class="detail-line"><span>4. Share responsibility</span><b>Assign a task and review the outcome</b></div></div></section></div>`;}
-  function copilot(){return header('Clarity starts with a good question.','An explainable financial assistant, grounded in your workspace.','','FINANCIAL COPILOT')+`<div class="copilot-layout"><section class="panel chat-panel"><div class="panel-pad panel-head"><div><h2>Your financial copilot</h2><p>${state.assistant.provider==='local'?'Local calculation assistant':escape(aiProviderName(state.assistant.provider))}</p></div><span class="badge">Read-only</span></div><div class="chat-messages" id="chat-messages"></div><form class="chat-input" id="chat-form"><label class="screen-reader" for="chat-question">Ask a financial question</label><input id="chat-question" placeholder="Ask about your cash flow, goals, or debt…" autocomplete="off" required maxlength="500"><button class="btn primary" type="submit" aria-label="Send question">${icon('arrow')}</button></form></section><aside class="panel panel-pad"><span class="spark-small">✧</span><h2>A place to begin</h2><p class="card-description" style="margin-top:10px">Explore the numbers and assumptions behind your next decision.</p><div class="prompt-list">${['What is my financial position?','How much can I allocate each month?','How strong is my emergency reserve?','Which debt has the highest interest rate?','How are my goals progressing?'].map(q=>`<button class="prompt-button" data-question="${escape(q)}">${escape(q)} ↗</button>`).join('')}</div><div class="note">This assistant answers supported topics from local records. It does not provide live market data, personalized investment advice, or autonomous actions.</div></aside></div>`;}
+  function copilot(){
+    const inviBanner = `<div class="invi-hero-banner" style="margin-bottom:18px;">
+      <div class="invi-hero-avatar-wrap">
+        ${inviMascot('happy', 78)}
+      </div>
+      <div class="invi-hero-info">
+        <div class="invi-hero-title">
+          <span>INVI</span>
+          <span class="invi-hero-badge">Financial Copilot</span>
+        </div>
+        <p class="invi-hero-desc"><b>${L('The Intelligent Guardian', 'The Intelligent Guardian')}</b> — ${L('Asisten AI finansial cerdas, tenang, dan tepercaya yang mendampingi setiap keputusan keuangan Anda.', 'Your smart, calm, and trustworthy AI copilot accompanying every financial decision.')}</p>
+        <div class="invi-traits-row">
+          <span class="invi-trait-pill">📊 Intelligent</span>
+          <span class="invi-trait-pill">🛡️ Trustworthy</span>
+          <span class="invi-trait-pill">🕊️ Calm</span>
+          <span class="invi-trait-pill">⚡ Proactive</span>
+          <span class="invi-trait-pill">🤝 Approachable</span>
+        </div>
+      </div>
+      <div>
+        <button type="button" class="btn" data-action="invi-showcase" style="border-color:#e5c158;color:#fde68a;background:rgba(229,193,88,0.12);">✨ ${L('Studio Karakter INVI', 'INVI Character Studio')}</button>
+      </div>
+    </div>`;
+
+    return header('Clarity starts with a good question.', 'An explainable financial assistant, grounded in your workspace.', '', 'FINANCIAL COPILOT') + 
+      inviBanner + 
+      `<div class="copilot-layout"><section class="panel chat-panel"><div class="panel-pad panel-head"><div><h2>Your financial copilot</h2><p>${state.assistant.provider==='local'?'Local calculation assistant':escape(aiProviderName(state.assistant.provider))}</p></div><span class="badge">Read-only</span></div><div class="chat-messages" id="chat-messages"></div><form class="chat-input" id="chat-form"><label class="screen-reader" for="chat-question">Ask a financial question</label><input id="chat-question" placeholder="Ask about your cash flow, goals, or debt…" autocomplete="off" required maxlength="500"><button class="btn primary" type="submit" aria-label="Send question">${icon('arrow')}</button></form></section><aside class="panel panel-pad"><span class="spark-small">✧</span><h2>A place to begin</h2><p class="card-description" style="margin-top:10px">Explore the numbers and assumptions behind your next decision.</p><div class="prompt-list">${['What is my financial position?','How much can I allocate each month?','How strong is my emergency reserve?','Which debt has the highest interest rate?','How are my goals progressing?'].map(q=>`<button class="prompt-button" data-question="${escape(q)}">${escape(q)} ↗</button>`).join('')}</div><div class="note">This assistant answers supported topics from local records. It does not provide live market data, personalized investment advice, or autonomous actions.</div></aside></div>` + 
+      `<div style="margin-top:24px"><h3 style="font-size:14px;font-weight:750;margin-bottom:10px">${L('Aktivitas & Panduan INVI', 'INVI Guides & Highlights')}</h3>${inviCardsHtml()}</div>`;
+  }
   function answer(q){const p=E.position(viewState());let text;const lower=q.toLowerCase();
     if (/debt|loan|interest|utang|bunga/.test(lower)){const d=viewState().debts.slice().sort((a,b)=>b.apr-a.apr)[0];text=d?`Your highest recorded APR is <b>${d.apr}%</b> on <b>${user(d.name)}</b>, with a balance of ${money(d.balance,false,d.currency)}. Its minimum monthly payment is ${money(d.minimum,false,d.currency)}. Compare extra payments in Debt management, then check the liquidity impact in Scenarios. Higher-interest repayment may reduce modeled interest costs, but fees, promotional terms, and your cash needs matter.`:'You have no debt records. Add a liability to compare repayment projections.';}
     else if (/emergency|reserve|darurat|cadangan/.test(lower)) text=`Your recorded liquid funds are <b>${money(p.liquid)}</b>. Planned monthly expenses and minimum debt payments total <b>${money(p.outflows)}</b>, giving ${p.reserveMonths===null?'no calculable coverage ratio because planned outflows are zero':`approximately <b>${p.reserveMonths.toFixed(1)} months</b> of coverage`}. This includes all liquid accounts, including funds designated for other goals. It is not the same as a dedicated emergency fund.`;
@@ -2046,17 +2074,17 @@
 
     const p = E.position(viewState());
     const draftCount = drafts.length;
-    const moodPool = ['wink', 'love', 'happy', 'celebrate'];
+    const moodPool = ['happy', 'wink', 'confident', 'celebrate', 'insight', 'analyze'];
     const chosenMood = moodPool[veyPokeCount % moodPool.length];
     veyCustomMood = chosenMood;
 
     if (chosenMood === 'love') veyPlaySound('love');
-    else if (chosenMood === 'celebrate') veyPlaySound('sparkle');
+    else if (chosenMood === 'celebrate' || chosenMood === 'insight') veyPlaySound('sparkle');
     else veyPlaySound('poke');
 
     const tips = [
-      L('🛡️ Halo! Seluruh aset dan catatan finansial Anda tersimpan privat di brankas lokal browser ini.', '🛡️ Hello! All your financial records are secured privately in this local browser vault.'),
-      L('⚡ Mau catat cepat? Ketik nominal seperti "Kopi 25rb" atau "Bensin 50rb" di bawah!', '⚡ Need quick capture? Type something like "Coffee 25k" or "Gas 50k" below!'),
+      L('🛡️ Halo! Saya INVI, Financial Copilot Anda. Seluruh catatan finansial tersimpan aman & privat di browser lokal Anda.', '🛡️ Hello! I am INVI, your Financial Copilot. All financial records are stored securely & privately in your local browser.'),
+      L('⚡ Catat cepat semudah mengetik nominal seperti "Kopi 25rb" atau "Bensin 50rb" di bawah!', '⚡ Quick capture is as easy as typing "Coffee 25k" or "Gas 50k" below!'),
       L('📑 Lampirkan struk belanja kasir atau PDF mutasi bank via tombol (+), saya bantu ekstrak otomatis!', '📑 Attach purchase receipts or bank PDF statements via (+) and I will auto-extract them!'),
       L('💡 Tips Finansial: Usahakan tabungan dana darurat minimal 3-6 kali pengeluaran bulanan Anda.', '💡 Financial Tip: Strive for an emergency fund of 3-6 months of your expenses.'),
       L('🎯 Pantau tabungan masa depan di menu Goals untuk menjaga impian finansial tetap terarah!', '🎯 Track your future savings in the Goals menu to keep your milestones on target!'),
@@ -2066,7 +2094,7 @@
     if (draftCount > 0) {
       veySpeech = L(`🎉 Ada ${draftCount} draf transaksi siap ditinjau di bawah! Tekan "Simpan yang dipilih" ya.`, `🎉 You have ${draftCount} transaction drafts ready below! Press "Save selected".`);
     } else if (p.netWorth > 0 && veyPokeCount % 3 === 0) {
-      veySpeech = L(`💎 Total kekayaan bersih Anda saat ini: ${money(p.netWorth, false, state.currency)}. Pertahankan performanya!`, `💎 Your current net worth is ${money(p.netWorth, false, state.currency)}. Keep growing!`);
+      veySpeech = L(`💎 Total kekayaan bersih Anda saat ini: ${money(p.netWorth, false, state.currency)}. Pertahankan konsistensinya!`, `💎 Your current net worth is ${money(p.netWorth, false, state.currency)}. Keep growing!`);
     } else {
       veySpeech = tips[veyPokeCount % tips.length];
     }
@@ -2096,47 +2124,341 @@
       veySoundEnabled = !veySoundEnabled;
       try { localStorage.setItem('inveys_vey_sound', veySoundEnabled ? '1' : '0'); } catch(e){}
       if (veySoundEnabled) veyPlaySound('poke');
-      toast(veySoundEnabled ? L('🔊 Efek suara Vey diaktifkan', '🔊 Vey sound effects enabled') : L('🔇 Efek suara Vey dibisukan', '🔇 Vey sound effects muted'));
+      toast(veySoundEnabled ? L('🔊 Efek suara INVI diaktifkan', '🔊 INVI sound effects enabled') : L('🔇 Efek suara INVI dibisukan', '🔇 INVI sound effects muted'));
       render();
       return;
     }
   }
 
-  function veyMascot(mood='idle',size=36){
-    const isHappy=mood==='happy'||mood==='celebrate';
-    const isThink=mood==='thinking';
-    const isWink=mood==='wink';
-    const isLove=mood==='love';
-    const isAlert=mood==='alert'||mood==='surprised';
-    const isSleep=mood==='sleep'||mood==='standby';
-    const eyeCol = isHappy ? '#fbbf24' : (isThink ? '#38bdf8' : (isLove ? '#f43f5e' : (isWink ? '#10b981' : (isAlert ? '#a855f7' : (isSleep ? '#6ee7b7' : '#34d399')))));
-    const auraCol = isHappy ? 'rgba(251,191,36,0.3)' : (isThink ? 'rgba(56,189,248,0.3)' : (isLove ? 'rgba(244,63,94,0.35)' : (isAlert ? 'rgba(168,85,247,0.3)' : 'rgba(52,211,153,0.25)')));
-    let eyesSvg='';
-    if(isHappy){
-      eyesSvg=`<path d="M36 53 Q41 47 46 53" fill="none" stroke="${eyeCol}" stroke-width="3" stroke-linecap="round"/><path d="M54 53 Q59 47 64 53" fill="none" stroke="${eyeCol}" stroke-width="3" stroke-linecap="round"/><circle cx="34" cy="58" r="2.2" fill="#f43f5e" opacity="0.6"/><circle cx="66" cy="58" r="2.2" fill="#f43f5e" opacity="0.6"/><polygon points="26,38 28,43 33,45 28,47 26,52 24,47 19,45 24,43" fill="#fbbf24" class="vey-sparkle"/><polygon points="74,38 76,43 81,45 76,47 74,52 72,47 67,45 72,43" fill="#fbbf24" class="vey-sparkle s2"/>`;
-    }else if(isThink){
-      eyesSvg=`<circle cx="41" cy="51" r="4.5" fill="${eyeCol}" class="vey-eye-think"/><circle cx="59" cy="51" r="4.5" fill="${eyeCol}" class="vey-eye-think"/><circle cx="42.5" cy="49.5" r="1.5" fill="#fff"/><circle cx="60.5" cy="49.5" r="1.5" fill="#fff"/><line x1="32" y1="51" x2="68" y2="51" stroke="#38bdf8" stroke-width="1" stroke-dasharray="2 2" opacity="0.7" class="vey-scanline"/>`;
-    }else if(isWink){
-      eyesSvg=`<path d="M36 53 Q41 46 46 53" fill="none" stroke="${eyeCol}" stroke-width="3" stroke-linecap="round"/><polygon points="59,47 60.5,50.5 64,51 61.5,53.5 62,57 59,55 56,57 56.5,53.5 54,51 57.5,50.5" fill="${eyeCol}" class="vey-wink-star"/><circle cx="34" cy="58" r="2.2" fill="#f43f5e" opacity="0.6"/><circle cx="66" cy="58" r="2.2" fill="#f43f5e" opacity="0.6"/><polygon points="74,36 76,41 81,43 76,45 74,50 72,45 67,43 72,41" fill="#fbbf24" class="vey-sparkle"/>`;
-    }else if(isLove){
-      eyesSvg=`<path d="M41 48 A2.2 2.2 0 0 0 37.5 49.5 A2.2 2.2 0 0 0 37.5 52.5 L41 56 L44.5 52.5 A2.2 2.2 0 0 0 44.5 49.5 A2.2 2.2 0 0 0 41 48 Z" fill="#f43f5e" class="vey-heart-eye"/><path d="M59 48 A2.2 2.2 0 0 0 55.5 49.5 A2.2 2.2 0 0 0 55.5 52.5 L59 56 L62.5 52.5 A2.2 2.2 0 0 0 62.5 49.5 A2.2 2.2 0 0 0 59 48 Z" fill="#f43f5e" class="vey-heart-eye"/><circle cx="33" cy="58" r="2" fill="#f43f5e" opacity="0.7"/><circle cx="67" cy="58" r="2" fill="#f43f5e" opacity="0.7"/><path d="M72 32 A1.5 1.5 0 0 0 69.5 33 A1.5 1.5 0 0 0 69.5 35 L72 37.5 L74.5 35 A1.5 1.5 0 0 0 74.5 33 A1.5 1.5 0 0 0 72 32 Z" fill="#fb7185" class="vey-floating-heart"/>`;
-    }else if(isAlert){
-      eyesSvg=`<circle cx="41" cy="51" r="5" fill="none" stroke="${eyeCol}" stroke-width="2"/><circle cx="41" cy="51" r="2.2" fill="${eyeCol}"/><circle cx="59" cy="51" r="5" fill="none" stroke="${eyeCol}" stroke-width="2"/><circle cx="59" cy="51" r="2.2" fill="${eyeCol}"/><line x1="50" y1="20" x2="50" y2="24" stroke="${eyeCol}" stroke-width="2.5" stroke-linecap="round" class="vey-antenna-ping"/>`;
-    }else if(isSleep){
-      eyesSvg=`<path d="M37 52 L45 52" stroke="${eyeCol}" stroke-width="2.5" stroke-linecap="round"/><path d="M55 52 L63 52" stroke="${eyeCol}" stroke-width="2.5" stroke-linecap="round"/><text x="68" y="42" font-size="9" font-family="'Manrope',sans-serif" font-weight="800" fill="#38bdf8" class="vey-zzz">z</text><text x="75" y="34" font-size="11" font-family="'Manrope',sans-serif" font-weight="800" fill="#34d399" class="vey-zzz s2">Z</text>`;
-    }else{
-      eyesSvg=`<g class="vey-eye-group"><rect x="37" y="47" width="8" height="9" rx="4" fill="${eyeCol}"/><rect x="55" y="47" width="8" height="9" rx="4" fill="${eyeCol}"/><circle cx="42" cy="50" r="1.6" fill="#fff"/><circle cx="60" cy="50" r="1.6" fill="#fff"/></g>`;
+  function inviMascot(mood='idle', size=36, opts={}) {
+    const isHappy = mood === 'happy';
+    const isThink = mood === 'thinking';
+    const isExcited = mood === 'excited' || mood === 'rxited';
+    const isConfident = mood === 'confident';
+    const isWink = mood === 'wink';
+    const isRemind = mood === 'remind' || mood === 'alert' || mood === 'surprised';
+    const isAnalyze = mood === 'analyze';
+    const isInsight = mood === 'insight' || mood === 'give_insight';
+    const isCelebrate = mood === 'celebrate';
+    const isSleep = mood === 'sleep' || mood === 'standby';
+    const isLove = mood === 'love';
+
+    // Warm golden LED lighting per PRD
+    const eyeCol = isLove ? '#fb7185' : '#fbbf24';
+    const auraCol = 'rgba(229, 193, 88, 0.28)';
+
+    let eyesSvg = '';
+    if (isHappy) {
+      eyesSvg = `<path d="M37 36 Q42 29 47 36" fill="none" stroke="${eyeCol}" stroke-width="3.5" stroke-linecap="round" filter="url(#invi-eg-${size})"/><path d="M53 36 Q58 29 63 36" fill="none" stroke="${eyeCol}" stroke-width="3.5" stroke-linecap="round" filter="url(#invi-eg-${size})"/><ellipse cx="34" cy="41" rx="2.5" ry="1.2" fill="#f59e0b" opacity="0.45"/><ellipse cx="66" cy="41" rx="2.5" ry="1.2" fill="#f59e0b" opacity="0.45"/>`;
+    } else if (isThink) {
+      eyesSvg = `<ellipse cx="43" cy="34" rx="4" ry="5.5" fill="${eyeCol}" filter="url(#invi-eg-${size})"/><circle cx="44.5" cy="32.5" r="1.5" fill="#ffffff"/><ellipse cx="59" cy="34" rx="4" ry="5.5" fill="${eyeCol}" filter="url(#invi-eg-${size})"/><circle cx="60.5" cy="32.5" r="1.5" fill="#ffffff"/><line x1="33" y1="39" x2="67" y2="39" stroke="#f59e0b" stroke-width="1" stroke-dasharray="2 1.5" opacity="0.8" class="vey-scanline"/>`;
+    } else if (isExcited) {
+      eyesSvg = `<path d="M40 31 L47 35 L40 39" fill="none" stroke="${eyeCol}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#invi-eg-${size})"/><path d="M60 31 L53 35 L60 39" fill="none" stroke="${eyeCol}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#invi-eg-${size})"/><polygon points="50,26 51,28 53,28.5 51,29 50,31 49,29 47,28.5 49,28" fill="#fde68a" class="vey-sparkle"/>`;
+    } else if (isConfident) {
+      eyesSvg = `<ellipse cx="42" cy="34" rx="4.2" ry="5.8" fill="${eyeCol}" filter="url(#invi-eg-${size})"/><circle cx="43.5" cy="32.5" r="1.6" fill="#ffffff"/><ellipse cx="58" cy="34" rx="4.2" ry="5.8" fill="${eyeCol}" filter="url(#invi-eg-${size})"/><circle cx="59.5" cy="32.5" r="1.6" fill="#ffffff"/><path d="M46 42 Q50 44 54 42" fill="none" stroke="${eyeCol}" stroke-width="1.8" stroke-linecap="round"/>`;
+    } else if (isWink) {
+      eyesSvg = `<path d="M37 36 Q42 30 47 36" fill="none" stroke="${eyeCol}" stroke-width="3.5" stroke-linecap="round" filter="url(#invi-eg-${size})"/><ellipse cx="58" cy="34" rx="4.2" ry="5.8" fill="${eyeCol}" filter="url(#invi-eg-${size})"/><circle cx="59.5" cy="32.5" r="1.6" fill="#ffffff"/><polygon points="69,28 70,30.5 73,31 70.5,32.5 71,35 69,33.5 67,35 67.5,32.5 65,31 68,30.5" fill="#fde68a" class="vey-wink-star"/><ellipse cx="34" cy="41" rx="2.5" ry="1.2" fill="#f59e0b" opacity="0.45"/>`;
+    } else if (isRemind) {
+      eyesSvg = `<circle cx="42" cy="34" r="5" fill="none" stroke="${eyeCol}" stroke-width="2"/><circle cx="42" cy="34" r="2.4" fill="${eyeCol}" filter="url(#invi-eg-${size})"/><circle cx="58" cy="34" r="5" fill="none" stroke="${eyeCol}" stroke-width="2"/><circle cx="58" cy="34" r="2.4" fill="${eyeCol}" filter="url(#invi-eg-${size})"/>`;
+    } else if (isSleep) {
+      eyesSvg = `<path d="M38 36 L46 36" stroke="${eyeCol}" stroke-width="2.8" stroke-linecap="round"/><path d="M54 36 L62 36" stroke="${eyeCol}" stroke-width="2.8" stroke-linecap="round"/><text x="66" y="27" font-size="8" font-family="'Manrope',sans-serif" font-weight="800" fill="#fde68a" class="vey-zzz">z</text><text x="73" y="21" font-size="10" font-family="'Manrope',sans-serif" font-weight="800" fill="#fbbf24" class="vey-zzz s2">Z</text>`;
+    } else if (isLove) {
+      eyesSvg = `<path d="M42 32 A2.5 2.5 0 0 0 38 34 A2.5 2.5 0 0 0 38 37.5 L42 41.5 L46 37.5 A2.5 2.5 0 0 0 46 34 A2.5 2.5 0 0 0 42 32 Z" fill="#fb7185" filter="url(#invi-eg-${size})"/><path d="M58 32 A2.5 2.5 0 0 0 54 34 A2.5 2.5 0 0 0 54 37.5 L58 41.5 L62 37.5 A2.5 2.5 0 0 0 62 34 A2.5 2.5 0 0 0 58 32 Z" fill="#fb7185" filter="url(#invi-eg-${size})"/><ellipse cx="34" cy="41" rx="2.5" ry="1.2" fill="#fb7185" opacity="0.45"/><ellipse cx="66" cy="41" rx="2.5" ry="1.2" fill="#fb7185" opacity="0.45"/>`;
+    } else {
+      eyesSvg = `<path d="M37 36 Q42 29 47 36" fill="none" stroke="${eyeCol}" stroke-width="3.5" stroke-linecap="round" filter="url(#invi-eg-${size})"/><path d="M53 36 Q58 29 63 36" fill="none" stroke="${eyeCol}" stroke-width="3.5" stroke-linecap="round" filter="url(#invi-eg-${size})"/><ellipse cx="34" cy="41" rx="2.5" ry="1.2" fill="#f59e0b" opacity="0.45"/><ellipse cx="66" cy="41" rx="2.5" ry="1.2" fill="#f59e0b" opacity="0.45"/>`;
     }
-    return `<svg class="vey-mascot-svg mood-${escape(mood)}" width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vey Cyber-Vault Mascot"><defs><radialGradient id="vg-${size}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${auraCol}"/><stop offset="100%" stop-color="transparent"/></radialGradient><linearGradient id="vh-${size}" x1="20%" y1="0%" x2="80%" y2="100%"><stop offset="0%" stop-color="#1f3b32"/><stop offset="50%" stop-color="#0f261f"/><stop offset="100%" stop-color="#071713"/></linearGradient><linearGradient id="vr-${size}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34d399"/><stop offset="50%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="url(#vg-${size})"/><ellipse cx="50" cy="54" rx="43" ry="15" fill="none" stroke="url(#vr-${size})" stroke-width="2.2" stroke-dasharray="8 6" transform="rotate(-14 50 54)" class="vey-orbit-ring"/><g class="vey-levitate"><path d="M28 38 L17 28" stroke="#34d399" stroke-width="2.8" stroke-linecap="round"/><circle cx="16" cy="27" r="3.5" fill="#38bdf8" class="vey-antenna-orb"/><path d="M72 38 L83 28" stroke="#34d399" stroke-width="2.8" stroke-linecap="round"/><circle cx="84" cy="27" r="3.5" fill="#38bdf8" class="vey-antenna-orb"/><path d="M26 52 C26 26, 74 26, 74 52 C74 72, 65 78, 50 78 C35 78, 26 72, 26 52 Z" fill="url(#vh-${size})" stroke="#34d399" stroke-width="2.5"/><polygon points="50,32 54,36 50,40 46,36" fill="${eyeCol}"/><path d="M31 46 C31 41, 69 41, 69 46 C69 64, 61 67, 50 67 C39 67, 31 64, 31 46 Z" fill="#03140f" stroke="rgba(52,211,153,0.35)" stroke-width="1.8"/><path d="M34 44 C42 42, 58 42, 66 44" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" fill="none"/>${eyesSvg}<ellipse cx="50" cy="78" rx="10" ry="3.2" fill="#34d399" opacity="0.7" class="vey-thruster"/></g><ellipse cx="50" cy="91" rx="22" ry="4" fill="rgba(0,0,0,0.32)" class="vey-shadow"/></svg>`;
+
+    let armsSvg = '';
+    if (isAnalyze) {
+      armsSvg = `
+        <path d="M34 54 Q26 62 25 70" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="25" cy="70" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+        <path d="M66 54 Q75 62 73 68" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <rect x="71" y="58" width="16" height="22" rx="2.5" fill="#0f172a" stroke="#e5c158" stroke-width="1.2" transform="rotate(8 71 58)"/>
+        <path d="M74 73 L77 69 L80 71 L84 64" stroke="#fbbf24" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <circle cx="72" cy="68" r="2.8" fill="#ffffff"/>
+      `;
+    } else if (isInsight) {
+      armsSvg = `
+        <path d="M34 54 Q26 62 25 70" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="25" cy="70" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+        <path d="M66 54 Q76 48 76 42" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="76" cy="40" r="2.8" fill="#ffffff"/>
+        <circle cx="80" cy="30" r="5.5" fill="url(#invi-gd-${size})" filter="url(#invi-eg-${size})"/>
+        <rect x="78.5" y="35" width="3" height="2" rx="0.5" fill="#b45309"/>
+        <path d="M80 20 L80 22 M73 24 L75 25 M87 24 L85 25" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round"/>
+      `;
+    } else if (isRemind) {
+      armsSvg = `
+        <path d="M34 54 Q26 60 27 67" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <path d="M16 57 C16 57, 24 55, 24 55 C24 55, 32 57, 32 57 C32 68, 24 74, 24 76 C24 74, 16 68, 16 57 Z" fill="#0f172a" stroke="#e5c158" stroke-width="1.5"/>
+        <path d="M21 65 L23.5 67.5 L28 62" stroke="#fbbf24" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="29" cy="66" r="2.8" fill="#ffffff"/>
+        <path d="M66 54 Q74 62 75 70" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="75" cy="70" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+      `;
+    } else if (isCelebrate) {
+      armsSvg = `
+        <path d="M34 54 Q25 48 22 40" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="21" cy="38" r="3.5" fill="#ffffff"/>
+        <path d="M66 54 Q75 48 78 40" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="79" cy="38" r="3.5" fill="#ffffff"/>
+        <rect x="80" y="58" width="3.2" height="14" rx="1" fill="#e5c158"/>
+        <rect x="84.5" y="52" width="3.2" height="20" rx="1" fill="#fbbf24"/>
+        <rect x="89" y="46" width="3.2" height="26" rx="1" fill="#fde68a"/>
+        <path d="M80 62 L85 55 L90 48 L93 45" stroke="#f59e0b" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      `;
+    } else if (isHappy || isWink) {
+      armsSvg = `
+        <path d="M34 54 Q26 62 25 70" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="25" cy="70" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+        <rect x="23" y="66" width="4.5" height="2" rx="0.8" fill="#e5c158"/>
+        <path d="M66 54 Q75 48 78 40" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="79" cy="38" r="3.8" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+        <circle cx="81.5" cy="35" r="1.3" fill="#ffffff"/>
+        <rect x="75" y="42" width="3.5" height="2" rx="0.8" fill="#e5c158" transform="rotate(-30 75 42)"/>
+      `;
+    } else if (isConfident) {
+      armsSvg = `
+        <path d="M34 54 Q26 62 25 70" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="25" cy="70" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+        <path d="M66 54 Q76 56 76 62" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="77" cy="62" r="3.5" fill="#ffffff"/>
+        <path d="M77 62 L77 56" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="77" cy="55" r="1.3" fill="#ffffff"/>
+      `;
+    } else if (isThink) {
+      armsSvg = `
+        <path d="M34 54 Q26 62 25 70" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="25" cy="70" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+        <path d="M66 54 Q70 60 62 50" stroke="url(#invi-iv-${size})" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <circle cx="61" cy="49" r="3" fill="#ffffff"/>
+      `;
+    } else {
+      armsSvg = `
+        <path d="M34 54 Q26 62 25 70" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="25" cy="70" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+        <rect x="23" y="66" width="4.5" height="2" rx="0.8" fill="#e5c158"/>
+        <path d="M66 54 Q74 62 75 70" stroke="url(#invi-iv-${size})" stroke-width="4.8" stroke-linecap="round" fill="none"/>
+        <circle cx="75" cy="70" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>
+        <rect x="72.5" y="66" width="4.5" height="2" rx="0.8" fill="#e5c158"/>
+      `;
+    }
+
+    return `<svg class="vey-mascot-svg invi-mascot-svg mood-${escape(mood)}" width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="INVI Financial Copilot Mascot">
+      <defs>
+        <radialGradient id="invi-ag-${size}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="${auraCol}"/>
+          <stop offset="100%" stop-color="transparent"/>
+        </radialGradient>
+        <linearGradient id="invi-iv-${size}" x1="20%" y1="0%" x2="80%" y2="100%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="60%" stop-color="#f8fafc"/>
+          <stop offset="100%" stop-color="#e2e8f0"/>
+        </linearGradient>
+        <linearGradient id="invi-cp-${size}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0b132b"/>
+          <stop offset="60%" stop-color="#1e293b"/>
+          <stop offset="100%" stop-color="#0f172a"/>
+        </linearGradient>
+        <linearGradient id="invi-gd-${size}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#fde68a"/>
+          <stop offset="40%" stop-color="#e5c158"/>
+          <stop offset="100%" stop-color="#b45309"/>
+        </linearGradient>
+        <filter id="invi-eg-${size}" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#f59e0b" flood-opacity="0.8"/>
+        </filter>
+      </defs>
+      <circle cx="50" cy="50" r="48" fill="url(#invi-ag-${size})"/>
+      <ellipse cx="50" cy="94" rx="22" ry="3.5" fill="rgba(0,0,0,0.28)" class="vey-shadow"/>
+      <g class="vey-levitate">
+        <!-- Deep Navy Hero Cape with Champagne Gold Trim -->
+        <path d="M30 52 C22 66, 16 80, 14 88 C32 90, 68 90, 86 88 C84 80, 78 66, 70 52 Z" fill="url(#invi-cp-${size})"/>
+        <path d="M14 88 C32 90, 68 90, 86 88" stroke="#e5c158" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        
+        <!-- Legs and Gold Soles -->
+        <rect x="36" y="77" width="10" height="14" rx="4" fill="url(#invi-iv-${size})" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect x="36" y="85" width="10" height="2.4" rx="1" fill="#e5c158"/>
+        <ellipse cx="41" cy="91" rx="5.5" ry="2.2" fill="#d4af37"/>
+        <rect x="54" y="77" width="10" height="14" rx="4" fill="url(#invi-iv-${size})" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect x="54" y="85" width="10" height="2.4" rx="1" fill="#e5c158"/>
+        <ellipse cx="59" cy="91" rx="5.5" ry="2.2" fill="#d4af37"/>
+
+        <!-- Ivory Ceramic Torso -->
+        <path d="M34 51 C34 49, 66 49, 66 51 C68 63, 65 78, 50 78 C35 78, 32 63, 34 51 Z" fill="url(#invi-iv-${size})" stroke="#cbd5e1" stroke-width="1.4"/>
+        <path d="M37 72 C43 74, 57 74, 63 72" stroke="#e5c158" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        
+        <!-- INVEYS Gold "N" Chest Emblem -->
+        <path d="M46.2 60.5 L46.2 69.5 L48.2 69.5 L48.2 64 L51.8 69.5 L53.8 69.5 L53.8 60.5 L51.8 60.5 L51.8 66 L48.2 60.5 Z" fill="url(#invi-gd-${size})"/>
+
+        <!-- Arms & Hand Accessories -->
+        ${armsSvg}
+
+        <!-- Collar & Gold Clasp -->
+        <ellipse cx="50" cy="49" rx="16" ry="5.5" fill="none" stroke="#e5c158" stroke-width="2.5"/>
+        <circle cx="50" cy="51" r="3.2" fill="url(#invi-gd-${size})" stroke="#b45309" stroke-width="0.8"/>
+
+        <!-- Helmet Crest Fin -->
+        <path d="M42 16 C46 11, 54 11, 58 16" fill="none" stroke="#e5c158" stroke-width="2" stroke-linecap="round"/>
+        <path d="M47 13 C47 9, 53 9, 53 13 L52 17 L48 17 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <path d="M48.8 10 C50 8, 50 8, 51.2 10 L50.8 16 L49.2 16 Z" fill="#e5c158"/>
+
+        <!-- Ivory Ceramic Head -->
+        <ellipse cx="50" cy="34" rx="27" ry="21" fill="url(#invi-iv-${size})" stroke="#cbd5e1" stroke-width="1.4"/>
+
+        <!-- Left Champagne Gold Ear Cup -->
+        <ellipse cx="23" cy="34" rx="4.5" ry="9" fill="url(#invi-gd-${size})" stroke="#b45309" stroke-width="0.9"/>
+        <ellipse cx="23" cy="34" rx="2.5" ry="5.5" fill="#0f172a"/>
+        <circle cx="23" cy="34" r="1.3" fill="#fde68a"/>
+
+        <!-- Right Champagne Gold Ear Cup -->
+        <ellipse cx="77" cy="34" rx="4.5" ry="9" fill="url(#invi-gd-${size})" stroke="#b45309" stroke-width="0.9"/>
+        <ellipse cx="77" cy="34" rx="2.5" ry="5.5" fill="#0f172a"/>
+        <circle cx="77" cy="34" r="1.3" fill="#fde68a"/>
+
+        <!-- Glossy Black Visor -->
+        <path d="M29 34 C29 23, 71 23, 71 34 C71 45, 63 47, 50 47 C37 47, 29 45, 29 34 Z" fill="#070b14" stroke="#1e293b" stroke-width="1.2"/>
+        
+        <!-- Visor Specular Glass Reflection Sheen -->
+        <path d="M33 27 C40 24, 60 24, 67 27" stroke="rgba(255,255,255,0.4)" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+        <circle cx="34" cy="29" r="1" fill="#ffffff" opacity="0.6"/>
+
+        <!-- Glowing Warm Amber LED Eyes -->
+        ${eyesSvg}
+      </g>
+    </svg>`;
   }
+
+  const veyMascot = inviMascot;
+
+  let inviStudioMood = 'happy';
+  function inviStudioModalHtml(selectedMood = 'happy') {
+    inviStudioMood = selectedMood || 'happy';
+    const moods = [
+      { id: 'happy', label: 'Happy', desc: L('Ekspresi ramah menyapa pengguna & progres positif', 'Friendly greeting & positive progress') },
+      { id: 'thinking', label: 'Thinking', desc: L('Menganalisis pola transaksi & data finansial', 'Analyzing transaction patterns & financial data') },
+      { id: 'excited', label: 'Excited', desc: L('Merayakan pencapaian target tabungan & milestone', 'Celebrating milestone & goal achievements') },
+      { id: 'confident', label: 'Confident', desc: L('Rekomendasi terstruktur & strategi mantap', 'Structured recommendation & steady strategy') },
+      { id: 'wink', label: 'Wink', desc: L('Apresiasi cerdas & sapaan interaktif', 'Clever acknowledgment & friendly poke') },
+      { id: 'remind', label: 'Remind', desc: L('Peringatan batas anggaran & jadwal tagihan', 'Budget limit reminder & upcoming due dates') },
+      { id: 'analyze', label: 'Analyze', desc: L('Meninjau grafik portofolio & tren arus kas dengan tablet', 'Reviewing portfolio charts & cashflow trends with tablet') },
+      { id: 'insight', label: 'Give Insight', desc: L('Menghadirkan peluang optimasi pengeluaran dengan bohlam pijar emas', 'Delivering spending optimization opportunities with glowing bulb') },
+      { id: 'celebrate', label: 'Celebrate', desc: L('Pertumbuhan aset & target finansial tercapai dengan grafik bertumbuh', 'Asset growth & milestone completed with growth chart') },
+      { id: 'sleep', label: 'Sleep', desc: L('Mode siaga hemat energi brankas privat', 'Standby mode inside local private vault') }
+    ];
+    const cur = moods.find(m => m.id === inviStudioMood) || moods[0];
+
+    return `<div id="invi-studio-wrapper">
+      <div class="invi-hero-banner">
+        <div class="invi-hero-avatar-wrap" id="invi-studio-avatar">
+          ${inviMascot(inviStudioMood, 84)}
+        </div>
+        <div class="invi-hero-info">
+          <div class="invi-hero-title">
+            <span>INVI</span>
+            <span class="invi-hero-badge">Financial Copilot</span>
+          </div>
+          <p class="invi-hero-desc"><b>${L('The Intelligent Guardian', 'The Intelligent Guardian')}</b> — ${cur.desc}</p>
+          <div class="invi-traits-row">
+            <span class="invi-trait-pill">📊 Intelligent</span>
+            <span class="invi-trait-pill">🛡️ Trustworthy</span>
+            <span class="invi-trait-pill">🕊️ Calm</span>
+            <span class="invi-trait-pill">⚡ Proactive</span>
+            <span class="invi-trait-pill">🤝 Approachable</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h4 style="margin:0 0 10px;font-size:13px;font-weight:700;color:var(--ink);">${L('Pilih Ekspresi & Pose Karakter:', 'Choose Expression & Pose:')}</h4>
+        <div class="invi-studio-moods">
+          ${moods.map(m => `<button type="button" class="invi-mood-btn ${m.id === inviStudioMood ? 'active' : ''}" data-action="invi-mood:${m.id}"><b>${m.label}</b></button>`).join('')}
+        </div>
+      </div>
+      <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px;">
+        <h4 style="margin:0 0 8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">${L('Spesifikasi Visual Sesuai PRD:', 'Visual Specifications (PRD):')}</h4>
+        <p style="margin:0;font-size:12px;line-height:1.5;color:var(--muted);">${L('Bodi keramik putih gading (Ivory White), helm dengan sirip aerodinamis & ridge emas, ear-cup melingkar champagne gold, visor hitam pekat dengan lengkung refleksi kaca, mata LED kuning keemasan berpendar hangat, dan jubah heroik Deep Navy ber-lis emas dengan lambang "N" INVEYS di dada.', 'Ivory white ceramic body, aerodynamic crested helmet with gold ridge, champagne gold circular ear cups, glossy black visor with specular curve, glowing warm amber LED eyes, and Deep Navy hero cape with gold trim and the INVEYS "N" emblem.')}</p>
+      </div>
+    </div>`;
+  }
+
+  function openInviShowcaseModal(initialMood = 'happy') {
+    inviStudioMood = initialMood;
+    openModal(L('INVI — Financial Copilot Studio', 'INVI — Financial Copilot Studio'), inviStudioModalHtml(inviStudioMood));
+  }
+
+  function inviCardsHtml() {
+    return `<div class="invi-showcase-grid">
+      <div class="invi-card">
+        <div class="invi-card-header">
+          <div class="invi-card-avatar">${inviMascot('happy', 44)}</div>
+          <div class="invi-card-content">
+            <h3>${L('Halo, Saya INVI', 'Hello, I am INVI')}</h3>
+            <p>${L('Asisten AI yang siap membantu perjalanan finansial Anda.', 'AI assistant ready to guide your financial journey.')}</p>
+          </div>
+        </div>
+        <button type="button" class="invi-card-action" data-action="invi-showcase" title="${L('Buka Studio Karakter INVI', 'Open INVI Mascot Studio')}" aria-label="${L('Buka Studio Karakter INVI', 'Open INVI Mascot Studio')}">→</button>
+      </div>
+      <div class="invi-card">
+        <div class="invi-card-header">
+          <div class="invi-card-avatar">${inviMascot('analyze', 44)}</div>
+          <div class="invi-card-content">
+            <h3>${L('Insight untuk Anda', 'Insights for You')}</h3>
+            <p>${L('Ringkasan kondisi keuangan dan peluang investasi.', 'Financial condition summary and investment insights.')}</p>
+          </div>
+        </div>
+        <button type="button" class="invi-card-action" data-action="review" title="${L('Tinjau kondisi keuangan', 'Review financial position')}" aria-label="${L('Tinjau kondisi keuangan', 'Review financial position')}">→</button>
+      </div>
+      <div class="invi-card">
+        <div class="invi-card-header">
+          <div class="invi-card-avatar">${inviMascot('celebrate', 44)}</div>
+          <div class="invi-card-content">
+            <h3>${L('Target Tercapai!', 'Target Achieved!')}</h3>
+            <p>${L('Terus pertahankan konsistensi finansial Anda.', 'Keep up your consistent financial progress.')}</p>
+          </div>
+        </div>
+        <button type="button" class="invi-card-action" data-page="goals" title="${L('Buka Target Tabungan', 'Open Savings Goals')}" aria-label="${L('Buka Target Tabungan', 'Open Savings Goals')}">→</button>
+      </div>
+    </div>`;
+  }
+
+  function inviAction(name, id) {
+    if (name === 'invi-showcase') {
+      openInviShowcaseModal();
+      return;
+    }
+    if (name === 'invi-mood') {
+      inviStudioMood = id || 'happy';
+      veyCustomMood = inviStudioMood;
+      if (inviStudioMood === 'love') veyPlaySound('love');
+      else if (['celebrate', 'excited', 'insight'].includes(inviStudioMood)) veyPlaySound('sparkle');
+      else veyPlaySound('poke');
+      const modalBody = $('#modal-body');
+      if (modalBody) {
+        modalBody.innerHTML = inviStudioModalHtml(inviStudioMood);
+      }
+      render();
+      return;
+    }
+    if (name === 'invi-greet') {
+      veyCustomMood = 'happy';
+      quickMinimized = false;
+      veyPokeAction();
+      return;
+    }
+    if (name.startsWith('vey-')) {
+      veyAction(name, id);
+    }
+  }
+
   function quickComposer(){
     const title=L('Catat atau tanya INVEYS','Record or ask INVEYS');
     const baseMood=aiBusy?'thinking':(drafts.length?'happy':(quickAttachment?'alert':'idle'));
     const mascotMood=veyCustomMood||baseMood;
-    if(quickMinimized)return `<section class="quick-dock minimized" aria-label="${title}"><button class="quick-launcher" data-action="quick-expand" aria-expanded="false" aria-controls="quick-chat-body" title="${L('Buka asisten finansial Vey','Open Vey assistant')}"><span class="vey-launcher-avatar">${veyMascot(mascotMood,32)}</span><span class="vey-launcher-label"><strong class="vey-name">Vey</strong><small class="vey-sub">${L('Asisten Finansial AI','Financial AI Assistant')}</small></span>${drafts.length?`<span class="badge">${drafts.length} draft</span>`:`<span class="vey-ping-dot"></span>`}</button></section>`;
-    const veyBar=`<div class="vey-top-bar"><div class="vey-profile interactive" data-action="vey-poke" role="button" tabindex="0" title="${L('Klik untuk menyapa Vey!','Click to poke Vey!')}" aria-label="${L('Interaksi dengan Vey','Interact with Vey')}"><div class="vey-avatar-badge ${mascotMood}">${veyMascot(mascotMood,38)}</div><div class="vey-details"><div class="vey-name-row"><strong class="vey-title">Vey</strong><span class="vey-badge-role">Cyber-Vault Guardian</span><span class="vey-live-badge ${aiBusy?'busy':'ready'}"><span class="vey-live-pulse"></span>${aiBusy?L('Berpikir…','Thinking…'):L('Aktif','Ready')}</span></div><span class="vey-engine-chip">${L('Engine: ','Engine: ')}<b>${aiProviderBadge(state.assistant.provider)}</b></span></div></div><div class="vey-bar-tools"><button type="button" class="vey-tool-btn ${veySoundEnabled?'active':''}" data-action="vey-toggle-sound" title="${veySoundEnabled?L('Efek Suara: Aktif','Sound: On'):L('Efek Suara: Bisu','Sound: Muted')}">${veySoundEnabled?'🔔':'🔕'}</button><button type="button" class="vey-tool-btn" data-action="quick-new-chat" title="${L('Percakapan baru','New conversation')}">${icon('plus')}</button><button type="button" class="vey-tool-btn" data-action="quick-ai-settings" title="${L('Pengaturan AI & Model','AI Settings')}">${icon('settings')}</button></div></div>`;
+    if(quickMinimized)return `<section class="quick-dock minimized" aria-label="${title}"><button class="quick-launcher" data-action="quick-expand" aria-expanded="false" aria-controls="quick-chat-body" title="${L('Buka asisten finansial INVI','Open INVI financial copilot')}"><span class="vey-launcher-avatar">${inviMascot(mascotMood,32)}</span><span class="vey-launcher-label"><strong class="vey-name">INVI</strong><small class="vey-sub">${L('Financial Copilot','Financial Copilot')}</small></span>${drafts.length?`<span class="badge">${drafts.length} draft</span>`:`<span class="vey-ping-dot"></span>`}</button></section>`;
+    const veyBar=`<div class="vey-top-bar"><div class="vey-profile interactive" data-action="vey-poke" role="button" tabindex="0" title="${L('Klik untuk menyapa INVI!','Click to poke INVI!')}" aria-label="${L('Interaksi dengan INVI','Interact with INVI')}"><div class="vey-avatar-badge ${mascotMood}">${inviMascot(mascotMood,38)}</div><div class="vey-details"><div class="vey-name-row"><strong class="vey-title">INVI</strong><span class="vey-badge-role">Financial Copilot</span><span class="vey-live-badge ${aiBusy?'busy':'ready'}"><span class="vey-live-pulse"></span>${aiBusy?L('Berpikir…','Thinking…'):L('Aktif','Ready')}</span></div><span class="vey-engine-chip">${L('Engine: ','Engine: ')}<b>${aiProviderBadge(state.assistant.provider)}</b></span></div></div><div class="vey-bar-tools"><button type="button" class="vey-tool-btn" data-action="invi-showcase" title="${L('Buka Studio Karakter INVI','Open INVI Mascot Studio')}">✨</button><button type="button" class="vey-tool-btn ${veySoundEnabled?'active':''}" data-action="vey-toggle-sound" title="${veySoundEnabled?L('Efek Suara: Aktif','Sound: On'):L('Efek Suara: Bisu','Sound: Muted')}">${veySoundEnabled?'🔔':'🔕'}</button><button type="button" class="vey-tool-btn" data-action="quick-new-chat" title="${L('Percakapan baru','New conversation')}">${icon('plus')}</button><button type="button" class="vey-tool-btn" data-action="quick-ai-settings" title="${L('Pengaturan AI & Model','AI Settings')}">${icon('settings')}</button></div></div>`;
     const starters=CHAT.history(state).length===0?`<div class="quick-starters"><button type="button" class="quick-starter-pill" data-starter="${L('Berapa total kekayaan bersih saya saat ini?','What is my current net worth?')}">💡 ${L('Kekayaan Bersih','Net Worth')}</button><button type="button" class="quick-starter-pill" data-starter="${L('Berapa sisa kapasitas kas saya bulan ini?','How much available cash flow do I have this month?')}">📈 ${L('Arus Kas Bulan Ini','Cash Flow')}</button><button type="button" class="quick-starter-pill" data-starter="${L('Bagaimana progres pencapaian target tabungan saya?','How are my savings goals progressing?')}">🎯 ${L('Target Tabungan','Goal Progress')}</button></div>`:'';
-    const speechHtml=veySpeech?`<div class="vey-speech-bubble" role="status" aria-live="polite"><div class="vey-bubble-arrow"></div><div class="vey-bubble-content"><span class="vey-bubble-icon">${mascotMood==='love'?'💖':(mascotMood==='wink'?'✨':(mascotMood==='celebrate'?'🎉':'💬'))}</span><div class="vey-bubble-text">${escape(veySpeech)}</div><button type="button" class="vey-bubble-close" data-action="vey-dismiss-speech" aria-label="${L('Tutup pesan Vey','Dismiss')}">✕</button></div></div>`:'';
+    const speechHtml=veySpeech?`<div class="vey-speech-bubble" role="status" aria-live="polite"><div class="vey-bubble-arrow"></div><div class="vey-bubble-content"><span class="vey-bubble-icon">${mascotMood==='love'?'💖':(mascotMood==='wink'?'✨':(mascotMood==='celebrate'?'🎉':'💬'))}</span><div class="vey-bubble-text">${escape(veySpeech)}</div><button type="button" class="vey-bubble-close" data-action="vey-dismiss-speech" aria-label="${L('Tutup pesan INVI','Dismiss INVI message')}">✕</button></div></div>`:'';
     return `<section class="panel quick-composer quick-dock" aria-label="${L('Pencatatan cepat dan chatbot','Quick capture and chatbot')}"><div id="quick-chat-body">${veyBar}${speechHtml}<div class="quick-chat-output">${aiThread()}${aiBusy?`<div class="ai-wait-card" role="status"><div class="ai-aura-pill"><div class="ai-spark-orb"><span class="sparkle-star">✧</span><div class="sparkle-ring"></div></div><div class="ai-wait-content"><div class="ai-wait-status-line"><span class="ai-live-indicator"></span><span class="ai-status-text" id="ai-dynamic-status">${escape(aiThinkingStatusText())}</span></div><div class="ai-shimmer-bar"><div class="ai-shimmer-progress"></div></div></div></div></div>`:''}${quickReply?`<div class="quick-response" role="status" aria-live="polite">${quickReply}</div>`:''}${page==='capture'?'':draftPanel()}</div>${starters}${quickHabitChips()}${quickAttachment?`<div class="quick-attachment"><span>${icon('capture')}${quickAttachmentTag(quickAttachment)} ${user(quickAttachment.name)}<small>${(quickAttachment.size/1024).toFixed(0)} KB</small></span>${!quickAttachment.type.startsWith('audio/')&&!quickAttachment.type.startsWith('video/')&&!['text/plain','text/csv'].includes(quickAttachment.type)?button(quickFileBusy?L('Memproses…','Processing…'):L('Ekstrak & tinjau','Extract & review'),'quick-extract'):''}${button(L('Hapus lampiran','Remove attachment'),'quick-file-clear')}</div>`:''}<form id="quick-form" class="quick-chat-input"><details class="quick-popover"><summary class="quick-icon-button" aria-label="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}" title="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}">+</summary><div class="quick-popover-menu"><div class="quick-popover-head"><span class="quick-popover-title">✨ ${L('Tambah Lampiran & Media','Add Media & Attachments')}</span><span class="quick-popover-sub">${L('Pilih file dokumen, foto atau rekaman','Select document, photo or media')}</span></div><div class="quick-media-grid"><button type="button" class="quick-tile-btn" data-action="quick-camera"><span class="quick-tile-icon photo">${icon('capture')}</span><b>${L('Kamera','Camera')}</b><small>${L('Ambil foto','Take photo')}</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:doc"><span class="quick-tile-icon doc">${icon('capture')}</span><b>${L('Dokumen','Document')}</b><small>PDF / CSV / Struk</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:video"><span class="quick-tile-icon video">${icon('capture')}</span><b>${L('Video','Video')}</b><small>MP4 / WebM</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:audio"><span class="quick-tile-icon audio">${icon('copilot')}</span><b>${L('Audio','Audio')}</b><small>M4A / WAV</small></button></div><div class="quick-actions-list"><button type="button" class="quick-list-btn" data-action="quick-new-chat">${icon('plus')}<span>${L('Percakapan baru','New conversation')}</span></button><button type="button" class="quick-list-btn" data-action="quick-voice">${icon('copilot')}<span>${L('Input suara','Voice input')}</span></button><button type="button" class="quick-list-btn" data-action="quick-ai-settings">${icon('settings')}<span>${L('Model AI & Memori','AI Model & Memory')}<small>${aiProviderName(state.assistant.provider)}</small></span></button></div><div class="quick-popover-account"><label for="quick-account">${L('Akun untuk pencatatan','Recording account')}</label><select id="quick-account" name="accountId"><option value="">${L('Pilih akun','Choose account')}</option>${viewState().accounts.map(a=>`<option value="${a.id}" ${a.id===quickAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></div><div class="quick-popover-account"><label for="quick-source-kind">${L('Jenis dokumen','Document type')}</label><select id="quick-source-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk','Receipt')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank historis','Historical bank statement')}</option></select></div><button type="button" class="quick-list-btn" data-page="copilot" style="margin-top:4px">${icon('copilot')}<span>${L('Buka chatbot lengkap','Open full chatbot')}</span></button></div></details><label class="screen-reader" for="quick-text">${L('Perintah atau pertanyaan','Command or question')}</label><textarea id="quick-text" name="text" rows="1" maxlength="6000" placeholder="${L('Tanya INVEYS atau ketik instruksi keuangan…','Ask INVEYS or enter a financial instruction…')}">${escape(quickText)}</textarea><button class="quick-icon-button quick-microphone ${recorder?'recording':''}" type="button" data-action="quick-record-audio" aria-label="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}" title="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3m-3 0h6"/></svg></button><button class="quick-icon-button quick-send" type="submit" aria-label="${L('Kirim','Send')}" title="${L('Kirim','Send')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></form></div></section>`;
   }
   function quickChooseFile(file){
@@ -8088,7 +8410,7 @@
   function exportCSV(){const sanitize=v=>{let str=String(v??'');if(/^[=+@-]/.test(str))str="'"+str;return '"'+str.replaceAll('"','""')+'"';};const rows=[['Date','Description','Type','Amount','Currency','Account','Destination','Category'],...state.transactions.map(t=>[t.date,t.name,t.kind,(t.amount/100).toFixed(2),t.currency,getAccount(t.accountId)?.name||'',getAccount(t.targetId)?.name||'',t.category])];download('inveys-transactions.csv',rows.map(r=>r.map(sanitize).join(',')).join('\r\n'),'text/csv');toast('Transaction CSV exported.');}
   function importFile(file){if(!file)return;if(file.size>5000000){toast('Choose a JSON file smaller than 5 MB.');return;}file.text().then(text=>{const candidate=E.validate(JSON.parse(text));const p=E.position(candidate);confirmAction('Restore this workspace?',`${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, ${candidate.goals.length} goals. Reporting currency: ${escape(candidate.currency)}. This replaces all current local records. Export your current workspace first if needed.`,()=>{state=candidate;resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;save();toast('Workspace restored.');},'Replace workspace');}).catch(error=>toast('Import failed: '+error.message));}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
-  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('vey-')){veyAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('vey-')||name.startsWith('invi-')){inviAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'tax-djp-modal':openDjpTaxModal(id);break;
     case 'pwa-install':triggerPwaInstall();break;
     case 'lock-vault-now':lockVault();break;
