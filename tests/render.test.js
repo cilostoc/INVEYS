@@ -992,6 +992,28 @@ test('E-Wallet account creation, quick presets, icon rendering, and liquid metri
   assert.match(app.html(), /Terdeteksi: GoPay|Detected: GoPay/);
 });
 
+test('reports debt and cards position report handles decimal APR, unlinked cards, and tx-edit action', () => {
+  const app = boot();
+  app.click({ page: 'reports' });
+
+  // 1. Check reports debt tab renders decimal APRs without precision error
+  app.click({ action: 'report-tab:debt' });
+  assert.match(app.html(), /Auto loan/);
+  assert.match(app.html(), /Average APR/);
+  assert.match(app.html(), /10.1%/);
+
+  // 2. Check reports cards tab renders credit cards properly
+  app.click({ action: 'report-tab:cards' });
+  assert.match(app.html(), /Northstar Rewards/);
+  assert.match(app.html(), /Total debt balance/);
+
+  // 3. Check clicking tx-edit opens transaction editor modal
+  app.click({ action: 'report-tab:cashflow' });
+  app.click({ action: 'tx-edit:t1' });
+  assert.match(app.elements.get('#modal-body').innerHTML, /Salary · Northstar Studio/);
+});
+
+
 
 
 
