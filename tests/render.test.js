@@ -823,6 +823,23 @@ test('INVI mascot studio modal and in-app illustration cards render PRD traits a
   // Switch mood to thinking in studio
   app.click({ action: 'invi-mood:thinking' });
   assert.match(app.elements.get('#modal-body').innerHTML, /mood-thinking/);
+
+  // Switch tab to Mascot Soul & Principles
+  app.click({ action: 'invi-tab:soul' });
+  assert.match(app.elements.get('#modal-body').innerHTML, /INVEYS MASCOT SOUL/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /01 · Clarity/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /02 · Integrity/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /03 · Empowerment/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /04 · Consistency/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /05 · Growth/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /What I Will Never Do/);
+  assert.match(app.elements.get('#modal-body').innerHTML, /Your Financial Copilot/);
+
+  // Close modal and test direct invi-soul shortcut from copilot page
+  app.click({ action: 'modal-close' });
+  app.click({ action: 'invi-soul' });
+  assert.equal(app.elements.get('#modal').open, true);
+  assert.match(app.elements.get('#modal-body').innerHTML, /INVEYS MASCOT SOUL/);
 });
 
 test('administrator control panel renders access restriction in local mode and full control hub in admin server mode', () => {

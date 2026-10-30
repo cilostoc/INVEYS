@@ -5210,6 +5210,131 @@ dialog.has-key-mgr > #modal-body {
   background: rgba(217, 119, 6, 0.2);
 }
 
+/* INVI Mascot Soul & Philosophy Styles */
+.invi-studio-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+.invi-tab-btn {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.invi-tab-btn:hover {
+  color: var(--ink);
+  background: var(--bg-hover, rgba(255,255,255,0.05));
+}
+.invi-tab-btn.active {
+  color: #b45309;
+  background: color-mix(in srgb, #e5c158 16%, var(--paper));
+  border-color: #e5c158;
+}
+[data-theme="dark"] .invi-tab-btn.active {
+  color: #fde68a;
+  background: rgba(217, 119, 6, 0.22);
+}
+.invi-soul-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.invi-soul-banner {
+  background: linear-gradient(135deg, rgba(15,23,42,0.96) 0%, rgba(30,41,59,0.94) 100%);
+  border: 1px solid rgba(229,193,88,0.35);
+  border-radius: 14px;
+  padding: 16px 20px;
+  color: #f8fafc;
+}
+.invi-soul-banner h3 {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fde68a;
+}
+.invi-soul-banner p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+.invi-principles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+.invi-principle-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.16s ease;
+}
+.invi-principle-card:hover {
+  border-color: #e5c158;
+}
+.invi-principle-card b {
+  font-size: 12px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.invi-principle-card small {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.invi-never-box {
+  background: color-mix(in srgb, var(--paper) 90%, #f43f5e 10%);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, #f43f5e 30%);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.invi-never-box h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 750;
+  color: #e11d48;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+[data-theme="dark"] .invi-never-box h4 {
+  color: #fb7185;
+}
+.invi-never-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.invi-signature-footer {
+  margin: 10px 0 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+  font-size: 11px;
+  color: var(--muted);
+}
+.invi-signature-footer em {
+  color: #b45309;
+}
+[data-theme="dark"] .invi-signature-footer em {
+  color: #fde68a;
+}
+
 /* Assistant Message Vey Avatar */
 .ai-message.assistant .ai-message-head {
   display: flex;
@@ -9388,8 +9513,9 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
           <span class="invi-trait-pill">🤝 Approachable</span>
         </div>
       </div>
-      <div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
         <button type="button" class="btn" data-action="invi-showcase" style="border-color:#e5c158;color:#fde68a;background:rgba(229,193,88,0.12);">✨ ${L('Studio Karakter INVI', 'INVI Character Studio')}</button>
+        <button type="button" class="btn btn-subtle" data-action="invi-soul" style="font-size:11px;color:#fde68a;">📜 ${L('Mascot Soul & Prinsip', 'Mascot Soul & Principles')}</button>
       </div>
     </div>`;
 
@@ -9406,10 +9532,10 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     else if (/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower)) text=`Your recorded net worth is <b>${money(p.netWorth)}</b>: <b>${money(p.assets)}</b> in assets less <b>${money(p.liabilities)}</b> in liabilities. Your liquid funds total ${money(p.liquid)}. These are manual balance snapshots, not bank-verified records. Review the dates in Accounts before making a consequential decision.`;
     else text='I can explain your financial position, monthly cash-flow plan, reserve coverage, goal progress, or debt records. Choose one of the suggested questions. I cannot answer this reliably from the supported local calculations.';
     if(state.language==='id')return answerIndonesian(q,p);
-    return text;
+    return text + '<p class="invi-signature-footer"><small>✨ <em>Stay informed. Stay intentional. Keep growing.</em></small></p>';
   }
   function ask(q){quickMinimized=false;quickSend(q,quickAccount);$('#chat-question').value='';}
-  function renderMessages(){if(!$('#chat-messages'))return;const history=CHAT.history(state);$('#chat-messages').innerHTML=`<div class="chat-message assistant"><span class="ai-avatar">✧</span><div><p>${L('Tanya atau catat melalui asisten INVEYS. Draft selalu ditinjau sebelum disimpan.','Ask or record with INVEYS. Drafts always require review before saving.')}</p><small>${escape(aiProviderName(state.assistant.provider))}</small></div></div>`+history.map((m,idx)=>{const isLatestAssistant=m.role==='assistant'&&idx===history.length-1&&streamState.active;const textToShow=isLatestAssistant?streamState.displayedText:m.text;return m.role==='user'?`<div class="chat-message user">${escape(m.text)}</div>`:`<div class="chat-message assistant ${isLatestAssistant?'typing-streaming':''}" onclick="skipStreaming()"><span class="ai-avatar">✧</span><div><div class="ai-content">${aiRichText(textToShow)}${isLatestAssistant?'<span class="ai-typing-cursor"></span>':''}</div><small>${escape(aiProviderName(m.provider))} · ${escape(m.date)}</small></div></div>`;}).join('')+(aiBusy?`<div class="chat-message assistant skeleton-chat-message" role="status" aria-busy="true"><span class="ai-avatar skeleton-spin">✧</span><div class="skeleton-chat-body"><div class="skeleton-shimmer skeleton-chat-line" style="width:75%"></div><div class="skeleton-shimmer skeleton-chat-line" style="width:90%"></div><div class="skeleton-shimmer skeleton-chat-line" style="width:45%"></div><small class="skeleton-chat-sub">${escape(aiThinkingStatusText())}</small></div></div>`:'');$('#chat-messages').scrollTop=$('#chat-messages').scrollHeight;}
+  function renderMessages(){if(!$('#chat-messages'))return;const history=CHAT.history(state);$('#chat-messages').innerHTML=`<div class="chat-message assistant"><span class="ai-avatar">✧</span><div><p>${L('Halo! Saya INVI, Financial Copilot Anda. Mari buat perencanaan keuangan Anda lebih jelas. Draft transaksi selalu ditinjau sebelum disimpan.','Hello! I’m INVI, your Financial Copilot. Let’s make your financial life clearer. Drafts always require review before saving.')}</p><small>${escape(aiProviderName(state.assistant.provider))}</small></div></div>`+history.map((m,idx)=>{const isLatestAssistant=m.role==='assistant'&&idx===history.length-1&&streamState.active;const textToShow=isLatestAssistant?streamState.displayedText:m.text;return m.role==='user'?`<div class="chat-message user">${escape(m.text)}</div>`:`<div class="chat-message assistant ${isLatestAssistant?'typing-streaming':''}" onclick="skipStreaming()"><span class="ai-avatar">✧</span><div><div class="ai-content">${aiRichText(textToShow)}${isLatestAssistant?'<span class="ai-typing-cursor"></span>':''}</div><small>${escape(aiProviderName(m.provider))} · ${escape(m.date)}</small></div></div>`;}).join('')+(aiBusy?`<div class="chat-message assistant skeleton-chat-message" role="status" aria-busy="true"><span class="ai-avatar skeleton-spin">✧</span><div class="skeleton-chat-body"><div class="skeleton-shimmer skeleton-chat-line" style="width:75%"></div><div class="skeleton-shimmer skeleton-chat-line" style="width:90%"></div><div class="skeleton-shimmer skeleton-chat-line" style="width:45%"></div><small class="skeleton-chat-sub">${escape(aiThinkingStatusText())}</small></div></div>`:'');$('#chat-messages').scrollTop=$('#chat-messages').scrollHeight;}
   let mcResult=null,mcConfig=null;
   function syncPreferences(){
     document.documentElement?.setAttribute('lang',state.language);
@@ -9440,12 +9566,14 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   function editOwner(){const old=state.members[0]?.name||'Me';openModal(t('Edit owner'),form(field(t('Owner name'),'name',old,'text','required maxlength="80"'),t('Save')),data=>{const name=requireText(data.name);const first=old.split(' ')[0],newFirst=name.split(' ')[0];if(!state.members.length)state.members.push({id:'m1',name,role:'Workspace owner',initials:''});state.members[0].name=name;state.members[0].initials=name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase();const firstIsUnique=state.members.slice(1).every(m=>m.name.split(' ')[0]!==first);for(const rows of [state.accounts,state.tasks,state.cards])for(const row of rows){if(row.owner===old)row.owner=name;else if(firstIsUnique&&row.owner===first)row.owner=newFirst;}toast('Owner updated.');});}
   function editFX(){const inputs=E.currencies.filter(c=>c!=='IDR').map(c=>field(c+' · '+t('IDR per 1 unit'),c,state.fx.rates[c],'number','min="0.01" max="1000000000" required')).join('');openModal(t('Edit exchange rates'),form(inputs+field(t('Rate date'),'date',state.fx.date,'date','required')+field(t('Rate source'),'source',state.fx.source,'text','required maxlength="120"'),t('Save'),state.language==='id'?'Kurs dinyatakan sebagai Rupiah per satu unit mata uang. Angka awal hanya contoh. Saldo asli tidak berubah.':'Rates are IDR per unit of currency. Initial rates are illustrative. Native balances do not change.'),data=>{const rates={IDR:1};for(const c of E.currencies.filter(c=>c!=='IDR')){rates[c]=Number(data[c]);if(!Number.isFinite(rates[c])||rates[c]<=0||rates[c]>1e9)throw Error(t('A positive exchange rate is required for both currencies.'));}if(!E.validDate(data.date))throw Error(t('Invalid reminder date.'));const candidate=structuredClone(state);candidate.fx={rates,date:data.date,source:requireText(data.source)};E.validate(candidate);state=candidate;messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;toast('Rates saved.');});}
   function answerIndonesian(q,p){const lower=q.toLowerCase();
-    if(/debt|loan|interest|utang|bunga/.test(lower)){const d=viewState().debts.slice().sort((a,b)=>b.apr-a.apr)[0];return d?`APR tertinggi tercatat adalah <b>${d.apr}%</b> pada ${user(d.name)}, dengan saldo ${money(d.balance,false,d.currency)} dan pembayaran minimum ${money(d.minimum,false,d.currency)} per bulan. Bandingkan pembayaran tambahan di Pengelolaan utang dan dampak likuiditasnya di Skenario. Biaya, perubahan bunga, dan kebutuhan kas dapat mengubah hasil.`:'Belum ada catatan utang. Tambahkan liabilitas untuk membandingkan proyeksi pembayaran.';}
-    if(/emergency|reserve|darurat|cadangan/.test(lower))return `Dana likuid tercatat sebesar <b>${money(p.liquid)}</b>. Pengeluaran dan pembayaran minimum bulanan adalah <b>${money(p.outflows)}</b>. Rasio cakupan ${p.reserveMonths===null?'belum dapat dihitung karena pengeluaran nol':`sekitar <b>${p.reserveMonths.toFixed(1)} bulan</b>`}. Ini mencakup seluruh rekening likuid, termasuk dana untuk tujuan lain; bukan hanya dana darurat khusus.`;
-    if(/goal|progress|tujuan|perkembangan/.test(lower))return viewState().goals.map(g=>`<p>${user(g.name)}: ${money(g.saved,false,g.currency)} dari ${money(g.target,false,g.currency)} (${percent(g)}%), dengan rencana ${money(g.monthly,false,g.currency)} per bulan.</p>`).join('')+'Alokasi merupakan pencadangan saldo yang sudah ada, bukan aset baru.';
-    if(/afford|allocat|cash|income|month|spend|surplus|alokasi|bulan|arus|pendapatan/.test(lower))return `Rencana bulanan: pendapatan <b>${money(p.income)}</b>, pengeluaran termasuk minimum utang <b>${money(p.outflows)}</b>, dan kontribusi tujuan <b>${money(p.goalCommitments)}</b>. Kapasitas tersisa <b>${money(p.available)}</b>. Perhitungan memakai kurs tersimpan dan mengasumsikan arus rutin berulang; biaya yang belum tercatat serta waktu pembayaran dapat mengubah hasil.`;
-    if(/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower))return `Kekayaan bersih tercatat <b>${money(p.netWorth)}</b>: aset <b>${money(p.assets)}</b> dikurangi liabilitas <b>${money(p.liabilities)}</b>. Dana likuid ${money(p.liquid)}. Saldo merupakan catatan manual, bukan verifikasi bank. Kurs: ${user(state.fx.source)} (${state.fx.date}). Tinjau data sebelum mengambil keputusan.`;
-    return 'Saya dapat menjelaskan posisi keuangan, arus kas bulanan, cakupan dana likuid, tujuan, dan utang. Pilih pertanyaan yang disediakan. Saya tidak memiliki data yang memadai untuk menjawab topik lain secara andal.';
+    let text = '';
+    if(/debt|loan|interest|utang|bunga/.test(lower)){const d=viewState().debts.slice().sort((a,b)=>b.apr-a.apr)[0];text=d?`APR tertinggi tercatat adalah <b>${d.apr}%</b> pada ${user(d.name)}, dengan saldo ${money(d.balance,false,d.currency)} dan pembayaran minimum ${money(d.minimum,false,d.currency)} per bulan. Bandingkan pembayaran tambahan di Pengelolaan utang dan dampak likuiditasnya di Skenario. Biaya, perubahan bunga, dan kebutuhan kas dapat mengubah hasil.`:'Belum ada catatan utang. Tambahkan liabilitas untuk membandingkan proyeksi pembayaran.';}
+    else if(/emergency|reserve|darurat|cadangan/.test(lower))text=`Dana likuid tercatat sebesar <b>${money(p.liquid)}</b>. Pengeluaran dan pembayaran minimum bulanan adalah <b>${money(p.outflows)}</b>. Rasio cakupan ${p.reserveMonths===null?'belum dapat dihitung karena pengeluaran nol':`sekitar <b>${p.reserveMonths.toFixed(1)} bulan</b>`}. Ini mencakup seluruh rekening likuid, termasuk dana untuk tujuan lain; bukan hanya dana darurat khusus.`;
+    else if(/goal|progress|tujuan|perkembangan/.test(lower))text=viewState().goals.map(g=>`<p>${user(g.name)}: ${money(g.saved,false,g.currency)} dari ${money(g.target,false,g.currency)} (${percent(g)}%), dengan rencana ${money(g.monthly,false,g.currency)} per bulan.</p>`).join('')+'Alokasi merupakan pencadangan saldo yang sudah ada, bukan aset baru.';
+    else if(/afford|allocat|cash|income|month|spend|surplus|alokasi|bulan|arus|pendapatan/.test(lower))text=`Rencana bulanan: pendapatan <b>${money(p.income)}</b>, pengeluaran termasuk minimum utang <b>${money(p.outflows)}</b>, dan kontribusi tujuan <b>${money(p.goalCommitments)}</b>. Kapasitas tersisa <b>${money(p.available)}</b>. Perhitungan memakai kurs tersimpan dan mengasumsikan arus rutin berulang; biaya yang belum tercatat serta waktu pembayaran dapat mengubah hasil.`;
+    else if(/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower))text=`Kekayaan bersih tercatat <b>${money(p.netWorth)}</b>: aset <b>${money(p.assets)}</b> dikurangi liabilitas <b>${money(p.liabilities)}</b>. Dana likuid ${money(p.liquid)}. Saldo merupakan catatan manual, bukan verifikasi bank. Kurs: ${user(state.fx.source)} (${state.fx.date}). Tinjau data sebelum mengambil keputusan.`;
+    else text='Saya dapat menjelaskan posisi keuangan, arus kas bulanan, cakupan dana likuid, tujuan, dan utang. Pilih pertanyaan yang disediakan. Saya tidak memiliki data yang memadai untuk menjawab topik lain secara andal.';
+    return text + '<p class="invi-signature-footer"><small>✨ <em>Tetap cermat. Tetap terarah. Terus bertumbuh.</em></small></p>';
   }
   function montecarlo(){
     if(!mcConfig){const p=E.position(viewState());mcConfig={initial:Math.max(0,E.sum(viewState().accounts.filter(a=>a.type==='Investment').map(a=>E.reporting(state,a,'balance')))),monthly:Math.max(0,p.available),years:10,mean:6,volatility:15,inflation:3,target:Math.max(10000,p.assets*2),paths:2000,seed:42};}
@@ -11134,6 +11262,36 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   const veyMascot = inviMascot;
 
   let inviStudioMood = 'happy';
+  let inviStudioTab = 'poses';
+
+  function detectMascotSoulMood(text) {
+    if (!text || typeof text !== 'string') return 'idle';
+    const lower = text.toLowerCase();
+    if (/tercapai|selamat|congrat|milestone|berhasil|target.*tercapai|goal.*reach|celebrate|hebat/.test(lower)) return 'celebrate';
+    if (/peringatan|limit|melebihi|mendekati batas|risiko|warning|shortfall|defisit|over.*budget|urgent|tagihan.*jatuh tempo|perhatian/.test(lower)) return 'remind';
+    if (/portofolio|saham|reksadana|grafik|chart|trend|kinerja|apr|monte carlo|alokasi aset|analisis|proyeksi|historis/.test(lower)) return 'analyze';
+    if (/rekomendasi|insight|peluang|tips|strategi|optimasi|saran|alokasikan|langkah bijak/.test(lower)) return 'insight';
+    if (/bagus|progres positif|surplus|terjaga|konsisten|stabil|aman|cadangan.*cukup|pertahankan/.test(lower)) return 'happy';
+    if (/menghitung|menganalisis|sedang mengevaluasi|thinking/.test(lower)) return 'thinking';
+    if (/halo|hai|selamat datang|welcome|good morning|siap membantu/.test(lower)) return 'happy';
+    return 'idle';
+  }
+
+  function setMascotSoulMood(textOrMood) {
+    const targetMood = ['happy','thinking','excited','confident','wink','remind','analyze','insight','celebrate','sleep','love'].includes(textOrMood) 
+      ? textOrMood 
+      : detectMascotSoulMood(textOrMood);
+    if (targetMood && targetMood !== 'idle') {
+      veyCustomMood = targetMood;
+      if (veySpeechTimer) clearTimeout(veySpeechTimer);
+      veySpeechTimer = setTimeout(() => {
+        veyCustomMood = null;
+        render();
+      }, 7000);
+      render();
+    }
+  }
+
   function inviStudioModalHtml(selectedMood = 'happy') {
     inviStudioMood = selectedMood || 'happy';
     const moods = [
@@ -11150,7 +11308,73 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     ];
     const cur = moods.find(m => m.id === inviStudioMood) || moods[0];
 
+    const tabsHeader = `<div class="invi-studio-tabs">
+      <button type="button" class="invi-tab-btn ${inviStudioTab === 'poses' ? 'active' : ''}" data-action="invi-tab:poses">🎭 ${L('Pose & Ekspresi Studio', 'Poses & Expressions Studio')}</button>
+      <button type="button" class="invi-tab-btn ${inviStudioTab === 'soul' ? 'active' : ''}" data-action="invi-tab:soul">✨ ${L('Mascot Soul & Filosofi AI', 'Mascot Soul & AI Philosophy')}</button>
+    </div>`;
+
+    if (inviStudioTab === 'soul') {
+      return `<div id="invi-studio-wrapper">
+        ${tabsHeader}
+        <div class="invi-soul-section">
+          <div class="invi-soul-banner">
+            <h3>INVEYS MASCOT SOUL · Versi 1.0</h3>
+            <p><b>${L('The Intelligent Guardian — Your Financial Copilot', 'The Intelligent Guardian — Your Financial Copilot')}</b></p>
+            <p style="margin-top:6px;font-size:12px;color:#fde68a;"><em>"${L('Tujuan saya bukan untuk mengontrol uang Anda, melainkan membantu Anda memahami dan mengendalikan masa depan finansial Anda sendiri.', 'My purpose is not to control money. My purpose is to help people understand and control their financial future.')}"</em></p>
+          </div>
+
+          <div>
+            <h4 style="margin:0 0 10px;font-size:13px;font-weight:750;color:var(--ink);">${L('5 Prinsip Inti (Core Principles):', 'Five Core Principles:')}</h4>
+            <div class="invi-principles-grid">
+              <div class="invi-principle-card">
+                <b>01 · Clarity</b>
+                <small>${L('Mengubah data keuangan kompleks menjadi pemahaman yang gamblang & mudah dipahami.', 'Turning complex financial data into understandable, accessible insights.')}</small>
+              </div>
+              <div class="invi-principle-card">
+                <b>02 · Integrity</b>
+                <small>${L('Akurasi mutlak, transparansi, dan pembedaan tegas antara fakta tercatat vs estimasi.', 'Absolute accuracy, transparency, and clear distinction between facts and estimates.')}</small>
+              </div>
+              <div class="invi-principle-card">
+                <b>03 · Empowerment</b>
+                <small>${L('Membantu pengguna mandiri dan percaya diri mengambil keputusan finansial mereka sendiri.', 'Helping users become financially independent and confident in their own decisions.')}</small>
+              </div>
+              <div class="invi-principle-card">
+                <b>04 · Consistency</b>
+                <small>${L('Mendorong kebiasaan finansial berkelanjutan ("Konsistensi lebih berharga dari kesempurnaan").', 'Encouraging sustainable financial habits ("Consistency matters more than perfection").')}</small>
+              </div>
+              <div class="invi-principle-card">
+                <b>05 · Growth</b>
+                <small>${L('Mendampingi pencapaian target tabungan, investasi sehat, dan tujuan hidup yang bermakna.', 'Guiding goal achievements, healthy investing, and meaningful milestones.')}</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="invi-never-box">
+            <h4>🛡️ ${L('Komitmen Etika & Keamanan (What I Will Never Do):', 'Ethical & Safety Commitments (What I Will Never Do):')}</h4>
+            <ul class="invi-never-list">
+              <li>${L('Tidak pernah menjanjikan imbal hasil investasi pasti (no guaranteed returns).', 'Never promise guaranteed investment returns.')}</li>
+              <li>${L('Tidak pernah mendorong keputusan impulsif atau berspekulasi.', 'Never encourage impulsive financial decisions or speculation.')}</li>
+              <li>${L('Tidak memanipulasi emosi pengguna melalui rasa takut atau keserakahan.', 'Never manipulate users through fear or greed.')}</li>
+              <li>${L('Tidak menghakimi atau mempermalukan pengguna atas situasi finansial atau kesalahan masa lalu.', 'Never judge or shame users for their financial situation or past mistakes.')}</li>
+              <li>${L('Tidak melakukan transaksi keuangan otomatis tanpa otorisasi langsung dari pengguna.', 'Never execute unauthorized financial transactions.')}</li>
+            </ul>
+          </div>
+
+          <div style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 16px;">
+            <h4 style="margin:0 0 6px;font-size:12px;font-weight:750;color:var(--ink);">${L('Bahasa Khas (Signature Language):', 'Signature Language:')}</h4>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <span class="invi-trait-pill">Tagline: "Your Financial Copilot"</span>
+              <span class="invi-trait-pill">"Understand More. Decide Better."</span>
+              <span class="invi-trait-pill">"Clarity in Every Financial Decision."</span>
+              <span class="invi-trait-pill">"Stay informed. Stay intentional. Keep growing."</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
     return `<div id="invi-studio-wrapper">
+      ${tabsHeader}
       <div class="invi-hero-banner">
         <div class="invi-hero-avatar-wrap" id="invi-studio-avatar">
           ${inviMascot(inviStudioMood, 84)}
@@ -11183,8 +11407,9 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     </div>`;
   }
 
-  function openInviShowcaseModal(initialMood = 'happy') {
-    inviStudioMood = initialMood;
+  function openInviShowcaseModal(initialMood = 'happy', initialTab = null) {
+    inviStudioMood = initialMood || 'happy';
+    if (initialTab) inviStudioTab = initialTab;
     openModal(L('INVI — Financial Copilot Studio', 'INVI — Financial Copilot Studio'), inviStudioModalHtml(inviStudioMood));
   }
 
@@ -11226,6 +11451,18 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   function inviAction(name, id) {
     if (name === 'invi-showcase') {
       openInviShowcaseModal();
+      return;
+    }
+    if (name === 'invi-soul') {
+      openInviShowcaseModal(inviStudioMood, 'soul');
+      return;
+    }
+    if (name === 'invi-tab') {
+      inviStudioTab = id || 'poses';
+      const modalBody = $('#modal-body');
+      if (modalBody) {
+        modalBody.innerHTML = inviStudioModalHtml(inviStudioMood);
+      }
       return;
     }
     if (name === 'invi-mood') {
@@ -11314,6 +11551,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   let streamState={active:false,fullText:'',displayedText:'',timer:null};
   function startStreamingReply(text,cb){
     veyPlaySound('sparkle');
+    setMascotSoulMood(text);
     if(streamState.timer&&timerClear)timerClear(streamState.timer);
     streamState.fullText=text;
     if(typeof window==='undefined'||!window.requestAnimationFrame||!timerSet){
@@ -11440,7 +11678,12 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     text=String(text||'').trim();if(!text)return;quickText=text.slice(0,500);quickAccount=String(accountId||'');
     if(quickFileBusy){quickReply=escape(L('Tunggu ekstraksi lampiran selesai.','Wait for attachment extraction to finish.'));render();return;}const intent=forceQuestion?'question':R.quickIntent(text);
     if(intent==='question'){
-      const reply=answer(text);messages.push({role:'user',text},{role:'assistant',text:reply});CHAT.append(state,'user',text,'local',date());CHAT.append(state,'assistant',reply.replace(/<[^>]*>/g,''),'local',date());quickReply='';quickText='';render();return;
+      const reply=answer(text);
+      setMascotSoulMood(reply);
+      messages.push({role:'user',text},{role:'assistant',text:reply});
+      CHAT.append(state,'user',text,'local',date());
+      CHAT.append(state,'assistant',reply.replace(/<[^>]*>/g,''),'local',date());
+      quickReply='';quickText='';render();return;
     }
     try{
       if(drafts.length)throw Error(L('Simpan atau buang draft yang ada sebelum membuat catatan baru.','Save or discard existing drafts before creating another record.'));
