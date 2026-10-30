@@ -5710,15 +5710,43 @@
 
     const isAdmin = currentUser?.role === 'admin' || currentUser?.id === 'master';
     if (!isAdmin) {
+      if (!currentUser) {
+        return `
+          ${header(L('Kontrol Panel Administrator', 'Administrator Control Panel'), L('Autentikasi Diperlukan', 'Authentication Required'))}
+          <div class="panel admin-banner-card" style="text-align:center;padding:48px 24px;max-width:640px;margin:24px auto;">
+            <div style="font-size:48px;margin-bottom:16px;">🔐</div>
+            <h2 style="font-size:22px;margin-bottom:10px;font-weight:700;">${L('Masuk untuk Mengakses Kontrol Panel', 'Sign In to Access Administrator Panel')}</h2>
+            <p style="max-width:480px;margin:0 auto 24px;color:var(--muted);line-height:1.7;font-size:14px;">
+              ${L('Halaman kontrol panel ini hanya dapat diakses oleh akun Administrator (seperti <code>support@inveys.io</code>) atau pemegang kunci Master. Silakan masuk menggunakan kode OTP email atau kata sandi Anda.', 'This control panel is restricted to Administrator accounts (such as <code>support@inveys.io</code>) or Master key holders. Please sign in using your email OTP verification or password.')}
+            </p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+              <button type="button" class="btn primary" data-action="admin-auth-otp">
+                ✉️ ${L('Masuk via OTP Email', 'Sign In via Email OTP')}
+              </button>
+              <button type="button" class="btn" data-action="admin-auth-login">
+                🔑 ${L('Masuk via Kata Sandi', 'Sign In via Password')}
+              </button>
+            </div>
+            <div style="margin-top:24px;">
+              <button type="button" class="btn text" data-page="home">${L('← Kembali ke Beranda', '← Return to Overview')}</button>
+            </div>
+          </div>
+        `;
+      }
       return `
         ${header(L('Kontrol Panel Administrator', 'Administrator Control Panel'), L('Akses Terbatas', 'Restricted Access'))}
-        <div class="panel admin-banner-card" style="text-align:center;padding:48px 24px;">
+        <div class="panel admin-banner-card" style="text-align:center;padding:48px 24px;max-width:640px;margin:24px auto;">
           <div style="font-size:42px;color:var(--red,#ef4444);margin-bottom:12px;">🚫</div>
           <h2 style="font-size:20px;margin-bottom:8px;">${L('Hak Akses Administrator Diperlukan', 'Administrator Privileges Required')}</h2>
           <p style="max-width:500px;margin:0 auto 20px;color:var(--muted);line-height:1.7;">
-            ${L('Akun Anda saat ini masuk sebagai pengguna biasa. Halaman kontrol panel ini hanya dapat diakses oleh akun Administrator atau pemegang kunci Master.', 'Your account is logged in as a standard member. This panel is restricted to Administrator accounts or Master key holders.')}
+            ${L('Akun Anda saat ini (<b>' + escape(currentUser.email || '') + '</b>) memiliki peran <b>' + escape(currentUser.role || 'user') + '</b>. Halaman kontrol panel ini hanya dapat diakses oleh akun Administrator (seperti <code>support@inveys.io</code>) atau pemegang kunci Master.', 'Your current account (<b>' + escape(currentUser.email || '') + '</b>) has role <b>' + escape(currentUser.role || 'user') + '</b>. This control panel is restricted to Administrator accounts (such as <code>support@inveys.io</code>) or Master key holders.')}
           </p>
-          <button type="button" class="btn primary" onclick="navigate('home')">${L('Kembali ke Beranda', 'Return to Overview')}</button>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button type="button" class="btn primary" data-action="admin-switch-account">
+              🔄 ${L('Ganti Akun / Masuk Sebagai Admin', 'Switch Account / Sign In as Admin')}
+            </button>
+            <button type="button" class="btn" data-page="home">${L('Kembali ke Beranda', 'Return to Overview')}</button>
+          </div>
         </div>
       `;
     }
@@ -6095,6 +6123,21 @@
             btn.innerHTML = origText || ('🚀 ' + L('Kirim Pesan Uji Coba (Test Notification)', 'Send Test Notification'));
           }
         });
+      return;
+    }
+
+    if (name === 'admin-auth-otp') {
+      showAuthScreen('otp');
+      return;
+    }
+
+    if (name === 'admin-auth-login') {
+      showAuthScreen('login');
+      return;
+    }
+
+    if (name === 'admin-switch-account') {
+      logoutUser().then(() => showAuthScreen('otp'));
       return;
     }
 

@@ -799,11 +799,20 @@ test('administrator control panel renders access restriction in local mode and f
   // In local mode (not server mode), VPS server mode required notice is displayed
   assert.match(localApp.html(), /Mode Server VPS Hostinger Diperlukan|Hostinger VPS Server Mode Required/);
 
-  // In server mode as standard user, restricted access is displayed
+  // In server mode unauthenticated (no currentUser), auth prompt is displayed with direct sign-in actions
+  const unauthApp = boot(null, { isServerMode: true, currentUser: null });
+  unauthApp.click({page: 'admin'});
+  assert.match(unauthApp.html(), /Autentikasi Diperlukan|Authentication Required/);
+  assert.match(unauthApp.html(), /Masuk untuk Mengakses Kontrol Panel|Sign In to Access Administrator Panel/);
+  assert.match(unauthApp.html(), /admin-auth-otp/);
+  assert.match(unauthApp.html(), /admin-auth-login/);
+
+  // In server mode as standard user, restricted access is displayed with account switch action
   const userApp = boot(null, { isServerMode: true, currentUser: { id: 'usr-2', email: 'member@inveys.io', role: 'user', plan: 'plus' } });
   userApp.click({page: 'admin'});
   assert.match(userApp.html(), /Akses Terbatas|Restricted Access/);
   assert.match(userApp.html(), /Hak Akses Administrator Diperlukan|Administrator Privileges Required/);
+  assert.match(userApp.html(), /admin-switch-account/);
 
   // In server mode with admin role, full monitoring control panel is displayed
   const adminApp = boot(null, { isServerMode: true, currentUser: { id: 'usr-1', email: 'admin@inveys.io', role: 'admin', plan: 'ultra' } });

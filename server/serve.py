@@ -34,6 +34,59 @@ LOGIN_ATTEMPTS = {}
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_TIME = 900  # 15 minutes
 
+DEFAULT_ADMIN_EMAILS = {'support@inveys.io', 'admin@inveys.io'}
+ADMIN_EMAILS = set(
+    [e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()]
+) | DEFAULT_ADMIN_EMAILS
+
+
+def is_admin_email(email: str) -> bool:
+    if not email:
+        return False
+    e = email.strip().lower()
+    return e in ADMIN_EMAILS or e.startswith('admin@')
+
+
+def ensure_default_admin(conn=None):
+    """
+    Ensures default administrator account (support@inveys.io) is seeded and has
+    role='admin', plan='ultra', and status='active' in the database.
+    Also ensures any existing accounts in ADMIN_EMAILS are promoted to admin.
+    """
+    def _seed(c):
+        now = int(time.time())
+        primary_admin = 'support@inveys.io'
+        user = c.execute('SELECT id, role, plan, status FROM users WHERE email = ?', (primary_admin,)).fetchone()
+        if user:
+            user_id, role, plan, status = user
+            if role != 'admin' or plan != 'ultra' or status != 'active':
+                c.execute('UPDATE users SET role = "admin", plan = "ultra", status = "active", updated_at = ? WHERE id = ?', (now, user_id))
+        else:
+            user_id = 'usr_admin_' + secrets.token_hex(6)
+            dummy_pw = secrets.token_urlsafe(32)
+            h, salt = hash_password(dummy_pw)
+            c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, "inveys", "ultra", "admin", "active", ?, ?)',
+                      (user_id, primary_admin, h, salt, now, now))
+        for admin_email in sorted(ADMIN_EMAILS):
+            if admin_email == primary_admin:
+                continue
+            u = c.execute('SELECT id, role, plan, status FROM users WHERE email = ?', (admin_email,)).fetchone()
+            if u:
+                u_id, u_role, u_plan, u_status = u
+                if u_role != 'admin' or u_plan != 'ultra' or u_status != 'active':
+                    c.execute('UPDATE users SET role = "admin", plan = "ultra", status = "active", updated_at = ? WHERE id = ?', (now, u_id))
+    if conn is not None:
+        try:
+            _seed(conn)
+        except Exception as e:
+            print(f"[!] Warning ensuring default admin: {e}", flush=True)
+    else:
+        try:
+            with db() as c:
+                _seed(c)
+        except Exception as e:
+            print(f"[!] Warning ensuring default admin: {e}", flush=True)
+
 
 def hash_password(password: str, salt: str = None) -> tuple:
     if not salt:
@@ -1004,12 +1057,18 @@ class Handler(SimpleHTTPRequestHandler):
                     status = user[5] or 'active'
                     if status == 'suspended':
                         return None
+                    user_email = (user[1] or '').strip().lower()
+                    user_role = user[4] or 'user'
+                    user_plan = user[3] or 'plus'
+                    if is_admin_email(user_email):
+                        user_role = 'admin'
+                        user_plan = 'ultra'
                     return {
                         'id': user[0],
                         'email': user[1],
                         'name': user[2] or user[1].split('@')[0],
-                        'plan': user[3] or 'plus',
-                        'role': user[4] or 'user',
+                        'plan': user_plan,
+                        'role': user_role,
                         'status': status
                     }
             has_auth = bool(c.execute('SELECT id FROM auth WHERE id=1').fetchone())
@@ -1504,8 +1563,9 @@ class Handler(SimpleHTTPRequestHandler):
                     h, salt = hash_password(pw)
                     now = int(time.time())
                     user_count = c.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-                    role = 'admin' if user_count == 0 else 'user'
-                    user_plan = 'ultra' if user_count == 0 else plan
+                    is_adm = is_admin_email(email)
+                    role = 'admin' if (user_count == 0 or is_adm) else 'user'
+                    user_plan = 'ultra' if (user_count == 0 or is_adm) else plan
                     c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, "active", ?, ?)',
                               (user_id, email, h, salt, name, user_plan, role, now, now))
                     token = secrets.token_urlsafe(32)
@@ -1548,7 +1608,8 @@ class Handler(SimpleHTTPRequestHandler):
                     
                     user_row = c.execute('SELECT id, name, role, status FROM users WHERE email = ?', (email,)).fetchone()
                     total_users = c.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-                    if not user_row and total_users > 0:
+                    is_adm = is_admin_email(email)
+                    if not user_row and total_users > 0 and not is_adm:
                         return self.send_json({'error': 'Email belum terdaftar di sistem. Silakan daftar akun terlebih dahulu.'}, 404)
                     if user_row and (user_row[3] or 'active') == 'suspended':
                         return self.send_json({'error': 'Akun Anda ditangguhkan oleh administrator.'}, 403)
@@ -1598,22 +1659,30 @@ class Handler(SimpleHTTPRequestHandler):
                     c.execute('UPDATE email_otps SET used = 1 WHERE id = ?', (otp_id,))
                     clear_failed_login(ip)
                     
+                    is_adm = is_admin_email(email)
                     user_row = c.execute('SELECT id, email, name, plan, role, status FROM users WHERE email = ?', (email,)).fetchone()
                     if not user_row:
                         user_count = c.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-                        role = 'admin' if user_count == 0 else 'user'
+                        role = 'admin' if (user_count == 0 or is_adm) else 'user'
+                        user_plan = 'ultra' if (user_count == 0 or is_adm) else 'plus'
                         user_id = 'usr-' + secrets.token_hex(8)
                         salt = secrets.token_hex(16)
                         dummy_pw = secrets.token_urlsafe(24)
                         h, salt = hash_password(dummy_pw, salt)
-                        name = email.split('@')[0].capitalize()
-                        c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, "ultra", ?, "active", ?, ?)',
-                                  (user_id, email, h, salt, name, role, now, now))
-                        user_data = {'id': user_id, 'email': email, 'name': name, 'plan': 'ultra', 'role': role, 'status': 'active'}
+                        name = 'inveys' if email == 'support@inveys.io' else email.split('@')[0].capitalize()
+                        c.execute('INSERT INTO users (id, email, password_hash, salt, name, plan, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, "active", ?, ?)',
+                                  (user_id, email, h, salt, name, user_plan, role, now, now))
+                        user_data = {'id': user_id, 'email': email, 'name': name, 'plan': user_plan, 'role': role, 'status': 'active'}
                     else:
                         if (user_row[5] or 'active') == 'suspended':
                             return self.send_json({'error': 'Akun Anda ditangguhkan oleh administrator.'}, 403)
-                        user_data = {'id': user_row[0], 'email': user_row[1], 'name': user_row[2] or user_row[1].split('@')[0], 'plan': user_row[3] or 'plus', 'role': user_row[4] or 'user', 'status': user_row[5] or 'active'}
+                        user_role = user_row[4] or 'user'
+                        user_plan = user_row[3] or 'plus'
+                        if is_adm and (user_role != 'admin' or user_plan != 'ultra'):
+                            user_role = 'admin'
+                            user_plan = 'ultra'
+                            c.execute('UPDATE users SET role = "admin", plan = "ultra", updated_at = ? WHERE id = ?', (now, user_row[0]))
+                        user_data = {'id': user_row[0], 'email': user_row[1], 'name': user_row[2] or user_row[1].split('@')[0], 'plan': user_plan, 'role': user_role, 'status': user_row[5] or 'active'}
                     
                     token = secrets.token_urlsafe(32)
                     expires = now + 30 * 86400
@@ -1646,6 +1715,12 @@ class Handler(SimpleHTTPRequestHandler):
                     user_plan = row[4] or 'plus'
                     user_role = row[5] or 'user'
                     user_status = row[6] or 'active'
+                    is_adm = is_admin_email(email)
+                    if is_adm and (user_role != 'admin' or user_plan != 'ultra'):
+                        user_role = 'admin'
+                        user_plan = 'ultra'
+                        with db() as c:
+                            c.execute('UPDATE users SET role = "admin", plan = "ultra", updated_at = ? WHERE id = ?', (int(time.time()), user_id))
                     token = secrets.token_urlsafe(32)
                     now = int(time.time())
                     expires = now + 30 * 86400
@@ -1844,6 +1919,8 @@ class Handler(SimpleHTTPRequestHandler):
                         return self.send_json({'error': 'Pengguna tidak ditemukan'}, 404)
 
                     if role == 'user' and target[4] == 'admin':
+                        if is_admin_email(target[1]):
+                            return self.send_json({'error': f'Email {target[1]} adalah akun administrator sistem yang dilindungi dan perannya tidak dapat diturunkan.'}, 400)
                         admin_count = c.execute('SELECT COUNT(*) FROM users WHERE role = "admin"').fetchone()[0]
                         if admin_count <= 1:
                             return self.send_json({'error': 'Tidak dapat mencabut hak admin karena ini adalah satu-satunya akun Administrator'}, 400)
@@ -1912,6 +1989,8 @@ class Handler(SimpleHTTPRequestHandler):
                     target = c.execute('SELECT id, email, role FROM users WHERE id = ?', (target_id,)).fetchone()
                     if not target:
                         return self.send_json({'error': 'Pengguna tidak ditemukan'}, 404)
+                    if is_admin_email(target[1]):
+                        return self.send_json({'error': f'Akun {target[1]} adalah akun administrator sistem yang dilindungi dan tidak dapat dihapus.'}, 400)
                     if target[2] == 'admin':
                         admin_count = c.execute('SELECT COUNT(*) FROM users WHERE role = "admin"').fetchone()[0]
                         if admin_count <= 1:
@@ -2308,6 +2387,7 @@ def setup_ssl(server):
 def main():
     HOST = os.environ.get('HOST', '0.0.0.0')
     PORT = int(os.environ.get('PORT', 3000))
+    ensure_default_admin()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     proto = setup_ssl(server)
     print(f'INVEYS {VERSION} Production Server · {proto}://{HOST}:{PORT} · secrets stay on server', flush=True)

@@ -884,4 +884,89 @@ class Backend(unittest.TestCase):
             st_used, res_used = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_csrf)
             self.assertEqual(st_used, 400)
 
+    def test_support_inveys_admin_auto_provisioning_and_otp_access(self):
+        # 1. Helper function is_admin_email validation
+        self.assertTrue(s.is_admin_email('support@inveys.io'))
+        self.assertTrue(s.is_admin_email('admin@inveys.io'))
+        self.assertTrue(s.is_admin_email('admin@customcorp.com'))
+        self.assertFalse(s.is_admin_email('user@inveys.io'))
+        self.assertFalse(s.is_admin_email(''))
+        self.assertFalse(s.is_admin_email(None))
+
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'admin_prov.sqlite3'):
+            headers_csrf = {'Host': '127.0.0.1:3000', 'Origin': 'http://127.0.0.1:3000'}
+
+            # 2. Existing regular user exists in database first
+            st_u1, res_u1 = self.request('/api/auth/register', {
+                'email': 'first_user@domain.com',
+                'password': 'FirstPassword123!',
+                'name': 'First User'
+            }, headers_csrf)
+            self.assertEqual(st_u1, 200)
+
+            # 3. Request OTP for support@inveys.io even when not yet registered -> SUCCEEDS (not 404)
+            with patch.object(s, 'send_email_otp', return_value=(True, 'Sent')) as mock_send:
+                st_otp, res_otp = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_csrf)
+                self.assertEqual(st_otp, 200)
+                self.assertTrue(res_otp['ok'])
+                mock_send.assert_called_once()
+                otp_code = mock_send.call_args[0][1]
+
+            # 4. Verify OTP for support@inveys.io -> user created as admin with ULTRA plan
+            st_ver, res_ver = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_csrf)
+            self.assertEqual(st_ver, 200)
+            self.assertEqual(res_ver['user']['email'], 'support@inveys.io')
+            self.assertEqual(res_ver['user']['role'], 'admin')
+            self.assertEqual(res_ver['user']['plan'], 'ultra')
+            support_token = res_ver['token']
+            support_id = res_ver['user']['id']
+            adm_headers = {**headers_csrf, 'Authorization': f'Bearer {support_token}'}
+
+            # 5. support@inveys.io can access /api/admin/overview
+            st_ov, res_ov = self.request('/api/admin/overview', headers=adm_headers)
+            self.assertEqual(st_ov, 200)
+            self.assertTrue(res_ov['ok'])
+
+            # 6. Admin cannot demote support@inveys.io to user role
+            st_demote, res_demote = self.request('/api/admin/users/update', {
+                'id': support_id,
+                'role': 'user'
+            }, adm_headers)
+            self.assertEqual(st_demote, 400)
+            self.assertIn('dilindungi', res_demote['error'])
+
+            # 7. Admin cannot delete support@inveys.io
+            st_del_self, res_del_self = self.request('/api/admin/users/delete', {'id': support_id}, adm_headers)
+            self.assertEqual(st_del_self, 400)
+            self.assertIn('Anda tidak dapat menghapus akun Anda sendiri', res_del_self['error'])
+
+            # Create another admin via admin API
+            st_cr_adm, res_cr_adm = self.request('/api/admin/users/create', {
+                'email': 'secondary_admin@inveys.io',
+                'password': 'AdminPassword2!',
+                'name': 'Secondary Admin',
+                'plan': 'ultra',
+                'role': 'admin'
+            }, adm_headers)
+            self.assertEqual(st_cr_adm, 200)
+
+            # Login as secondary admin
+            st_log2, res_log2 = self.request('/api/auth/login', {
+                'email': 'secondary_admin@inveys.io',
+                'password': 'AdminPassword2!'
+            }, headers_csrf)
+            self.assertEqual(st_log2, 200)
+            adm2_headers = {**headers_csrf, 'Authorization': f'Bearer {res_log2["token"]}'}
+
+            # Secondary admin attempting to delete protected support@inveys.io is blocked
+            st_del, res_del = self.request('/api/admin/users/delete', {'id': support_id}, adm2_headers)
+            self.assertEqual(st_del, 400)
+            self.assertIn('dilindungi', res_del['error'])
+
+            # 8. ensure_default_admin runs idempotently
+            s.ensure_default_admin()
+            with s.db() as c:
+                row = c.execute('SELECT role, plan, status FROM users WHERE email = "support@inveys.io"').fetchone()
+                self.assertEqual(row, ('admin', 'ultra', 'active'))
+
 if __name__=='__main__':unittest.main()
