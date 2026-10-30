@@ -904,6 +904,10 @@ test('E-Wallet account creation, quick presets, icon rendering, and liquid metri
   app.click({ action: 'account-new' });
   const modalBody = app.elements.get('#modal-body').innerHTML;
   assert.match(modalBody, /preset-wallet-btn/);
+  assert.match(modalBody, /BCA/);
+  assert.match(modalBody, /Mandiri/);
+  assert.match(modalBody, /BRI/);
+  assert.match(modalBody, /BNI/);
   assert.match(modalBody, /GoPay/);
   assert.match(modalBody, /OVO/);
   assert.match(modalBody, /DANA/);
