@@ -8538,7 +8538,7 @@ window.InveysReleases={
 <script>
 (function(root){
 'use strict';const E=typeof module!=='undefined'&&module.exports?require('./engine'):root.InveysEngine;
-const providers=['local','openai','gemini','muse','9router'];
+const providers=['local','openai','gemini','claude','openrouter','muse','9router'];
 function migrate(s){if(s?.version===1)s.assistant??={provider:'local',mode:'auto',consent:false,shareFinancial:false,useMemory:false,memory:[],history:[]};return s;}
 function validate(a){if(!a||!providers.includes(a.provider)||!['auto','ask','record'].includes(a.mode)||['consent','shareFinancial','useMemory'].some(k=>typeof a[k]!=='boolean')||!Array.isArray(a.memory)||a.memory.length>50||a.memory.some(t=>typeof t!=='string'||!t.trim()||t.length>300)||new Set(a.memory).size!==a.memory.length||!Array.isArray(a.history)||a.history.length>60)throw Error('Invalid assistant configuration');for(const m of a.history)if(!m||!['user','assistant'].includes(m.role)||!providers.includes(m.provider)||typeof m.text!=='string'||m.text.length>6000||typeof m.scope!=='string'||m.scope.length>100||!E.validDate(m.date))throw Error('Invalid assistant history');return a;}
 function memory(text){const rows=String(text||'').split('\n').map(t=>t.trim()).filter(Boolean);if(rows.length>50||rows.some(t=>t.length>300))throw Error('Use up to 50 preferences, 300 characters each');return [...new Set(rows)];}
@@ -9917,8 +9917,8 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   }catch(e){state.fx.error=L('Pembaruan gagal. Kurs terakhir tetap digunakan.','Update failed. Last saved rates remain in use.');state.fx.lastAttempt=new Date().toISOString();save();toast(state.fx.error);}finally{fxBusy=false;if(['capture','integrations'].includes(page))render();}}
   function capture(){
     const effectiveProvider = captureProvider || '9router';
-    const providerLabel = effectiveProvider === '9router' ? '9Router Gateway' : (effectiveProvider === 'gemini' ? 'Google Gemini' : (effectiveProvider === 'openai' ? 'OpenAI' : L('OCR Lokal','Local OCR')));
-    return header(L('Catat lebih cepat, tetap dalam kendali.','Capture faster. Stay in control.'),L('OCR, suara, dan statement menghasilkan draft. Periksa nominal, mata uang, tanggal, dan akun sebelum menyimpan.','OCR, voice and statements create drafts. Review amount, currency, date and account before saving.'),'','CAPTURE')+transactionSwitcher('capture')+`<section class="panel panel-pad"><div class="capture-controls"><label>${L('Akun pencatatan','Recording account')}<select id="capture-account">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===captureAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></label><label>${L('Jenis sumber','Source type')}<select id="capture-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk / suara','Receipt / voice')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank (historis)','Bank statement (historical)')}</option></select></label><label>${L('Engine Ekstraksi AI','AI Extraction Engine')}<select id="capture-provider" class="capture-engine-select"><option value="9router" ${effectiveProvider==='9router'?'selected':''}>🚀 9Router Gateway (${service.ai?.['9router']?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="gemini" ${effectiveProvider==='gemini'?'selected':''}>🤖 Google Gemini (${service.ai?.gemini?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="openai" ${effectiveProvider==='openai'?'selected':''}>🧠 OpenAI (${service.ai?.openai?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="local" ${effectiveProvider==='local'?'selected':''}>📁 ${L('OCR Lokal (Offline / Tanpa Cloud)','Local OCR (Offline / No Cloud)')}</option></select></label><label>${L('Gambar struk / PDF / CSV / audio (maks. 8 MB)','Receipt image / PDF / CSV / audio (max. 8 MB)')}<input id="capture-file" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,text/csv,text/plain,.csv,audio/*"></label></div><p class="note">${L('⚡ Ekstraksi Cerdas AI mendukung dokumen PDF e-statement multi-halaman, file CSV mutasi rekening, dan struk belanja multi-item. AI otomatis merapikan merchant, mendeteksi transfer antar akun, dan menetapkan kategori.','⚡ AI Smart Extract supports multi-page PDF bank statements, bank CSV exports, and multi-item receipts. AI automatically normalizes merchants, detects inter-account transfers, and assigns categories.')} <span class="badge ${effectiveProvider==='9router'?'purple':'blue'}">${L('Engine: ','Engine: ')}${escape(providerLabel)}</span></p><label for="capture-text">${L('Teks hasil ekstraksi / transkrip / CSV (dapat dikoreksi)','Extracted text / transcript / CSV (editable)')}</label><textarea id="capture-text" rows="6" maxlength="100000" placeholder="2026-10-03 Coffee 25000 DR&#10;2026-10-03 Salary 5000000 CR">${escape(captureText)}</textarea><div class="button-group">${button(captureBusy?L('⚡ Mengekstrak…','⚡ Extracting…'):L('⚡ Ekstrak Cerdas AI (PDF/CSV)','⚡ AI Smart Extract (PDF/CSV)'),'capture-ai-extract','primary')}${button(L('Buat draft','Create drafts'),'capture-parse')}${button(L('OCR file lokal','Extract local OCR'),'capture-extract')}${button(L('Input suara','Voice input'),'capture-voice')}${button(L('Hentikan suara','Stop voice'),'capture-stop')}${button(L('Transkripsi audio dengan Muse','Transcribe audio with Muse'),'capture-audio')}</div><p role="status" class="note">${escape(captureStatus)}</p><p class="note">${L('AI Lokal mendeteksi otomatis e-statement bank (Bank BRI, BRI Kartu Kredit, Bank Mandiri, SeaBank, BCA, Bank Jago) dan struk pembelian (Indomaret, Alfamart, SPBU, Cafe/Restoran). CR/Masuk = pemasukan; D/DB/Keluar = pengeluaran.','Local AI automatically detects bank e-statements (Bank BRI, BRI Credit Card, Bank Mandiri, SeaBank, BCA, Bank Jago) and purchase receipts (Indomaret, Alfamart, Gas Stations, Cafes/Restaurants). CR/Inflow = income; D/DB/Outflow = expense.')}</p></section>${draftPanel()}`;}
+    const providerLabel = effectiveProvider === 'claude' ? 'Anthropic Claude' : (effectiveProvider === 'openrouter' ? 'OpenRouter' : (effectiveProvider === 'gemini' ? 'Google Gemini' : (effectiveProvider === 'openai' ? 'OpenAI' : (effectiveProvider === '9router' ? '9Router Gateway' : L('OCR Lokal','Local OCR')))));
+    return header(L('Catat lebih cepat, tetap dalam kendali.','Capture faster. Stay in control.'),L('OCR, suara, dan statement menghasilkan draft. Periksa nominal, mata uang, tanggal, dan akun sebelum menyimpan.','OCR, voice and statements create drafts. Review amount, currency, date and account before saving.'),'','CAPTURE')+transactionSwitcher('capture')+`<section class="panel panel-pad"><div class="capture-controls"><label>${L('Akun pencatatan','Recording account')}<select id="capture-account">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===captureAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></label><label>${L('Jenis sumber','Source type')}<select id="capture-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk / suara','Receipt / voice')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank (historis)','Bank statement (historical)')}</option></select></label><label>${L('Engine Ekstraksi AI','AI Extraction Engine')}<select id="capture-provider" class="capture-engine-select"><option value="claude" ${effectiveProvider==='claude'?'selected':''}>🎭 Anthropic Claude (${service.ai?.claude?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="openrouter" ${effectiveProvider==='openrouter'?'selected':''}>🌐 OpenRouter (${service.ai?.openrouter?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="gemini" ${effectiveProvider==='gemini'?'selected':''}>🤖 Google Gemini (${service.ai?.gemini?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="openai" ${effectiveProvider==='openai'?'selected':''}>🧠 OpenAI (${service.ai?.openai?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="9router" ${effectiveProvider==='9router'?'selected':''}>🚀 9Router Gateway (${service.ai?.['9router']?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="local" ${effectiveProvider==='local'?'selected':''}>📁 ${L('OCR Lokal (Offline / Tanpa Cloud)','Local OCR (Offline / No Cloud)')}</option></select></label><label>${L('Gambar struk / PDF / CSV / audio (maks. 8 MB)','Receipt image / PDF / CSV / audio (max. 8 MB)')}<input id="capture-file" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,text/csv,text/plain,.csv,audio/*"></label></div><p class="note">${L('⚡ Ekstraksi Cerdas AI mendukung dokumen PDF e-statement multi-halaman, file CSV mutasi rekening, dan struk belanja multi-item. AI otomatis merapikan merchant, mendeteksi transfer antar akun, dan menetapkan kategori.','⚡ AI Smart Extract supports multi-page PDF bank statements, bank CSV exports, and multi-item receipts. AI automatically normalizes merchants, detects inter-account transfers, and assigns categories.')} <span class="badge ${['claude','openrouter','9router'].includes(effectiveProvider)?'purple':'blue'}">${L('Engine: ','Engine: ')}${escape(providerLabel)}</span></p><label for="capture-text">${L('Teks hasil ekstraksi / transkrip / CSV (dapat dikoreksi)','Extracted text / transcript / CSV (editable)')}</label><textarea id="capture-text" rows="6" maxlength="100000" placeholder="2026-10-03 Coffee 25000 DR&#10;2026-10-03 Salary 5000000 CR">${escape(captureText)}</textarea><div class="button-group">${button(captureBusy?L('⚡ Mengekstrak…','⚡ Extracting…'):L('⚡ Ekstrak Cerdas AI (PDF/CSV)','⚡ AI Smart Extract (PDF/CSV)'),'capture-ai-extract','primary')}${button(L('Buat draft','Create drafts'),'capture-parse')}${button(L('OCR file lokal','Extract local OCR'),'capture-extract')}${button(L('Input suara','Voice input'),'capture-voice')}${button(L('Hentikan suara','Stop voice'),'capture-stop')}${button(L('Transkripsi audio dengan Muse','Transcribe audio with Muse'),'capture-audio')}</div><p role="status" class="note">${escape(captureStatus)}</p><p class="note">${L('AI Lokal mendeteksi otomatis e-statement bank (Bank BRI, BRI Kartu Kredit, Bank Mandiri, SeaBank, BCA, Bank Jago) dan struk pembelian (Indomaret, Alfamart, SPBU, Cafe/Restoran). CR/Masuk = pemasukan; D/DB/Keluar = pengeluaran.','Local AI automatically detects bank e-statements (Bank BRI, BRI Credit Card, Bank Mandiri, SeaBank, BCA, Bank Jago) and purchase receipts (Indomaret, Alfamart, Gas Stations, Cafes/Restaurants). CR/Inflow = income; D/DB/Outflow = expense.')}</p></section>${draftPanel()}`;}
   function draftSkeletonWave(){
     const label=captureStatus||L('AI sedang menganalisis dokumen dan mendeteksi transaksi…','AI is analyzing document and detecting transactions…');
     return `<section class="panel panel-pad capture-skeleton-card" style="margin-top:24px" role="status" aria-busy="true" aria-live="polite" aria-label="${escape(label)}">
@@ -10786,8 +10786,8 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   }
   const CHAT=window.InveysAssistant;
   let aiBusy=false,aiGeneration=0;
-  const aiProviderName=id=>({local:L('Lokal (Kalkulator)','Local (Calculator)'),openai:'OpenAI (ChatGPT / GPT-4o)',gemini:'Google Gemini',muse:'Meta AI (Muse Spark)','9router':'9Router (Claude / OpenRouter)'})[id]||id;
-  const aiProviderBadge=id=>({gemini:'✨ Google Gemini',openai:'⚡ GPT-4o Mini','9router':'🚀 9Router',muse:'✧ Meta AI',local:'🔢 Local'})[id]||id;
+  const aiProviderName=id=>({local:L('Lokal (Kalkulator)','Local (Calculator)'),openai:'OpenAI (ChatGPT / GPT-4o)',gemini:'Google Gemini',claude:'Anthropic Claude',openrouter:'OpenRouter',muse:'Meta AI (Muse Spark)','9router':'9Router Gateway'})[id]||id;
+  const aiProviderBadge=id=>({gemini:'✨ Google Gemini',openai:'⚡ GPT-4o Mini',claude:'🎭 Claude',openrouter:'🌐 OpenRouter','9router':'🚀 9Router',muse:'✧ Meta AI',local:'🔢 Local'})[id]||id;
   function aiRichText(value){
     let s=escape(value);
     s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
@@ -11905,6 +11905,8 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
       cachedApiKeys = {
         gemini: { configured: !!service.ai?.gemini?.enabled, keyMasked: '', model: 'gemini-3.8-flash' },
         openai: { configured: !!service.ai?.openai?.enabled, keyMasked: '', model: 'gpt-4.1-mini' },
+        claude: { configured: !!service.ai?.claude?.enabled, keyMasked: '', model: 'claude-3-5-sonnet-20241022' },
+        openrouter: { configured: !!service.ai?.openrouter?.enabled, keyMasked: '', model: 'anthropic/claude-3.5-sonnet' },
         ninerouter: { configured: !!service.ai?.['9router']?.enabled, keyMasked: '', model: 'claude-3-5-sonnet', baseUrl: 'http://127.0.0.1:20128/v1' },
         muse: { configured: !!service.ai?.muse?.enabled, keyMasked: '', model: 'muse-spark-1.3' },
         telegram: { configured: !!service.telegram, tokenMasked: '', chatId: '' }
@@ -11917,15 +11919,19 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     const k = cachedApiKeys || {};
     const gemini = k.gemini || {};
     const openai = k.openai || {};
+    const claude = k.claude || {};
+    const openrouter = k.openrouter || {};
     const nine = k.ninerouter || {};
     const muse = k.muse || {};
     const tg = k.telegram || {};
 
-    const activeCount = [gemini, openai, nine, muse, tg].filter(x => x.configured).length;
-    const totalCount = 5;
+    const activeCount = [gemini, openai, claude, openrouter, nine, muse, tg].filter(x => x.configured).length;
+    const totalCount = 7;
 
     const tabs = [
       { id: 'all', icon: '📋', name: L('Ringkasan', 'Overview'), badge: `${activeCount}/${totalCount}`, online: false },
+      { id: 'claude', icon: '🎭', name: 'Claude', online: !!claude.configured },
+      { id: 'openrouter', icon: '🌐', name: 'OpenRouter', online: !!openrouter.configured },
       { id: 'gemini', icon: '🤖', name: 'Gemini', online: !!gemini.configured },
       { id: 'openai', icon: '🧠', name: 'OpenAI', online: !!openai.configured },
       { id: 'ninerouter', icon: '🔀', name: '9Router', online: !!nine.configured },
@@ -11947,6 +11953,131 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     `;
 
     const eyeIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+
+    // --- Tab: Claude ---
+    const claudePane = `
+      <div class="key-pane ${currentTab === 'claude' ? 'active' : ''}" id="pane-claude">
+        <div class="key-card ${claude.configured ? 'configured' : ''}">
+          <div class="key-card-banner">
+            <div class="key-provider-meta">
+              <span class="key-provider-icon">🎭</span>
+              <div>
+                <div class="key-provider-name">Anthropic Claude</div>
+                <div class="key-provider-sub">Anthropic Console · Claude 3.5 Sonnet, Claude 3.7 Sonnet & Opus</div>
+              </div>
+            </div>
+            <span class="key-status-pill ${claude.configured ? 'online' : 'standby'}">
+              ${claude.configured ? L('● Terkonfigurasi', '● Configured') : L('● Belum Dikonfigurasi', '● Not Configured')}
+            </span>
+          </div>
+
+          ${claude.configured ? `
+            <div class="key-active-preview">
+              <span>${L('Kunci Aktif:', 'Active Key:')} <code>${escape(claude.keyMasked || '••••••••••••••••')}</code></span>
+              <button type="button" class="key-btn" data-action="api-key-reveal:claude">👁️ ${L('Intip Kunci', 'Reveal')}</button>
+            </div>
+          ` : ''}
+
+          <div class="key-guide-note">
+            <span>💡</span>
+            <div><b>${L('Dapatkan API Key Anthropic Claude:','Get Anthropic Claude API Key:')}</b> ${L('Buka Anthropic Console di <b>console.anthropic.com</b>, buat API key baru (format <code>sk-ant-...</code>), lalu tempelkan di bawah. Claude 3.5 Sonnet memiliki akurasi tinggi untuk analisis keuangan dan ekstraksi tabel statement.','Open Anthropic Console at <b>console.anthropic.com</b>, create a new API key (starts with <code>sk-ant-...</code>), and paste below. Claude 3.5 Sonnet provides superior accuracy for financial reasoning and table extraction.')}</div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-val-claude">
+              <span>${L('API Key Anthropic Claude:','Claude API Key:')}</span>
+              <small>${claude.configured ? L('(Kosongkan jika tidak ingin mengubah)','(Leave blank to keep current)') : L('(Wajib diisi)','(Required)')}</small>
+            </label>
+            <div class="key-input-wrapper">
+              <input type="password" id="key-val-claude" placeholder="${claude.configured ? L('Biarkan kosong untuk mempertahankan kunci saat ini…','Leave blank to keep current key…') : 'sk-ant-api03-...'}">
+              <button type="button" class="key-input-toggle" data-action="api-key-toggle-eye:key-val-claude" title="${L('Tampilkan/Sembunyikan','Show/Hide')}">${eyeIcon}</button>
+            </div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-model-claude"><span>${L('Pilihan Model Claude:','Claude Model:')}</span></label>
+            <select class="key-select" id="key-model-claude">
+              <option value="claude-3-5-sonnet-20241022" ${claude.model==='claude-3-5-sonnet-20241022'?'selected':''}>claude-3-5-sonnet-20241022 (${L('Unggulan & Akurat — Rekomendasi','Flagship & Highly Accurate - Recommended')})</option>
+              <option value="claude-3-7-sonnet-20250219" ${claude.model==='claude-3-7-sonnet-20250219'?'selected':''}>claude-3-7-sonnet-20250219 (${L('Hybrid Reasoning Terkini','Hybrid Reasoning')})</option>
+              <option value="claude-3-5-haiku-20241022" ${claude.model==='claude-3-5-haiku-20241022'?'selected':''}>claude-3-5-haiku-20241022 (${L('Cepat & Ekonomis','Fast & Lightweight')})</option>
+              <option value="claude-3-opus-20240229" ${claude.model==='claude-3-opus-20240229'?'selected':''}>claude-3-opus-20240229</option>
+            </select>
+          </div>
+
+          <div id="key-feedback-claude" class="key-test-feedback"></div>
+
+          <div class="key-actions-row">
+            <button type="button" class="key-btn primary" data-action="api-key-save:claude">💾 ${L('Simpan Kunci Claude','Save Claude Key')}</button>
+            <button type="button" class="key-btn test" data-action="api-key-test:claude">⚡ ${L('Uji Koneksi','Test Connection')}</button>
+            ${claude.configured ? `<button type="button" class="key-btn danger key-btn-delete" data-action="api-key-delete:claude">🗑️ ${L('Hapus Kunci','Delete Key')}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // --- Tab: OpenRouter ---
+    const openrouterPane = `
+      <div class="key-pane ${currentTab === 'openrouter' ? 'active' : ''}" id="pane-openrouter">
+        <div class="key-card ${openrouter.configured ? 'configured' : ''}">
+          <div class="key-card-banner">
+            <div class="key-provider-meta">
+              <span class="key-provider-icon">🌐</span>
+              <div>
+                <div class="key-provider-name">OpenRouter Unified API</div>
+                <div class="key-provider-sub">OpenRouter.ai · Akses Claude, DeepSeek, Llama, Gemini dalam 1 Kunci API</div>
+              </div>
+            </div>
+            <span class="key-status-pill ${openrouter.configured ? 'online' : 'standby'}">
+              ${openrouter.configured ? L('● Terkonfigurasi', '● Configured') : L('● Belum Dikonfigurasi', '● Not Configured')}
+            </span>
+          </div>
+
+          ${openrouter.configured ? `
+            <div class="key-active-preview">
+              <span>${L('Kunci Aktif:', 'Active Key:')} <code>${escape(openrouter.keyMasked || '••••••••••••••••')}</code></span>
+              <button type="button" class="key-btn" data-action="api-key-reveal:openrouter">👁️ ${L('Intip Kunci', 'Reveal')}</button>
+            </div>
+          ` : ''}
+
+          <div class="key-guide-note">
+            <span>💡</span>
+            <div><b>${L('Dapatkan API Key OpenRouter:','Get OpenRouter API Key:')}</b> ${L('Buka <b>openrouter.ai/keys</b>, buat API Key baru (format <code>sk-or-v1-...</code>), lalu tempelkan di bawah. Anda bisa memilih berbagai model populer dunia seperti Claude 3.5 Sonnet, DeepSeek V3/R1, atau Llama 3.3.','Open <b>openrouter.ai/keys</b>, create a new API Key (starts with <code>sk-or-v1-...</code>), and paste below. Gain access to leading models like Claude 3.5 Sonnet, DeepSeek V3/R1, or Llama 3.3.')}</div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-val-openrouter">
+              <span>${L('API Key OpenRouter:','OpenRouter API Key:')}</span>
+              <small>${openrouter.configured ? L('(Kosongkan jika tidak ingin mengubah)','(Leave blank to keep current)') : L('(Wajib diisi)','(Required)')}</small>
+            </label>
+            <div class="key-input-wrapper">
+              <input type="password" id="key-val-openrouter" placeholder="${openrouter.configured ? L('Biarkan kosong untuk mempertahankan kunci saat ini…','Leave blank to keep current key…') : 'sk-or-v1-...'}">
+              <button type="button" class="key-input-toggle" data-action="api-key-toggle-eye:key-val-openrouter" title="${L('Tampilkan/Sembunyikan','Show/Hide')}">${eyeIcon}</button>
+            </div>
+          </div>
+
+          <div class="key-field-group">
+            <label for="key-model-openrouter"><span>${L('Model ID OpenRouter:','OpenRouter Model ID:')}</span></label>
+            <input type="text" class="key-input" id="key-model-openrouter" list="presets-openrouter" value="${escape(openrouter.model || 'anthropic/claude-3.5-sonnet')}" placeholder="anthropic/claude-3.5-sonnet">
+            <datalist id="presets-openrouter">
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (anthropic/claude-3.5-sonnet)</option>
+              <option value="anthropic/claude-3.7-sonnet">Claude 3.7 Sonnet (anthropic/claude-3.7-sonnet)</option>
+              <option value="deepseek/deepseek-chat">DeepSeek V3 (deepseek/deepseek-chat)</option>
+              <option value="deepseek/deepseek-r1">DeepSeek R1 (deepseek/deepseek-r1)</option>
+              <option value="google/gemini-2.5-flash">Gemini 2.5 Flash (google/gemini-2.5-flash)</option>
+              <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B (meta-llama/llama-3.3-70b-instruct)</option>
+            </datalist>
+          </div>
+
+          <div id="key-feedback-openrouter" class="key-test-feedback"></div>
+
+          <div class="key-actions-row">
+            <button type="button" class="key-btn primary" data-action="api-key-save:openrouter">💾 ${L('Simpan Kunci OpenRouter','Save OpenRouter Key')}</button>
+            <button type="button" class="key-btn test" data-action="api-key-test:openrouter">⚡ ${L('Uji Koneksi','Test Connection')}</button>
+            ${openrouter.configured ? `<button type="button" class="key-btn danger key-btn-delete" data-action="api-key-delete:openrouter">🗑️ ${L('Hapus Kunci','Delete Key')}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
 
     // --- Tab 1: Gemini ---
     const geminiPane = `
@@ -12282,6 +12413,38 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
         </div>
 
         <div class="key-overview-grid">
+          <!-- Claude -->
+          <div class="key-ov-card ${claude.configured ? 'configured' : ''}">
+            <div class="key-ov-head">
+              <span class="key-ov-title"><span>🎭</span> Anthropic Claude</span>
+              <span class="key-status-pill ${claude.configured ? 'online' : 'standby'}">${claude.configured ? '● Online' : '● Standby'}</span>
+            </div>
+            <div class="key-ov-body">
+              <div><b>Model:</b> <code class="key-chip">${escape(claude.model || 'claude-3-5-sonnet-20241022')}</code></div>
+              <div><b>Kunci:</b> <code class="key-chip">${escape(claude.keyMasked || L('Belum diatur','Not configured'))}</code></div>
+            </div>
+            <div class="key-ov-actions">
+              <button type="button" class="key-btn key-btn-sm" data-action="api-key-tab:claude">✏️ ${L('Atur Kunci','Configure')}</button>
+              ${claude.configured ? `<button type="button" class="key-btn danger key-btn-sm" data-action="api-key-delete:claude" title="${L('Hapus Kunci','Delete')}">🗑️</button>` : ''}
+            </div>
+          </div>
+
+          <!-- OpenRouter -->
+          <div class="key-ov-card ${openrouter.configured ? 'configured' : ''}">
+            <div class="key-ov-head">
+              <span class="key-ov-title"><span>🌐</span> OpenRouter Unified</span>
+              <span class="key-status-pill ${openrouter.configured ? 'online' : 'standby'}">${openrouter.configured ? '● Online' : '● Standby'}</span>
+            </div>
+            <div class="key-ov-body">
+              <div><b>Model:</b> <code class="key-chip">${escape(openrouter.model || 'anthropic/claude-3.5-sonnet')}</code></div>
+              <div><b>Kunci:</b> <code class="key-chip">${escape(openrouter.keyMasked || L('Belum diatur','Not configured'))}</code></div>
+            </div>
+            <div class="key-ov-actions">
+              <button type="button" class="key-btn key-btn-sm" data-action="api-key-tab:openrouter">✏️ ${L('Atur Kunci','Configure')}</button>
+              ${openrouter.configured ? `<button type="button" class="key-btn danger key-btn-sm" data-action="api-key-delete:openrouter" title="${L('Hapus Kunci','Delete')}">🗑️</button>` : ''}
+            </div>
+          </div>
+
           <!-- Gemini -->
           <div class="key-ov-card ${gemini.configured ? 'configured' : ''}">
             <div class="key-ov-head">
@@ -12387,6 +12550,8 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
         ${tabsHtml}
         <div class="key-mgr-content">
           ${allPane}
+          ${claudePane}
+          ${openrouterPane}
           ${geminiPane}
           ${openaiPane}
           ${ninePane}
@@ -12547,7 +12712,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
 
   async function handlePingAll() {
     toast(L('⚡ Menguji sinyal ke semua saluran aktif…', '⚡ Testing connection signals to all channels…'));
-    const providers = ['gemini', 'openai', 'ninerouter', 'muse', 'telegram'];
+    const providers = ['claude', 'openrouter', 'gemini', 'openai', 'ninerouter', 'muse', 'telegram'];
     let results = [];
     for (const p of providers) {
       if (cachedApiKeys?.[p]?.configured) {

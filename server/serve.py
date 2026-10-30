@@ -577,6 +577,46 @@ def test_api_key_connection(provider_name: str, payload: dict) -> dict:
             with urllib.request.urlopen(req, timeout=10) as r:
                 return {'ok': True, 'message': f'✅ Koneksi OpenAI Berhasil! Model target: {model}'}
 
+        elif prov == 'claude':
+            key = payload.get('apiKey') or os.environ.get('ANTHROPIC_API_KEY') or os.environ.get('CLAUDE_API_KEY', '')
+            if not key:
+                return {'ok': False, 'error': 'Kunci API Anthropic Claude belum diisi'}
+            model = payload.get('model') or os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022')
+            url = "https://api.anthropic.com/v1/models"
+            req = urllib.request.Request(url, headers={'x-api-key': key, 'anthropic-version': '2023-06-01', 'User-Agent': f'INVEYS/{VERSION}'})
+            try:
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    return {'ok': True, 'message': f'✅ Koneksi Anthropic Claude Berhasil! Target model: {model}'}
+            except urllib.error.HTTPError as he:
+                try:
+                    err_data = json.loads(he.read().decode('utf-8', errors='replace'))
+                    msg = err_data.get('error', {}).get('message') or str(he)
+                except Exception:
+                    msg = str(he)
+                return {'ok': False, 'error': f'Anthropic API ({he.code}): {msg}'}
+            except Exception as ex:
+                return {'ok': False, 'error': f'Koneksi Claude gagal: {ex}'}
+
+        elif prov == 'openrouter':
+            key = payload.get('apiKey') or os.environ.get('OPENROUTER_API_KEY', '')
+            if not key:
+                return {'ok': False, 'error': 'Kunci API OpenRouter belum diisi'}
+            model = payload.get('model') or os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-3.5-sonnet')
+            url = "https://openrouter.ai/api/v1/auth/key"
+            req = urllib.request.Request(url, headers={'Authorization': f'Bearer {key}', 'HTTP-Referer': 'https://inveys.io', 'X-Title': 'INVEYS', 'User-Agent': f'INVEYS/{VERSION}'})
+            try:
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    return {'ok': True, 'message': f'✅ Koneksi OpenRouter Berhasil! Target model: {model}'}
+            except urllib.error.HTTPError as he:
+                try:
+                    err_data = json.loads(he.read().decode('utf-8', errors='replace'))
+                    msg = err_data.get('error', {}).get('message') or str(he)
+                except Exception:
+                    msg = str(he)
+                return {'ok': False, 'error': f'OpenRouter API ({he.code}): {msg}'}
+            except Exception as ex:
+                return {'ok': False, 'error': f'Koneksi OpenRouter gagal: {ex}'}
+
         elif prov in ('9router', 'ninerouter'):
             key = payload.get('apiKey') or os.environ.get('NINEROUTER_API_KEY', '')
             if not key:
@@ -1235,6 +1275,8 @@ class Handler(SimpleHTTPRequestHandler):
 
             gemini_key = os.environ.get('GEMINI_API_KEY', '')
             openai_key = os.environ.get('OPENAI_API_KEY', '')
+            claude_key = os.environ.get('ANTHROPIC_API_KEY') or os.environ.get('CLAUDE_API_KEY', '')
+            openrouter_key = os.environ.get('OPENROUTER_API_KEY', '')
             nine_key = os.environ.get('NINEROUTER_API_KEY', '')
             muse_key = os.environ.get('MODEL_API_KEY', '')
             tg_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
@@ -1256,6 +1298,18 @@ class Handler(SimpleHTTPRequestHandler):
                     'keyMasked': mask_secret(openai_key),
                     'rawKey': openai_key if allow_reveal else '',
                     'model': os.environ.get('OPENAI_MODEL', 'gpt-4.1-mini')
+                },
+                'claude': {
+                    'configured': bool(claude_key),
+                    'keyMasked': mask_secret(claude_key),
+                    'rawKey': claude_key if allow_reveal else '',
+                    'model': os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022')
+                },
+                'openrouter': {
+                    'configured': bool(openrouter_key),
+                    'keyMasked': mask_secret(openrouter_key),
+                    'rawKey': openrouter_key if allow_reveal else '',
+                    'model': os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-3.5-sonnet')
                 },
                 'ninerouter': {
                     'configured': bool(nine_key),
@@ -2265,6 +2319,11 @@ class Handler(SimpleHTTPRequestHandler):
                         delete_server_setting('GEMINI_API_KEY')
                     elif provider_name == 'openai':
                         delete_server_setting('OPENAI_API_KEY')
+                    elif provider_name == 'claude':
+                        delete_server_setting('ANTHROPIC_API_KEY')
+                        delete_server_setting('CLAUDE_API_KEY')
+                    elif provider_name == 'openrouter':
+                        delete_server_setting('OPENROUTER_API_KEY')
                     elif provider_name in ('9router', 'ninerouter'):
                         delete_server_setting('NINEROUTER_API_KEY')
                     elif provider_name == 'muse':
@@ -2297,6 +2356,16 @@ class Handler(SimpleHTTPRequestHandler):
                             save_server_setting('OPENAI_API_KEY', str(data['apiKey']).strip())
                         if 'model' in data and str(data['model']).strip():
                             save_server_setting('OPENAI_MODEL', str(data['model']).strip())
+                    elif provider_name == 'claude':
+                        if 'apiKey' in data and str(data['apiKey']).strip():
+                            save_server_setting('ANTHROPIC_API_KEY', str(data['apiKey']).strip())
+                        if 'model' in data and str(data['model']).strip():
+                            save_server_setting('ANTHROPIC_MODEL', str(data['model']).strip())
+                    elif provider_name == 'openrouter':
+                        if 'apiKey' in data and str(data['apiKey']).strip():
+                            save_server_setting('OPENROUTER_API_KEY', str(data['apiKey']).strip())
+                        if 'model' in data and str(data['model']).strip():
+                            save_server_setting('OPENROUTER_MODEL', str(data['model']).strip())
                     elif provider_name in ('9router', 'ninerouter'):
                         if 'apiKey' in data and str(data['apiKey']).strip():
                             save_server_setting('NINEROUTER_API_KEY', str(data['apiKey']).strip())

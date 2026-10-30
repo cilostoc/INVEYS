@@ -77,3 +77,50 @@ class AI(unittest.TestCase):
    self.assertEqual(a.chat(request,None,None)['drafts'][0]['kind'],'transfer')
    t.return_value={'output':[{'type':'message','content':[{'type':'output_text','text':'Plain answer'}]}]};self.assertEqual(a.chat(request,None,None)['intent'],'question')
    t.return_value={'output':[{'type':'message','content':[{'type':'output_text','text':json.dumps({'intent':'question','text':'Do you mean an expense?','drafts':[draft]})}]}]};self.assertEqual(a.chat(request,None,None)['drafts'],[])
+
+ def test_claude_chat_and_extract_statement(self):
+  import json
+  env={'ANTHROPIC_API_KEY':'sk-ant-test','ANTHROPIC_MODEL':'claude-3-5-sonnet-20241022'}
+  response={'content':[{'type':'text','text':'Claude response'}]}
+  png_b64='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC'
+  with patch.dict(os.environ,env,clear=True),patch.object(a,'transport',return_value=response) as t:
+   res=a.chat(self.request('claude'),None,None)
+   self.assertEqual(res['text'],'Claude response')
+   self.assertEqual(res['provider'],'claude')
+   self.assertEqual(t.call_args.args[0],'https://api.anthropic.com/v1/messages')
+   self.assertTrue(t.call_args.kwargs['anthropic'])
+   self.assertEqual(t.call_args.args[2],'sk-ant-test')
+   img={'name':'receipt.png','type':'image/png','data':png_b64}
+   a.chat(self.request('claude',file=img),None,None)
+   img_block=t.call_args.args[1]['messages'][-1]['content'][0]
+   self.assertEqual(img_block['type'],'image')
+   self.assertEqual(img_block['source']['type'],'base64')
+
+  stmt_resp={'content':[{'type':'text','text':json.dumps({'bank':'BCA','drafts':[{'name':'Test','date':'2026-10-04','kind':'expense','amount':'15.00','currency':'IDR','category':'Food'}]})}]}
+  with patch.dict(os.environ,env,clear=True),patch.object(a,'transport',return_value=stmt_resp) as t:
+   extracted=a.extract_statement({'provider':'claude','consent':True,'text':'sample stmt text'},lambda f:'')
+   self.assertEqual(extracted['bank'],'BCA')
+   self.assertEqual(len(extracted['drafts']),1)
+   self.assertEqual(t.call_args.args[0],'https://api.anthropic.com/v1/messages')
+
+ def test_openrouter_chat_and_extract_statement(self):
+  import json
+  env={'OPENROUTER_API_KEY':'sk-or-test','OPENROUTER_MODEL':'anthropic/claude-3.5-sonnet'}
+  response={'choices':[{'message':{'content':'OpenRouter response'}}]}
+  with patch.dict(os.environ,env,clear=True),patch.object(a,'transport',return_value=response) as t:
+   res=a.chat(self.request('openrouter'),None,None)
+   self.assertEqual(res['text'],'OpenRouter response')
+   self.assertEqual(res['provider'],'openrouter')
+   self.assertEqual(t.call_args.args[0],'https://openrouter.ai/api/v1/chat/completions')
+   self.assertTrue(t.call_args.kwargs['openrouter'])
+   self.assertEqual(t.call_args.args[1]['model'],'anthropic/claude-3.5-sonnet')
+
+  stmt_resp={'choices':[{'message':{'content':json.dumps({'bank':'Mandiri','drafts':[{'name':'Gaji','date':'2026-10-01','kind':'income','amount':'5000.00','currency':'IDR','category':'Income'}]})}}]}
+  with patch.dict(os.environ,env,clear=True),patch.object(a,'transport',return_value=stmt_resp) as t:
+   extracted=a.extract_statement({'provider':'openrouter','consent':True,'text':'sample stmt text'},lambda f:'')
+   self.assertEqual(extracted['bank'],'Mandiri')
+   self.assertEqual(len(extracted['drafts']),1)
+   self.assertEqual(t.call_args.args[0],'https://openrouter.ai/api/v1/chat/completions')
+
+if __name__=='__main__':
+ unittest.main()

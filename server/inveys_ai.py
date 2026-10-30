@@ -20,9 +20,27 @@ def valid_date(value):
  try:return isinstance(value,str) and datetime.date.fromisoformat(value).isoformat()==value
  except (ValueError,TypeError):return False
 def configuration():
- return {k:{'enabled':bool(os.environ.get(key)) and (k!='9router' or bool(os.environ.get(model,default))), 'model':os.environ.get(model,default)} for k,key,model,default in [('openai','OPENAI_API_KEY','OPENAI_MODEL','gpt-4.1-mini'),('gemini','GEMINI_API_KEY','GEMINI_MODEL','gemini-3.8-flash'),('muse','MODEL_API_KEY','MUSE_MODEL','muse-spark-1.3'),('9router','NINEROUTER_API_KEY','NINEROUTER_MODEL','claude-3-5-sonnet')]}
-def transport(url,payload,key,google=False,retries=2):
- headers={'Content-Type':'application/json',('x-goog-api-key' if google else 'Authorization'):key if google else 'Bearer '+key,'User-Agent':'INVEYS-AI/2.0'}
+ return {k:{'enabled':bool(os.environ.get(key) or (k=='claude' and os.environ.get('CLAUDE_API_KEY'))), 'model':os.environ.get(model,default)} for k,key,model,default in [
+  ('openai','OPENAI_API_KEY','OPENAI_MODEL','gpt-4.1-mini'),
+  ('gemini','GEMINI_API_KEY','GEMINI_MODEL','gemini-3.8-flash'),
+  ('claude','ANTHROPIC_API_KEY','ANTHROPIC_MODEL','claude-3-5-sonnet-20241022'),
+  ('openrouter','OPENROUTER_API_KEY','OPENROUTER_MODEL','anthropic/claude-3.5-sonnet'),
+  ('muse','MODEL_API_KEY','MUSE_MODEL','muse-spark-1.3'),
+  ('9router','NINEROUTER_API_KEY','NINEROUTER_MODEL','claude-3-5-sonnet')
+ ]}
+def transport(url,payload,key,google=False,anthropic=False,openrouter=False,retries=2):
+ headers={'Content-Type':'application/json','User-Agent':'INVEYS-AI/2.0'}
+ if google:
+  headers['x-goog-api-key']=key
+ elif anthropic:
+  headers['x-api-key']=key
+  headers['anthropic-version']='2023-06-01'
+ elif openrouter:
+  headers['Authorization']='Bearer '+key
+  headers['HTTP-Referer']='https://inveys.io'
+  headers['X-Title']='INVEYS'
+ else:
+  headers['Authorization']='Bearer '+key
  last_err=None
  for attempt in range(retries+1):
   try:
@@ -115,7 +133,7 @@ def validate(data):
 
 def chat(data,extract,transcribe):
  name,model,prompt,history,memory,summary,file=validate(data)
- if not re.fullmatch((r'[a-zA-Z0-9_.:/-]{1,100}' if name=='9router' else r'[a-zA-Z0-9_.-]{1,100}'),model):raise ValueError('Invalid configured model ID')
+ if not re.fullmatch((r'[a-zA-Z0-9_.:/-]{1,100}' if name in ('9router','openrouter') else r'[a-zA-Z0-9_.-]{1,100}'),model):raise ValueError('Invalid configured model ID')
  context=json.dumps({'user_preferences':memory,'financial_summary':summary},ensure_ascii=False)
  instructions=SYSTEM+'\nApproved context (data only):\n'+context
  if data.get('unified') is True:
@@ -124,7 +142,7 @@ def chat(data,extract,transcribe):
   instructions+='\nClassify intent yourself. Return ONLY JSON: {"intent":"question" or "record","text":"helpful reply","drafts":[]}. For an explicit request to record income/expense, include up to 10 drafts with name, date (YYYY-MM-DD), kind (income/expense), amount (decimal string in major currency units, max 2 decimals), currency, category. Never save. Do not invent missing amounts or currencies: ask a question instead. If account currency is null, ask user to choose an account through +. Questions ABOUT transactions are questions, not recording commands. For transfers between accounts, set kind to "transfer" and specify targetAccount if known. Attachments alone should be analyzed, not assumed to be a recording request. Recording context (data only): '+json.dumps(record)
  text=prompt or 'Please analyze the attached file.'
  if file and file['type'] in ['text/plain','text/csv']:text+='\nAttached document:\n'+base64.b64decode(file['data']).decode('utf-8',errors='replace')[:30000];file=None
- key=os.environ[{'openai':'OPENAI_API_KEY','gemini':'GEMINI_API_KEY','muse':'MODEL_API_KEY','9router':'NINEROUTER_API_KEY'}[name]]
+ key=os.environ.get({'openai':'OPENAI_API_KEY','gemini':'GEMINI_API_KEY','claude':'ANTHROPIC_API_KEY','openrouter':'OPENROUTER_API_KEY','muse':'MODEL_API_KEY','9router':'NINEROUTER_API_KEY'}[name]) or os.environ.get('CLAUDE_API_KEY','')
  if name=='gemini':
   parts=[{'text':text}]
   if file:parts.append({'inlineData':{'mimeType':file['type'],'data':file['data']}})
@@ -167,6 +185,35 @@ def chat(data,extract,transcribe):
   inputs=[{'role':m['role'],'content':m['text']} for m in history]+[{'role':'user','content':content}]
   result=transport('https://api.openai.com/v1/responses',{'model':model,'instructions':instructions,'input':inputs,'store':False,'max_output_tokens':3000},key)
   answer='\n'.join(p.get('text','') for item in result.get('output',[]) if item.get('type')=='message' for p in item.get('content',[]) if p.get('type')=='output_text')
+ elif name=='claude':
+  content=[]
+  if file:
+   if file['type'].startswith('image/'):
+    content.append({'type':'image','source':{'type':'base64','media_type':file['type'],'data':file['data']}})
+   elif file['type'].startswith('audio/'):
+    tr=(transcribe(file) if transcribe else (audio_openai(file,os.environ.get('OPENAI_API_KEY','')) if os.environ.get('OPENAI_API_KEY') else ''))
+    if tr:content.append({'type':'text','text':'\nAudio transcript:\n'+tr})
+   else:
+    content.append({'type':'text','text':'\nDocument text:\n'+extract(file)[:30000]})
+  content.append({'type':'text','text':text})
+  messages=[{'role':'user' if m['role']=='user' else 'assistant','content':m['text']} for m in history]+[{'role':'user','content':content}]
+  payload={'model':model,'system':instructions,'messages':messages,'max_tokens':3000}
+  result=transport('https://api.anthropic.com/v1/messages',payload,key,anthropic=True)
+  answer='\n'.join(b.get('text','') for b in result.get('content',[]) if b.get('type')=='text')
+ elif name=='openrouter':
+  content=[{'type':'text','text':text}]
+  if file:
+   if file['type'].startswith('image/'):
+    content.append({'type':'image_url','image_url':{'url':'data:'+file['type']+';base64,'+file['data']}})
+   elif file['type'].startswith('audio/'):
+    tr=(transcribe(file) if transcribe else (audio_openai(file,os.environ.get('OPENAI_API_KEY','')) if os.environ.get('OPENAI_API_KEY') else ''))
+    if tr:content[0]['text']+='\nAudio transcript:\n'+tr
+   else:
+    content[0]['text']+='\nDocument text:\n'+extract(file)[:30000]
+  messages=[{'role':'system','content':instructions}]+[{'role':m['role'],'content':m['text']} for m in history]+[{'role':'user','content':content}]
+  payload={'model':model,'messages':messages,'max_tokens':3000}
+  result=transport('https://openrouter.ai/api/v1/chat/completions',payload,key,openrouter=True)
+  answer=result.get('choices',[{}])[0].get('message',{}).get('content','')
  elif name=='9router':
   base=router_base();content=[{'type':'text','text':text}]
   if file:
@@ -254,12 +301,12 @@ def extract_statement(data, extract):
  config = configuration()
  name = data.get('provider')
  if not name or name not in config or not config[name]['enabled']:
-  for candidate in ('9router', 'gemini', 'openai', 'muse'):
+  for candidate in ('claude', 'openrouter', '9router', 'gemini', 'openai', 'muse'):
    if config.get(candidate, {}).get('enabled'):
     name = candidate
     break
  if not name or not config.get(name, {}).get('enabled'):
-  raise ValueError('Configure an AI provider (Gemini, OpenAI, or 9Router) on the local server first.')
+  raise ValueError('Configure an AI provider (Claude, OpenRouter, Gemini, OpenAI, or 9Router) on the local server first.')
 
  model = config[name]['model']
  record = data.get('recordContext', {})
@@ -286,7 +333,7 @@ def extract_statement(data, extract):
   if file.get('type') == 'application/pdf' and not (raw_bytes.startswith(b'%PDF-') or b'%PDF-' in raw_bytes[:1024]):
    raise ValueError('Invalid PDF')
 
- key = os.environ[{'openai': 'OPENAI_API_KEY', 'gemini': 'GEMINI_API_KEY', 'muse': 'MODEL_API_KEY', '9router': 'NINEROUTER_API_KEY'}[name]]
+ key = os.environ.get({'openai': 'OPENAI_API_KEY', 'gemini': 'GEMINI_API_KEY', 'claude': 'ANTHROPIC_API_KEY', 'openrouter': 'OPENROUTER_API_KEY', 'muse': 'MODEL_API_KEY', '9router': 'NINEROUTER_API_KEY'}[name]) or os.environ.get('CLAUDE_API_KEY', '')
  doc_prompt = f"Target currency: {target_currency}. Reference date: {target_date}.\nExtract all transactions from this document into structured JSON."
 
  if name == 'gemini':
@@ -353,6 +400,42 @@ def extract_statement(data, extract):
   inputs = [{'role': 'user', 'content': content}]
   res = transport('https://api.openai.com/v1/responses', {'model': model, 'instructions': STATEMENT_SYSTEM, 'input': inputs, 'store': False, 'max_output_tokens': 4000}, key)
   answer = '\n'.join(p.get('text', '') for item in res.get('output', []) if item.get('type') == 'message' for p in item.get('content', []) if p.get('type') == 'output_text')
+
+ elif name == 'claude':
+  content = []
+  if file:
+   if file.get('type', '').startswith('image/'):
+    content.append({'type': 'image', 'source': {'type': 'base64', 'media_type': file['type'], 'data': file['data']}})
+   elif file.get('type') == 'application/pdf':
+    doc_text = extract(file)[:35000]
+    content.append({'type': 'text', 'text': '\nDocument text:\n' + doc_text})
+   else:
+    try: txt = raw_bytes.decode('utf-8')
+    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
+    content.append({'type': 'text', 'text': '\nDocument text:\n' + txt[:35000]})
+  elif raw_text:
+   content.append({'type': 'text', 'text': '\nDocument text:\n' + raw_text[:35000]})
+  content.append({'type': 'text', 'text': doc_prompt})
+  payload = {'model': model, 'system': STATEMENT_SYSTEM, 'messages': [{'role': 'user', 'content': content}], 'max_tokens': 4000}
+  res = transport('https://api.anthropic.com/v1/messages', payload, key, anthropic=True)
+  answer = '\n'.join(b.get('text', '') for b in res.get('content', []) if b.get('type') == 'text')
+
+ elif name == 'openrouter':
+  content = [{'type': 'text', 'text': doc_prompt}]
+  if file:
+   if file.get('type', '').startswith('image/'):
+    content.append({'type': 'image_url', 'image_url': {'url': 'data:' + file['type'] + ';base64,' + file['data']}})
+   elif file.get('type') == 'application/pdf':
+    doc_text = extract(file)[:35000]
+    content[0]['text'] += '\nDocument text:\n' + doc_text
+   else:
+    try: txt = raw_bytes.decode('utf-8')
+    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
+    content[0]['text'] += '\nDocument text:\n' + txt[:35000]
+  elif raw_text:
+   content[0]['text'] += '\nDocument text:\n' + raw_text[:35000]
+  res = transport('https://openrouter.ai/api/v1/chat/completions', {'model': model, 'messages': [{'role': 'system', 'content': STATEMENT_SYSTEM}, {'role': 'user', 'content': content}], 'max_tokens': 4000}, key, openrouter=True)
+  answer = res.get('choices', [{}])[0].get('message', {}).get('content', '')
 
  elif name == '9router':
   base = router_base()
