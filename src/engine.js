@@ -71,7 +71,7 @@
   function position(s) {
     const assets = sum(s.accounts.map(a => reporting(s,a,'balance')));
     const liabilities = sum(s.debts.map(d => reporting(s,d,'balance')));
-    const liquid = sum(s.accounts.filter(a => ['Checking', 'Savings', 'Cash'].includes(a.type)).map(a => reporting(s,a,'balance')));
+    const liquid = sum(s.accounts.filter(a => ['Checking', 'Savings', 'Cash', 'E-Wallet'].includes(a.type)).map(a => reporting(s,a,'balance')));
     const income = sum(s.flows.filter(f => f.kind === 'income').map(f => reporting(s,f,'amount')));
     const expenses = sum(s.flows.filter(f => f.kind === 'expense').map(f => reporting(s,f,'amount')));
     const debtPayments = sum(s.debts.map(d => reporting(s,d,'minimum')));
@@ -182,7 +182,7 @@
     for (const g of s.goals) if (typeof g.name !== 'string' || typeof g.emoji !== 'string' || g.emoji.length > 12 || typeof g.due !== 'string') throw new Error('Invalid goal metadata.');
     for (const t of s.tasks) if (typeof t.name !== 'string' || typeof t.owner !== 'string' || typeof t.done !== 'boolean' || typeof t.due !== 'string') throw new Error('Invalid task metadata.');
     for (const m of s.members) if (typeof m.name !== 'string' || typeof m.role !== 'string' || typeof m.initials !== 'string') throw new Error('Invalid member metadata.');
-    for (const a of s.accounts) if (!Number.isSafeInteger(a.balance) || !['Checking', 'Savings', 'Cash', 'Investment', 'Property', 'Other'].includes(a.type)) throw new Error('Invalid account.');
+    for (const a of s.accounts) if (!Number.isSafeInteger(a.balance) || !['Checking', 'Savings', 'Cash', 'Investment', 'Property', 'Other', 'E-Wallet'].includes(a.type)) throw new Error('Invalid account.');
     for (const d of s.debts) if (!Number.isSafeInteger(d.balance) || d.balance < 0 || !Number.isSafeInteger(d.minimum) || d.minimum <= 0 || !Number.isFinite(d.apr) || d.apr < 0 || d.apr > 100) throw new Error('Invalid debt.');
     for (const g of s.goals) if (![g.target, g.saved, g.monthly].every(Number.isSafeInteger) || g.target <= 0 || g.saved < 0 || g.monthly < 0) throw new Error('Invalid goal.');
     for (const f of s.flows) if (!Number.isSafeInteger(f.amount) || f.amount < 0 || !['income', 'expense'].includes(f.kind) || !Number.isInteger(f.day) || f.day < 1 || f.day > 28) throw new Error('Invalid cash-flow item.');
@@ -212,7 +212,7 @@
     const c=s.cards.find(c=>c.id===id),a=s.accounts.find(a=>a.id===accountId);
     const d=s.debts.find(d=>d.id===c?.debtId);
     if(!c||!a||!d||!Number.isSafeInteger(amount)||amount<=0||!validDate(date))throw new Error('Invalid credit-card payment.');
-    if(!['Checking','Savings','Cash'].includes(a.type))throw new Error('Choose a liquid payment account.');
+    if(!['Checking','Savings','Cash','E-Wallet'].includes(a.type))throw new Error('Choose a liquid payment account.');
     const debit=convert(s,amount,d.currency,a.currency);
     if(amount>d.balance||amount>Math.max(0,c.statementAmount-c.paid))throw new Error('Payment exceeds the remaining statement or debt balance.');
     if(debit>a.balance)throw new Error('Insufficient funds in the selected account.');

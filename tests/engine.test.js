@@ -217,3 +217,41 @@ test('monthlyBudgetSummary computes category actuals, rollover surplus, and pace
   assert.equal(summary.fixed.budget,1000000);
 });
 
+test('E-Wallet account type is validated, included in liquid assets, and usable for card payments', () => {
+  const s = E.migrate(workspace());
+  s.accounts.push({
+    id: 'w1',
+    name: 'GoPay Wallet',
+    type: 'E-Wallet',
+    currency: 'USD',
+    balance: 50000,
+    owner: 'Me',
+    updated: '2026-10-03'
+  });
+  assert.doesNotThrow(() => E.validate(s));
+
+  const pos = E.position(s);
+  // checking (a1: 1000000) + savings (a2: 500000) + ewallet (w1: 50000) = 1550000
+  assert.equal(pos.liquid, 1550000);
+
+  // Test payCard from E-Wallet
+  s.cards = [{id: 'cc1', debtId: 'd1', name: 'Card', owner: 'Me', last4: '1234', limit: 200000, statementAmount: 50000, paid: 0, dueDate: '2026-10-05', limitDate: '', reminderDays: 7}];
+  const res = E.payCard(s, 'cc1', 'w1', 20000, '2026-10-03');
+  assert.equal(res.debit, 20000);
+  assert.equal(s.accounts.find(a => a.id === 'w1').balance, 30000);
+  assert.equal(s.debts[0].balance, 80000);
+
+  // Verify non-liquid account cannot be used for payCard
+  s.accounts.push({
+    id: 'inv1',
+    name: 'Brokerage',
+    type: 'Investment',
+    currency: 'USD',
+    balance: 100000,
+    owner: 'Me',
+    updated: '2026-10-03'
+  });
+  assert.throws(() => E.payCard(s, 'cc1', 'inv1', 10000, '2026-10-03'), /liquid payment account/);
+});
+
+

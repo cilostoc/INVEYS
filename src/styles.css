@@ -1540,7 +1540,8 @@ html[data-theme=dark] .sim-tab-btn.active{background:#2a2c32;color:#ffffff}
   background: #fffbeb;
   color: #d97706;
 }
-.account-icon.ewallet {
+.account-icon.ewallet,
+.account-icon.e-wallet {
   background: #eef2ff;
   color: #4f46e5;
 }
@@ -1560,7 +1561,8 @@ html[data-theme=dark] .sim-tab-btn.active{background:#2a2c32;color:#ffffff}
 [data-theme="dark"] .account-icon.vault { background: #14532d; color: #4ade80; }
 [data-theme="dark"] .account-icon.investment { background: #3b0764; color: #c084fc; }
 [data-theme="dark"] .account-icon.crypto { background: #451a03; color: #fbbf24; }
-[data-theme="dark"] .account-icon.ewallet { background: #1e1b4b; color: #a5b4fc; }
+[data-theme="dark"] .account-icon.ewallet,
+[data-theme="dark"] .account-icon.e-wallet { background: #1e1b4b; color: #a5b4fc; }
 [data-theme="dark"] .account-icon.cash { background: #1e293b; color: #94a3b8; }
 [data-theme="dark"] .account-icon.cards,
 [data-theme="dark"] .account-icon.credit { background: #4c0519; color: #fda4af; }

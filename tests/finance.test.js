@@ -170,4 +170,52 @@ test('buildDjpTaxAssetsReport accurately maps Indonesian assets and liabilities 
   assert.equal(repM2.liabilities[0].name, 'KPR Bank Mandiri Griya');
 });
 
+test('E-Wallet accounts map to DJP code 015 and are projected as cash in forecasts', () => {
+  const s = workspace();
+  s.accounts.push({
+    id: 'ew1',
+    name: 'Dompet Serbaguna Pribadi',
+    type: 'E-Wallet',
+    balance: 750000,
+    ownerId: 'm1',
+    currency: 'USD',
+    updated: '2026-10-03'
+  });
+
+  // DJP mapping
+  const rep = F.buildDjpTaxAssetsReport(s, { year: '2026', ownerId: 'all' });
+  const ewAsset = rep.assets.find(a => a.name === 'Dompet Serbaguna Pribadi');
+  assert.ok(ewAsset);
+  assert.equal(ewAsset.code, '015');
+  assert.equal(ewAsset.codeName, 'Uang Elektronik / Dompet Digital');
+
+  // Forecast projection
+  const plan = {
+    ...s.forecastPlan,
+    years: 5,
+    startAge: 30,
+    inflation: 0.03,
+    incomeGrowth: 0.02,
+    expenseGrowth: 0.03,
+    investmentGrowth: 0.07,
+    cashGrowth: 0.01,
+    propertyGrowth: 0.03,
+    monthlyInvestment: 0,
+    volatility: 0.15,
+    target: 0,
+    baseline: 'plan',
+    currency: 'USD',
+    accounts: {},
+    events: []
+  };
+  const res = F.forecast(s, plan, { start: '2026-10-03' });
+  assert.ok(res.monthly.length > 0);
+  const startSnap = res.initial;
+  const ewInForecast = startSnap.accounts.find(a => a.id === 'ew1');
+  assert.ok(ewInForecast);
+  assert.equal(ewInForecast.type, 'E-Wallet');
+  assert.equal(ewInForecast.balance, 750000);
+});
+
+
 

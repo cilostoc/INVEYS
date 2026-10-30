@@ -897,5 +897,48 @@ test('reports and settings render Indonesian DJP Online Tax recap button and mod
   assert.match(modalBody, /tax-djp-year-select/);
 });
 
+test('E-Wallet account creation, quick presets, icon rendering, and liquid metric increment', () => {
+  const app = boot();
+
+  // 1. Open account creation modal
+  app.click({ action: 'account-new' });
+  const modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /preset-wallet-btn/);
+  assert.match(modalBody, /GoPay/);
+  assert.match(modalBody, /OVO/);
+  assert.match(modalBody, /DANA/);
+  assert.match(modalBody, /ShopeePay/);
+  assert.match(modalBody, /E-Wallet/);
+
+  // 2. Submit new E-Wallet account
+  const beforeLiquid = app.state().accounts.filter(a => ['Cash', 'Savings', 'Checking', 'E-Wallet'].includes(a.type)).length;
+  app.submitModal({
+    name: 'GoPay Personal',
+    type: 'E-Wallet',
+    currency: 'IDR',
+    balance: '500000',
+    owner: 'Me',
+    updated: '2026-10-03'
+  });
+
+  const created = app.state().accounts.find(a => a.name === 'GoPay Personal');
+  assert.ok(created);
+  assert.equal(created.type, 'E-Wallet');
+  assert.equal(created.balance, 50000000);
+
+  // 3. Check accounts page rendering
+  app.click({ page: 'accounts' });
+  assert.match(app.html(), /GoPay Personal/);
+  assert.match(app.html(), /account-icon e-wallet/);
+  assert.match(app.html(), new RegExp(`Liquid accounts.+?${beforeLiquid + 1}`, 's'));
+
+  // 4. Check capture auto-detection for e-wallet statement
+  app.click({ page: 'capture' });
+  app.input('capture-text', 'Riwayat Transaksi GoPay\n2026-10-03 Order ID: RB-12345 Kopi Kenangan 25.000');
+  app.click({ action: 'capture-parse' });
+  assert.match(app.html(), /Terdeteksi: GoPay|Detected: GoPay/);
+});
+
+
 
 
