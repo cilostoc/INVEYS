@@ -609,7 +609,7 @@
   function copilot(){
     const inviBanner = `<div class="invi-hero-banner" style="margin-bottom:18px;">
       <div class="invi-hero-avatar-wrap">
-        ${inviMascot('happy', 78)}
+        ${inviMascot('happy', 118)}
       </div>
       <div class="invi-hero-info">
         <div class="invi-hero-title">
@@ -2375,6 +2375,7 @@
 
   let inviStudioMood = 'happy';
   let inviStudioTab = 'poses';
+  let inviStudioSize = 120;
 
   function detectMascotSoulMood(text) {
     if (!text || typeof text !== 'string') return 'idle';
@@ -2489,7 +2490,7 @@
       ${tabsHeader}
       <div class="invi-hero-banner">
         <div class="invi-hero-avatar-wrap" id="invi-studio-avatar">
-          ${inviMascot(inviStudioMood, 84)}
+          ${inviMascot(inviStudioMood, inviStudioSize)}
         </div>
         <div class="invi-hero-info">
           <div class="invi-hero-title">
@@ -2503,6 +2504,14 @@
             <span class="invi-trait-pill">🕊️ Calm</span>
             <span class="invi-trait-pill">⚡ Proactive</span>
             <span class="invi-trait-pill">🤝 Approachable</span>
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+            <small style="color:var(--muted);font-weight:600;">${L('Ukuran Maskot:','Mascot Size:')}</small>
+            <div style="display:inline-flex;gap:4px;">
+              <button type="button" class="btn btn-subtle ${inviStudioSize===90?'active':''}" data-action="invi-size:90" style="padding:3px 8px;font-size:11px;">90px</button>
+              <button type="button" class="btn btn-subtle ${inviStudioSize===120?'active':''}" data-action="invi-size:120" style="padding:3px 8px;font-size:11px;">120px (${L('Besar','Large')})</button>
+              <button type="button" class="btn btn-subtle ${inviStudioSize===160?'active':''}" data-action="invi-size:160" style="padding:3px 8px;font-size:11px;">160px (${L('Hero 3D','Hero 3D')})</button>
+            </div>
           </div>
         </div>
       </div>
@@ -2529,7 +2538,7 @@
     return `<div class="invi-showcase-grid">
       <div class="invi-card">
         <div class="invi-card-header">
-          <div class="invi-card-avatar">${inviMascot('happy', 44)}</div>
+          <div class="invi-card-avatar">${inviMascot('happy', 54)}</div>
           <div class="invi-card-content">
             <h3>${L('Halo, Saya INVI', 'Hello, I am INVI')}</h3>
             <p>${L('Asisten AI yang siap membantu perjalanan finansial Anda.', 'AI assistant ready to guide your financial journey.')}</p>
@@ -2539,7 +2548,7 @@
       </div>
       <div class="invi-card">
         <div class="invi-card-header">
-          <div class="invi-card-avatar">${inviMascot('analyze', 44)}</div>
+          <div class="invi-card-avatar">${inviMascot('analyze', 54)}</div>
           <div class="invi-card-content">
             <h3>${L('Insight untuk Anda', 'Insights for You')}</h3>
             <p>${L('Ringkasan kondisi keuangan dan peluang investasi.', 'Financial condition summary and investment insights.')}</p>
@@ -2549,7 +2558,7 @@
       </div>
       <div class="invi-card">
         <div class="invi-card-header">
-          <div class="invi-card-avatar">${inviMascot('celebrate', 44)}</div>
+          <div class="invi-card-avatar">${inviMascot('celebrate', 54)}</div>
           <div class="invi-card-content">
             <h3>${L('Target Tercapai!', 'Target Achieved!')}</h3>
             <p>${L('Terus pertahankan konsistensi finansial Anda.', 'Keep up your consistent financial progress.')}</p>
@@ -2561,6 +2570,28 @@
   }
 
   function inviAction(name, id) {
+    if (name === 'invi-minimize') {
+      const dock = $('.quick-dock');
+      if (dock && typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        dock.classList.add('dock-departing');
+        setTimeout(() => {
+          quickMinimized = true;
+          render();
+        }, 220);
+      } else {
+        quickMinimized = true;
+        render();
+      }
+      return;
+    }
+    if (name === 'invi-size') {
+      inviStudioSize = Number(id) || 120;
+      const modalBody = $('#modal-body');
+      if (modalBody) {
+        modalBody.innerHTML = inviStudioModalHtml(inviStudioMood);
+      }
+      return;
+    }
     if (name === 'invi-showcase') {
       openInviShowcaseModal();
       return;
@@ -2601,15 +2632,17 @@
     }
   }
 
+  let quickArriving = false;
+
   function quickComposer(){
     const title=L('Catat atau tanya INVEYS','Record or ask INVEYS');
     const baseMood=aiBusy?'thinking':(drafts.length?'happy':(quickAttachment?'alert':'idle'));
     const mascotMood=veyCustomMood||baseMood;
-    if(quickMinimized)return `<section class="quick-dock minimized" aria-label="${title}"><button class="quick-launcher" data-action="quick-expand" aria-expanded="false" aria-controls="quick-chat-body" title="${L('Buka asisten finansial INVI','Open INVI financial copilot')}"><span class="vey-launcher-avatar">${inviMascot(mascotMood,32)}</span><span class="vey-launcher-label"><strong class="vey-name">INVI</strong><small class="vey-sub">${L('Financial Copilot','Financial Copilot')}</small></span>${drafts.length?`<span class="badge">${drafts.length} draft</span>`:`<span class="vey-ping-dot"></span>`}</button></section>`;
-    const veyBar=`<div class="vey-top-bar"><div class="vey-profile interactive" data-action="vey-poke" role="button" tabindex="0" title="${L('Klik untuk menyapa INVI!','Click to poke INVI!')}" aria-label="${L('Interaksi dengan INVI','Interact with INVI')}"><div class="vey-avatar-badge ${mascotMood}">${inviMascot(mascotMood,38)}</div><div class="vey-details"><div class="vey-name-row"><strong class="vey-title">INVI</strong><span class="vey-badge-role">Financial Copilot</span><span class="vey-live-badge ${aiBusy?'busy':'ready'}"><span class="vey-live-pulse"></span>${aiBusy?L('Berpikir…','Thinking…'):L('Aktif','Ready')}</span></div><span class="vey-engine-chip">${L('Engine: ','Engine: ')}<b>${aiProviderBadge(state.assistant.provider)}</b></span></div></div><div class="vey-bar-tools"><button type="button" class="vey-tool-btn" data-action="invi-showcase" title="${L('Buka Studio Karakter INVI','Open INVI Mascot Studio')}">✨</button><button type="button" class="vey-tool-btn ${veySoundEnabled?'active':''}" data-action="vey-toggle-sound" title="${veySoundEnabled?L('Efek Suara: Aktif','Sound: On'):L('Efek Suara: Bisu','Sound: Muted')}">${veySoundEnabled?'🔔':'🔕'}</button><button type="button" class="vey-tool-btn" data-action="quick-new-chat" title="${L('Percakapan baru','New conversation')}">${icon('plus')}</button><button type="button" class="vey-tool-btn" data-action="quick-ai-settings" title="${L('Pengaturan AI & Model','AI Settings')}">${icon('settings')}</button></div></div>`;
+    if(quickMinimized)return `<section class="quick-dock minimized" aria-label="${title}"><button class="quick-launcher" data-action="quick-expand" aria-expanded="false" aria-controls="quick-chat-body" title="${L('Buka asisten finansial INVI','Open INVI financial copilot')}"><span class="vey-launcher-avatar">${inviMascot(mascotMood,46)}</span><span class="vey-launcher-label"><strong class="vey-name">INVI</strong><small class="vey-sub">${L('✨ Panggil Copilot','✨ Summon Copilot')}</small></span>${drafts.length?`<span class="badge">${drafts.length} draft</span>`:`<span class="vey-ping-dot"></span>`}</button></section>`;
+    const veyBar=`<div class="vey-top-bar"><div class="vey-profile interactive" data-action="vey-poke" role="button" tabindex="0" title="${L('Klik untuk menyapa INVI!','Click to poke INVI!')}" aria-label="${L('Interaksi dengan INVI','Interact with INVI')}"><div class="vey-avatar-badge ${mascotMood}">${inviMascot(mascotMood,58)}</div><div class="vey-details"><div class="vey-name-row"><strong class="vey-title">INVI</strong><span class="vey-badge-role">Financial Copilot</span><span class="vey-live-badge ${aiBusy?'busy':'ready'}"><span class="vey-live-pulse"></span>${aiBusy?L('Berpikir…','Thinking…'):L('Aktif','Ready')}</span></div><span class="vey-engine-chip">${L('Engine: ','Engine: ')}<b>${aiProviderBadge(state.assistant.provider)}</b></span></div></div><div class="vey-bar-tools"><button type="button" class="vey-tool-btn" data-action="invi-showcase" title="${L('Buka Studio Karakter INVI','Open INVI Mascot Studio')}">✨</button><button type="button" class="vey-tool-btn ${veySoundEnabled?'active':''}" data-action="vey-toggle-sound" title="${veySoundEnabled?L('Efek Suara: Aktif','Sound: On'):L('Efek Suara: Bisu','Sound: Muted')}">${veySoundEnabled?'🔔':'🔕'}</button><button type="button" class="vey-tool-btn" data-action="quick-new-chat" title="${L('Percakapan baru','New conversation')}">${icon('plus')}</button><button type="button" class="vey-tool-btn" data-action="quick-ai-settings" title="${L('Pengaturan AI & Model','AI Settings')}">${icon('settings')}</button><button type="button" class="vey-tool-btn vey-dismiss-btn" data-action="invi-minimize" title="${L('Sembunyikan INVI','Hide INVI')}" aria-label="${L('Sembunyikan INVI','Hide INVI')}">✕</button></div></div>`;
     const starters=CHAT.history(state).length===0?`<div class="quick-starters"><button type="button" class="quick-starter-pill" data-starter="${L('Berapa total kekayaan bersih saya saat ini?','What is my current net worth?')}">💡 ${L('Kekayaan Bersih','Net Worth')}</button><button type="button" class="quick-starter-pill" data-starter="${L('Berapa sisa kapasitas kas saya bulan ini?','How much available cash flow do I have this month?')}">📈 ${L('Arus Kas Bulan Ini','Cash Flow')}</button><button type="button" class="quick-starter-pill" data-starter="${L('Bagaimana progres pencapaian target tabungan saya?','How are my savings goals progressing?')}">🎯 ${L('Target Tabungan','Goal Progress')}</button></div>`:'';
     const speechHtml=veySpeech?`<div class="vey-speech-bubble" role="status" aria-live="polite"><div class="vey-bubble-arrow"></div><div class="vey-bubble-content"><span class="vey-bubble-icon">${mascotMood==='love'?'💖':(mascotMood==='wink'?'✨':(mascotMood==='celebrate'?'🎉':'💬'))}</span><div class="vey-bubble-text">${escape(veySpeech)}</div><button type="button" class="vey-bubble-close" data-action="vey-dismiss-speech" aria-label="${L('Tutup pesan INVI','Dismiss INVI message')}">✕</button></div></div>`:'';
-    return `<section class="panel quick-composer quick-dock" aria-label="${L('Pencatatan cepat dan chatbot','Quick capture and chatbot')}"><div id="quick-chat-body">${veyBar}${speechHtml}<div class="quick-chat-output">${aiThread()}${aiBusy?`<div class="ai-wait-card" role="status"><div class="ai-aura-pill"><div class="ai-spark-orb"><span class="sparkle-star">✧</span><div class="sparkle-ring"></div></div><div class="ai-wait-content"><div class="ai-wait-status-line"><span class="ai-live-indicator"></span><span class="ai-status-text" id="ai-dynamic-status">${escape(aiThinkingStatusText())}</span></div><div class="ai-shimmer-bar"><div class="ai-shimmer-progress"></div></div></div></div></div>`:''}${quickReply?`<div class="quick-response" role="status" aria-live="polite">${quickReply}</div>`:''}${page==='capture'?'':draftPanel()}</div>${starters}${quickHabitChips()}${quickAttachment?`<div class="quick-attachment"><span>${icon('capture')}${quickAttachmentTag(quickAttachment)} ${user(quickAttachment.name)}<small>${(quickAttachment.size/1024).toFixed(0)} KB</small></span>${!quickAttachment.type.startsWith('audio/')&&!quickAttachment.type.startsWith('video/')&&!['text/plain','text/csv'].includes(quickAttachment.type)?button(quickFileBusy?L('Memproses…','Processing…'):L('Ekstrak & tinjau','Extract & review'),'quick-extract'):''}${button(L('Hapus lampiran','Remove attachment'),'quick-file-clear')}</div>`:''}<form id="quick-form" class="quick-chat-input"><details class="quick-popover"><summary class="quick-icon-button" aria-label="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}" title="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}">+</summary><div class="quick-popover-menu"><div class="quick-popover-head"><span class="quick-popover-title">✨ ${L('Tambah Lampiran & Media','Add Media & Attachments')}</span><span class="quick-popover-sub">${L('Pilih file dokumen, foto atau rekaman','Select document, photo or media')}</span></div><div class="quick-media-grid"><button type="button" class="quick-tile-btn" data-action="quick-camera"><span class="quick-tile-icon photo">${icon('capture')}</span><b>${L('Kamera','Camera')}</b><small>${L('Ambil foto','Take photo')}</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:doc"><span class="quick-tile-icon doc">${icon('capture')}</span><b>${L('Dokumen','Document')}</b><small>PDF / CSV / Struk</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:video"><span class="quick-tile-icon video">${icon('capture')}</span><b>${L('Video','Video')}</b><small>MP4 / WebM</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:audio"><span class="quick-tile-icon audio">${icon('copilot')}</span><b>${L('Audio','Audio')}</b><small>M4A / WAV</small></button></div><div class="quick-actions-list"><button type="button" class="quick-list-btn" data-action="quick-new-chat">${icon('plus')}<span>${L('Percakapan baru','New conversation')}</span></button><button type="button" class="quick-list-btn" data-action="quick-voice">${icon('copilot')}<span>${L('Input suara','Voice input')}</span></button><button type="button" class="quick-list-btn" data-action="quick-ai-settings">${icon('settings')}<span>${L('Model AI & Memori','AI Model & Memory')}<small>${aiProviderName(state.assistant.provider)}</small></span></button></div><div class="quick-popover-account"><label for="quick-account">${L('Akun untuk pencatatan','Recording account')}</label><select id="quick-account" name="accountId"><option value="">${L('Pilih akun','Choose account')}</option>${viewState().accounts.map(a=>`<option value="${a.id}" ${a.id===quickAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></div><div class="quick-popover-account"><label for="quick-source-kind">${L('Jenis dokumen','Document type')}</label><select id="quick-source-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk','Receipt')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank historis','Historical bank statement')}</option></select></div><button type="button" class="quick-list-btn" data-page="copilot" style="margin-top:4px">${icon('copilot')}<span>${L('Buka chatbot lengkap','Open full chatbot')}</span></button></div></details><label class="screen-reader" for="quick-text">${L('Perintah atau pertanyaan','Command or question')}</label><textarea id="quick-text" name="text" rows="1" maxlength="6000" placeholder="${L('Tanya INVEYS atau ketik instruksi keuangan…','Ask INVEYS or enter a financial instruction…')}">${escape(quickText)}</textarea><button class="quick-icon-button quick-microphone ${recorder?'recording':''}" type="button" data-action="quick-record-audio" aria-label="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}" title="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3m-3 0h6"/></svg></button><button class="quick-icon-button quick-send" type="submit" aria-label="${L('Kirim','Send')}" title="${L('Kirim','Send')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></form></div></section>`;
+    return `<section class="panel quick-composer quick-dock${quickArriving?' dock-arriving':''}" aria-label="${L('Pencatatan cepat dan chatbot','Quick capture and chatbot')}"><div id="quick-chat-body">${veyBar}${speechHtml}<div class="quick-chat-output">${aiThread()}${aiBusy?`<div class="ai-wait-card" role="status"><div class="ai-aura-pill"><div class="ai-spark-orb"><span class="sparkle-star">✧</span><div class="sparkle-ring"></div></div><div class="ai-wait-content"><div class="ai-wait-status-line"><span class="ai-live-indicator"></span><span class="ai-status-text" id="ai-dynamic-status">${escape(aiThinkingStatusText())}</span></div><div class="ai-shimmer-bar"><div class="ai-shimmer-progress"></div></div></div></div></div>`:''}${quickReply?`<div class="quick-response" role="status" aria-live="polite">${quickReply}</div>`:''}${page==='capture'?'':draftPanel()}</div>${starters}${quickHabitChips()}${quickAttachment?`<div class="quick-attachment"><span>${icon('capture')}${quickAttachmentTag(quickAttachment)} ${user(quickAttachment.name)}<small>${(quickAttachment.size/1024).toFixed(0)} KB</small></span>${!quickAttachment.type.startsWith('audio/')&&!quickAttachment.type.startsWith('video/')&&!['text/plain','text/csv'].includes(quickAttachment.type)?button(quickFileBusy?L('Memproses…','Processing…'):L('Ekstrak & tinjau','Extract & review'),'quick-extract'):''}${button(L('Hapus lampiran','Remove attachment'),'quick-file-clear')}</div>`:''}<form id="quick-form" class="quick-chat-input"><details class="quick-popover"><summary class="quick-icon-button" aria-label="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}" title="${L('Lampiran dan pilihan pencatatan','Attachments and recording options')}">+</summary><div class="quick-popover-menu"><div class="quick-popover-head"><span class="quick-popover-title">✨ ${L('Tambah Lampiran & Media','Add Media & Attachments')}</span><span class="quick-popover-sub">${L('Pilih file dokumen, foto atau rekaman','Select document, photo or media')}</span></div><div class="quick-media-grid"><button type="button" class="quick-tile-btn" data-action="quick-camera"><span class="quick-tile-icon photo">${icon('capture')}</span><b>${L('Kamera','Camera')}</b><small>${L('Ambil foto','Take photo')}</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:doc"><span class="quick-tile-icon doc">${icon('capture')}</span><b>${L('Dokumen','Document')}</b><small>PDF / CSV / Struk</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:video"><span class="quick-tile-icon video">${icon('capture')}</span><b>${L('Video','Video')}</b><small>MP4 / WebM</small></button><button type="button" class="quick-tile-btn" data-action="quick-upload:audio"><span class="quick-tile-icon audio">${icon('copilot')}</span><b>${L('Audio','Audio')}</b><small>M4A / WAV</small></button></div><div class="quick-actions-list"><button type="button" class="quick-list-btn" data-action="quick-new-chat">${icon('plus')}<span>${L('Percakapan baru','New conversation')}</span></button><button type="button" class="quick-list-btn" data-action="quick-voice">${icon('copilot')}<span>${L('Input suara','Voice input')}</span></button><button type="button" class="quick-list-btn" data-action="quick-ai-settings">${icon('settings')}<span>${L('Model AI & Memori','AI Model & Memory')}<small>${aiProviderName(state.assistant.provider)}</small></span></button></div><div class="quick-popover-account"><label for="quick-account">${L('Akun untuk pencatatan','Recording account')}</label><select id="quick-account" name="accountId"><option value="">${L('Pilih akun','Choose account')}</option>${viewState().accounts.map(a=>`<option value="${a.id}" ${a.id===quickAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></div><div class="quick-popover-account"><label for="quick-source-kind">${L('Jenis dokumen','Document type')}</label><select id="quick-source-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk','Receipt')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank historis','Historical bank statement')}</option></select></div><button type="button" class="quick-list-btn" data-page="copilot" style="margin-top:4px">${icon('copilot')}<span>${L('Buka chatbot lengkap','Open full chatbot')}</span></button></div></details><label class="screen-reader" for="quick-text">${L('Perintah atau pertanyaan','Command or question')}</label><textarea id="quick-text" name="text" rows="1" maxlength="6000" placeholder="${L('Tanya INVEYS atau ketik instruksi keuangan…','Ask INVEYS or enter a financial instruction…')}">${escape(quickText)}</textarea><button class="quick-icon-button quick-microphone ${recorder?'recording':''}" type="button" data-action="quick-record-audio" aria-label="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}" title="${recorder?L('Hentikan rekaman','Stop recording'):L('Rekam suara','Record voice')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3m-3 0h6"/></svg></button><button class="quick-icon-button quick-send" type="submit" aria-label="${L('Kirim','Send')}" title="${L('Kirim','Send')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></form></div></section>`;
   }
   function quickChooseFile(file){
     if(!file)return;
@@ -2740,8 +2773,8 @@
       const isLatestAssistant=m.role==='assistant'&&idx===rows.length-1&&streamState.active;
       const textToShow=isLatestAssistant?streamState.displayedText:m.text;
       const badge=m.role==='assistant'?`<span class="ai-provider-badge">${aiProviderBadge(m.provider)}</span>`:'';
-      const avatar=m.role==='assistant'?`<span class="vey-msg-avatar">${veyMascot('idle',20)}</span>`:'';
-      const sender=m.role==='user'?L('Anda','You'):'Vey';
+      const avatar=m.role==='assistant'?`<span class="vey-msg-avatar">${inviMascot('idle',24)}</span>`:'';
+      const sender=m.role==='user'?L('Anda','You'):'INVI';
       return `<div class="ai-message ${m.role} ${isLatestAssistant?'typing-streaming':''}" onclick="skipStreaming()"><div class="ai-message-head">${avatar}<small>${sender}</small>${badge}</div><div class="ai-content">${m.role==='assistant'?aiRichText(textToShow)+(isLatestAssistant?'<span class="ai-typing-cursor"></span>':''):user(m.text)}</div></div>`;
     }).join('')}</div>`;
   }
@@ -2826,7 +2859,19 @@
     if(name==='quick-ai-settings'){aiSettings();return;}
     if(name==='quick-ai-status'){api('status').then(r=>{service=r;aiSettings();}).catch(e=>toast(e.message));return;}
     if(name==='quick-new-chat'){if(aiBusy){toast(L('Tunggu jawaban selesai.','Wait for the reply.'));return;}confirmAction(L('Mulai percakapan baru?','Start a new conversation?'),L('Riwayat percakapan tampilan ini dihapus. Memori preferensi dan data keuangan tetap tersimpan.','This view’s chat history will be deleted. Preferences and financial records remain.'),()=>{state.assistant.history=state.assistant.history.filter(m=>m.scope!==CHAT.scope(state));messages=[];quickReply='';});return;}
-    if(name==='quick-expand'){quickMinimized=false;render();$('#quick-text')?.focus();return;}
+    if(name==='quick-expand'){
+      quickMinimized=false;
+      quickArriving=true;
+      veyPlaySound('poke');
+      render();
+      if(typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
+        setTimeout(()=>{ quickArriving=false; }, 500);
+      } else {
+        quickArriving=false;
+      }
+      $('#quick-text')?.focus();
+      return;
+    }
     if(['quick-camera','quick-upload','quick-scan'].includes(name)){
       if(aiBusy||quickFileBusy){toast(L('Tunggu ekstraksi selesai.','Wait for extraction to finish.'));return;}
       const input=$(name==='quick-camera'?'#quick-camera-file':'#quick-upload-file');
@@ -8629,7 +8674,24 @@
   for(const id of ['sidebar-close','nav-backdrop'])$('#'+id).addEventListener('click',()=>{setSidebarOpen(false);$('#menu-button').focus();});
   window.addEventListener('resize',syncSidebar);
   document.addEventListener('click',event=>{const current=event.target.closest('.report-popover,.quick-popover');for(const item of $$('.report-popover[open],.quick-popover[open]'))if(item!==current)item.open=false;});
-  function minimizeOutsideChat(event){if(quickMinimized||event.target.closest?.('.quick-dock,.quick-launcher,#modal')||$('#modal').open||['quick-camera-file','quick-upload-file'].includes(event.target.id))return;quickMinimized=true;const dock=$('.quick-dock');if(dock&&typeof dock.outerHTML==='string')dock.outerHTML=quickComposer();else render();}
+  function minimizeOutsideChat(event){
+    if(quickMinimized||event.target.closest?.('.quick-dock,.quick-launcher,#modal')||$('#modal').open||['quick-camera-file','quick-upload-file'].includes(event.target.id))return;
+    const dock=$('.quick-dock');
+    if(dock&&typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
+      dock.classList.add('dock-departing');
+      setTimeout(()=>{
+        quickMinimized=true;
+        const d=$('.quick-dock');
+        if(d&&typeof d.outerHTML==='string')d.outerHTML=quickComposer();
+        else render();
+      }, 220);
+    }else{
+      quickMinimized=true;
+      const d=$('.quick-dock');
+      if(d&&typeof d.outerHTML==='string')d.outerHTML=quickComposer();
+      else render();
+    }
+  }
   document.addEventListener('pointerdown',minimizeOutsideChat);
   document.addEventListener('click',minimizeOutsideChat);
   document.addEventListener('pointermove', event => {
