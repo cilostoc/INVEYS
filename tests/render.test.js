@@ -28,6 +28,7 @@ function boot(saved, env = {}) {
     location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,
     __INVEYS_SERVER_MODE__: env.isServerMode || false,
     __INVEYS_CURRENT_USER__: env.currentUser || null,
+    __INVEYS_LOAD_SAMPLE_TRANSACTIONS__: env.loadSampleTransactions ?? true,
     FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
@@ -1012,6 +1013,28 @@ test('reports debt and cards position report handles decimal APR, unlinked cards
   app.click({ action: 'tx-edit:t1' });
   assert.match(app.elements.get('#modal-body').innerHTML, /Salary · Northstar Studio/);
 });
+
+test('sample transactions can be cleared completely and clean workspace shows beginner-friendly empty state', () => {
+  // 1. Boot with sample transactions enabled
+  const app = boot(null, { loadSampleTransactions: true });
+  assert.equal(app.state().transactions.length, 5);
+
+  // 2. Click clear sample transactions action
+  app.click({ page: 'transactions' });
+  app.click({ action: 'transactions-clear-samples' });
+  app.submitModal({});
+
+  // 3. Transactions are now completely cleared
+  assert.equal(app.state().transactions.length, 0);
+  assert.match(app.html(), /Belum Ada Transaksi Tercatat|No transactions recorded yet/);
+
+  // 4. Boot clean workspace (normal mode without test flag)
+  const cleanApp = boot(null, { loadSampleTransactions: false });
+  assert.equal(cleanApp.state().transactions.length, 0);
+  cleanApp.click({ page: 'transactions' });
+  assert.match(cleanApp.html(), /Belum Ada Transaksi Tercatat|No transactions recorded yet/);
+});
+
 
 
 
