@@ -68,12 +68,35 @@
   ];
   const sampleTxIds = new Set(['t1', 't2', 't3', 't4', 't5']);
   const shouldLoadSampleTransactions = () => Boolean(typeof globalThis !== 'undefined' && globalThis.__INVEYS_LOAD_SAMPLE_TRANSACTIONS__);
-  const seed = (includeDemoTransactions = shouldLoadSampleTransactions()) => ({
+
+  const demoSubscriptions = [
+    {id:'sub1',name:'Netflix Premium',emoji:'🎬',category:'Entertainment',amount:1999,currency:'USD',day:14,cadence:'monthly',owner:'Alex Morgan'},
+    {id:'sub2',name:'Spotify Duo',emoji:'🎵',category:'Entertainment',amount:1499,currency:'USD',day:18,cadence:'monthly',owner:'Sam Morgan'},
+    {id:'sub3',name:'Figma Professional',emoji:'🎨',category:'Software',amount:1500,currency:'USD',day:22,cadence:'monthly',owner:'Alex Morgan'},
+    {id:'sub4',name:'Gym & Fitness',emoji:'💪',category:'Health',amount:6500,currency:'USD',day:5,cadence:'monthly',owner:'Alex Morgan'}
+  ];
+  const sampleSubIds = new Set(['sub1', 'sub2', 'sub3', 'sub4']);
+
+  const demoExpenseFlows = [
+    {id:'f3',name:'Rent',kind:'expense',amount:240000,day:5},
+    {id:'f4',name:'Groceries & household',kind:'expense',amount:85000,day:10},
+    {id:'f5',name:'Utilities',kind:'expense',amount:28000,day:8},
+    {id:'f6',name:'Insurance',kind:'expense',amount:35000,day:15},
+    {id:'f7',name:'Transport',kind:'expense',amount:42000,day:12},
+    {id:'f8',name:'Lifestyle & other',kind:'expense',amount:122000,day:20}
+  ];
+  const sampleExpenseFlowIds = new Set(['f3', 'f4', 'f5', 'f6', 'f7', 'f8']);
+
+  const shouldLoadSampleBills = () => Boolean(typeof globalThis !== 'undefined' && globalThis.__INVEYS_LOAD_SAMPLE_BILLS__);
+
+  const seed = (includeDemoTransactions = shouldLoadSampleTransactions(), includeDemoBills = shouldLoadSampleBills()) => ({
     version:1,currency:'USD',name:"Hendra's Vault",demo:true,
     accounts:[{id:'a1',name:'Northstar Checking',type:'Checking',balance:824000,owner:'Alex',updated:date()},{id:'a2',name:'High-Yield Savings',type:'Savings',balance:3845000,owner:'Household',updated:date()},{id:'a3',name:'Long-Term Portfolio',type:'Investment',balance:18476000,owner:'Alex',updated:date()},{id:'a4',name:'Retirement Account',type:'Investment',balance:3200000,owner:'Sam',updated:date()}],
     debts:[{id:'d1',name:'Auto loan',balance:1820000,apr:5.9,minimum:42500},{id:'d2',name:'Student loan',balance:1840000,apr:4.5,minimum:36500},{id:'d3',name:'Credit card',balance:248000,apr:19.9,minimum:12000}],
     goals:[{id:'g1',name:'Emergency reserve',emoji:'◌',target:2500000,saved:1800000,monthly:50000,due:'2027-06-01'},{id:'g2',name:'A place to call home',emoji:'⌂',target:1500000,saved:540000,monthly:60000,due:'2028-01-01'},{id:'g3',name:'Japan, together',emoji:'✈',target:800000,saved:210000,monthly:25000,due:'2027-10-01'}],
-    flows:[{id:'f1',name:'Alex · Salary',kind:'income',amount:720000,day:1},{id:'f2',name:'Sam · Salary',kind:'income',amount:360000,day:1},{id:'f3',name:'Rent',kind:'expense',amount:240000,day:5},{id:'f4',name:'Groceries & household',kind:'expense',amount:85000,day:10},{id:'f5',name:'Utilities',kind:'expense',amount:28000,day:8},{id:'f6',name:'Insurance',kind:'expense',amount:35000,day:15},{id:'f7',name:'Transport',kind:'expense',amount:42000,day:12},{id:'f8',name:'Lifestyle & other',kind:'expense',amount:122000,day:20}],
+    flows: includeDemoBills
+      ? [{id:'f1',name:'Alex · Salary',kind:'income',amount:720000,day:1},{id:'f2',name:'Sam · Salary',kind:'income',amount:360000,day:1}, ...demoExpenseFlows]
+      : [{id:'f1',name:'Alex · Salary',kind:'income',amount:720000,day:1},{id:'f2',name:'Sam · Salary',kind:'income',amount:360000,day:1}],
     targetAllocations:[
       {id:'ta1',assetClass:'Equity',percent:60},
       {id:'ta2',assetClass:'Fixed Income',percent:30},
@@ -91,12 +114,7 @@
     tasks:[{id:'task1',name:'Review this month’s financial plan',owner:'Alex',done:false,due:date()},{id:'task2',name:'Compare insurance renewal options',owner:'Sam',done:false,due:'2026-10-15'},{id:'task3',name:'Check emergency reserve progress',owner:'Alex',done:true,due:date()}],
     members:[{id:'m1',name:'Alex Morgan',role:'Workspace owner',initials:'AM'},{id:'m2',name:'Sam Morgan',role:'Planning partner',initials:'SM'}],
     cards:[{id:'cc1',debtId:'d3',name:'Northstar Rewards',owner:'Alex Morgan',last4:'2048',limit:1000000,statementAmount:248000,paid:0,dueDate:date().slice(0,8)+'18',limitDate:'2027-01-15',reminderDays:7}],cardsSeeded:true,
-    subscriptions:[
-      {id:'sub1',name:'Netflix Premium',emoji:'🎬',category:'Entertainment',amount:1999,currency:'USD',day:14,cadence:'monthly',owner:'Alex Morgan'},
-      {id:'sub2',name:'Spotify Duo',emoji:'🎵',category:'Entertainment',amount:1499,currency:'USD',day:18,cadence:'monthly',owner:'Sam Morgan'},
-      {id:'sub3',name:'Figma Professional',emoji:'🎨',category:'Software',amount:1500,currency:'USD',day:22,cadence:'monthly',owner:'Alex Morgan'},
-      {id:'sub4',name:'Gym & Fitness',emoji:'💪',category:'Health',amount:6500,currency:'USD',day:5,cadence:'monthly',owner:'Alex Morgan'}
-    ],
+    subscriptions: includeDemoBills ? demoSubscriptions.map(s => ({...s})) : [],
     billPayments:{},
     history:[16843000,17280000,17735000,18126000,18584000,19253000,19588000,20065000,20491000,21124000,21806000,22437000]
   });
@@ -110,15 +128,36 @@
       try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch(e){}
     }
   }
+  if (!shouldLoadSampleBills()) {
+    let changed = false;
+    if (Array.isArray(state.subscriptions)) {
+      const filtered = state.subscriptions.filter(s => !sampleSubIds.has(s.id));
+      if (filtered.length !== state.subscriptions.length) {
+        state.subscriptions = filtered;
+        changed = true;
+      }
+    }
+    if (Array.isArray(state.flows)) {
+      const filtered = state.flows.filter(f => !sampleExpenseFlowIds.has(f.id));
+      if (filtered.length !== state.flows.length) {
+        state.flows = filtered;
+        changed = true;
+      }
+    }
+    if (state.billPayments && typeof state.billPayments === 'object') {
+      for (const m in state.billPayments) {
+        for (const id of sampleSubIds) delete state.billPayments[m][id];
+        for (const id of sampleExpenseFlowIds) delete state.billPayments[m]['flow-' + id];
+      }
+    }
+    if (changed) {
+      try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch(e){}
+    }
+  }
   if(state.demo&&!state.cardsSeeded&&!state.cards.length&&state.debts.some(d=>d.id==='d3'))state.cards.push({id:'cc1',debtId:'d3',name:'Northstar Rewards',owner:state.members[0].name,last4:'2048',limit:1000000,statementAmount:248000,paid:0,dueDate:date().slice(0,8)+'18',limitDate:'2027-01-15',reminderDays:7});
   state.cardsSeeded=true;
-  if(state.demo&&(!state.subscriptions||!state.subscriptions.length)){
-    state.subscriptions=[
-      {id:'sub1',name:'Netflix Premium',emoji:'🎬',category:'Entertainment',amount:1999,currency:'USD',day:14,cadence:'monthly',owner:'Alex Morgan'},
-      {id:'sub2',name:'Spotify Duo',emoji:'🎵',category:'Entertainment',amount:1499,currency:'USD',day:18,cadence:'monthly',owner:'Sam Morgan'},
-      {id:'sub3',name:'Figma Professional',emoji:'🎨',category:'Software',amount:1500,currency:'USD',day:22,cadence:'monthly',owner:'Alex Morgan'},
-      {id:'sub4',name:'Gym & Fitness',emoji:'💪',category:'Health',amount:6500,currency:'USD',day:5,cadence:'monthly',owner:'Alex Morgan'}
-    ];
+  if(shouldLoadSampleBills()&&state.demo&&(!state.subscriptions||!state.subscriptions.length)){
+    state.subscriptions=demoSubscriptions.map(s => ({...s}));
   }
   let page='home', period=6, hideMoney=false, scenario={incomeDelta:0,expenseDelta:0,oneTime:0}, messages=[];
   let budgetYear=new Date().getFullYear(), budgetMonth=new Date().getMonth(), budgetGroupFilter='all';
@@ -1194,10 +1233,12 @@
     const monthDate = new Date(calendarYear, calendarMonth, 1);
     const monthTitle = monthDate.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
 
+    const hasSampleBills = (state.subscriptions || []).some(s => sampleSubIds.has(s.id)) || (state.flows || []).some(f => sampleExpenseFlowIds.has(f.id));
     const headerHTML = header(
       L('Kalender Arus Kas & Tagihan Rutin','Recurring Bills & Cash Flow Calendar'),
       L('Pantau seluruh jadwal pemasukan (gaji/payday), tagihan rutin, jatuh tempo kartu, dan langganan dalam visual kalender ala Monarch Money.','Track recurring bills, card due dates, subscriptions, and scheduled paydays in a Monarch Money style visual calendar.'),
-      button(L('Tambah langganan','Add subscription'),'bill-new','primary','plus'),
+      button(L('Tambah langganan','Add subscription'),'bill-new','primary','plus') +
+      (hasSampleBills ? button('🧹 ' + L('Bersihkan contoh tagihan','Clear sample bills'), 'bills-clear-samples', 'danger') : ''),
       L('KALENDER & ARUS KAS RUTIN','BILLS & CASH FLOW')
     ) + cashflowSwitcher('calendar');
 
@@ -7947,7 +7988,7 @@
     `;
   }
 
-  function settings(){return header(L('Pengaturan & Kedaulatan Data', 'Your information. Your control.'),L('Kelola preferensi, keamanan brankas, kunci biometrik, PWA, dan portabilitas data finansial.','Manage your workspace, biometric security, PWA, and take your records with you.'),'','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+vaultSecuritySettings()+pwaSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>${L('Rekap Harta SPT Tahunan (DJP Online)','Annual Tax Asset Recap (DJP Online)')}</b><p>${L('Klasifikasi otomatis harta & utang ke kode resmi DJP (012, 031, 051, 101, dll.) dengan fitur salin tabel e-Form atau unduh CSV.','Automate asset & liability mapping into official DJP Online codes (012, 031, 051, 101, etc.) with 1-click table copy or CSV download.')}</p></div>${button(L('🇮🇩 Rekap SPT Pajak','🇮🇩 Tax Recap DJP'),'tax-djp-modal','secondary')}</div><div class="settings-row"><div><b>${L('Bersihkan Transaksi Contoh','Clear Sample Transactions')}</b><p>${L('Hapus semua transaksi contoh demo bawaan agar Anda dapat memulai pencatatan transaksi dengan jurnal yang bersih.','Remove all default demo sample transactions from the journal so beginners can start fresh.')}</p></div>${button('🧹 '+L('Bersihkan Transaksi Contoh','Clear Sample Transactions'),'transactions-clear-samples','danger')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
+  function settings(){return header(L('Pengaturan & Kedaulatan Data', 'Your information. Your control.'),L('Kelola preferensi, keamanan brankas, kunci biometrik, PWA, dan portabilitas data finansial.','Manage your workspace, biometric security, PWA, and take your records with you.'),'','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+vaultSecuritySettings()+pwaSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>${L('Rekap Harta SPT Tahunan (DJP Online)','Annual Tax Asset Recap (DJP Online)')}</b><p>${L('Klasifikasi otomatis harta & utang ke kode resmi DJP (012, 031, 051, 101, dll.) dengan fitur salin tabel e-Form atau unduh CSV.','Automate asset & liability mapping into official DJP Online codes (012, 031, 051, 101, etc.) with 1-click table copy or CSV download.')}</p></div>${button(L('🇮🇩 Rekap SPT Pajak','🇮🇩 Tax Recap DJP'),'tax-djp-modal','secondary')}</div><div class="settings-row"><div><b>${L('Bersihkan Transaksi Contoh','Clear Sample Transactions')}</b><p>${L('Hapus semua transaksi contoh demo bawaan agar Anda dapat memulai pencatatan transaksi dengan jurnal yang bersih.','Remove all default demo sample transactions from the journal so beginners can start fresh.')}</p></div>${button('🧹 '+L('Bersihkan Transaksi Contoh','Clear Sample Transactions'),'transactions-clear-samples','danger')}</div><div class="settings-row"><div><b>${L('Bersihkan Tagihan Rutin Contoh','Clear Sample Recurring Bills')}</b><p>${L('Hapus semua tagihan langganan dan pengeluaran rutin contoh demo bawaan agar kalender arus kas Anda bersih.','Remove all default demo sample subscriptions and recurring bills so you can start with a clean cash flow schedule.')}</p></div>${button('🧹 '+L('Bersihkan Tagihan Contoh','Clear Sample Bills'),'bills-clear-samples','danger')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
   const prevTickerValues=new Map();
   function updateRollingTickers(){
     if(typeof window==='undefined'||typeof requestAnimationFrame==='undefined')return;
@@ -8634,6 +8675,7 @@
     case 'debt-new':editDebt();break;case 'debt':editDebt(id);break;
     case 'flow-new':editFlow();break;case 'flow':editFlow(id);break;case 'transaction-new':addTransaction();break;case 'tx-edit':case 'transaction-edit':editTransaction(id);break;
     case 'transactions-clear-samples':{confirmAction(L('Bersihkan semua contoh transaksi?','Clear all sample transactions?'),L('Semua transaksi contoh bawaan demo akan dihapus dari jurnal sehingga Anda dapat memulai pencatatan transaksi nyata dengan bersih. Saldo akun dan rekening Anda tetap aman.','All demo sample transactions will be removed from your journal so you can start recording real transactions cleanly. Your account balances and assets remain safe.'),()=>{state.transactions=state.transactions.filter(t=>!sampleTxIds.has(t.id));persistCorrection(state);render();successToast(L('Semua transaksi contoh berhasil dibersihkan! Jurnal Anda siap digunakan.','All sample transactions have been cleared! Your journal is ready.'));},L('Bersihkan Jurnal','Clear Journal'));break;}
+    case 'bills-clear-samples':{confirmAction(L('Bersihkan semua contoh tagihan rutin?','Clear all sample recurring bills?'),L('Semua tagihan langganan dan pengeluaran rutin contoh bawaan demo akan dihapus sehingga kalender dan komitmen arus kas Anda bersih. Anda dapat menambahkan tagihan nyata Anda sendiri.','All demo sample subscriptions and recurring expense commitments will be removed so your calendar and cash flow commitments are clean. You can add your own real bills.'),()=>{state.subscriptions=(state.subscriptions||[]).filter(s=>!sampleSubIds.has(s.id));state.flows=(state.flows||[]).filter(f=>!sampleExpenseFlowIds.has(f.id));if(state.billPayments&&typeof state.billPayments==='object'){for(const m in state.billPayments){for(const sId of sampleSubIds)delete state.billPayments[m][sId];for(const fId of sampleExpenseFlowIds)delete state.billPayments[m]['flow-'+fId];}}persistCorrection(state);render();successToast(L('Semua contoh tagihan rutin berhasil dibersihkan! Kalender tagihan Anda siap digunakan.','All sample recurring bills have been cleared! Your bills calendar is ready.'));},L('Bersihkan Tagihan','Clear Bills'));break;}
     case 'open-categories':navigate('categories');break;
     case 'category-new':editCategory();break;
     case 'cat-edit':editCategory(id);break;

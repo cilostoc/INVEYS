@@ -29,6 +29,7 @@ function boot(saved, env = {}) {
     __INVEYS_SERVER_MODE__: env.isServerMode || false,
     __INVEYS_CURRENT_USER__: env.currentUser || null,
     __INVEYS_LOAD_SAMPLE_TRANSACTIONS__: env.loadSampleTransactions ?? true,
+    __INVEYS_LOAD_SAMPLE_BILLS__: env.loadSampleBills ?? true,
     FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
@@ -1034,6 +1035,28 @@ test('sample transactions can be cleared completely and clean workspace shows be
   cleanApp.click({ page: 'transactions' });
   assert.match(cleanApp.html(), /Belum Ada Transaksi Tercatat|No transactions recorded yet/);
 });
+
+test('sample recurring bills and commitments can be cleared and clean workspace has no sample bills', () => {
+  // 1. Boot with sample bills
+  const app = boot(null, { loadSampleBills: true });
+  assert.equal(app.state().subscriptions.length, 4);
+  assert.ok(app.state().flows.some(f => f.id === 'f3'));
+
+  // 2. Click clear sample bills action
+  app.click({ page: 'calendar' });
+  app.click({ action: 'bills-clear-samples' });
+  app.submitModal({});
+
+  // 3. Subscriptions and sample flows are cleared
+  assert.equal(app.state().subscriptions.length, 0);
+  assert.ok(!app.state().flows.some(f => f.id === 'f3'));
+
+  // 4. Boot clean workspace (normal mode where loadSampleBills is false)
+  const cleanApp = boot(null, { loadSampleBills: false });
+  assert.equal(cleanApp.state().subscriptions.length, 0);
+  assert.ok(!cleanApp.state().flows.some(f => f.id === 'f3'));
+});
+
 
 
 

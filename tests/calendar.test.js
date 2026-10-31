@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {randomUUID} = require('node:crypto');
 
-function boot(saved) {
+function boot(saved, env = { loadSampleBills: true }) {
   const elements=new Map(), events=new Map(), store=new Map();
   if(saved)store.set('inveys-workspace-v1',JSON.stringify(saved));
   const element=selector=>{
@@ -22,7 +22,9 @@ function boot(saved) {
   const document={querySelector:element,querySelectorAll:()=>[],body:element('body'),activeElement:{tagName:'BODY'},
     addEventListener:(name,fn)=>{if(!events.has(name))events.set(name,[]);events.get(name).push(fn);}};
   const context=vm.createContext({document,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},
-    location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
+    location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,
+    __INVEYS_LOAD_SAMPLE_BILLS__: env.loadSampleBills ?? true,
+    FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
   for(const file of ['engine.js','finance.js','investment.js','appearance.js','plans.js','i18n.js','recording.js','releases.js','assistant.js','operations.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..','src',file),'utf8'),context,{filename:file});
@@ -126,3 +128,24 @@ test('Adding a new subscription via bill-new modal persists to state', () => {
   // Check that it now renders on the calendar
   assert.ok(app.html().includes('Disney+ Hotstar'), 'New subscription should render on calendar');
 });
+
+test('Clearing sample bills via bills-clear-samples removes them completely from calendar and state', () => {
+  const app = boot(null, { loadSampleBills: true });
+  app.click({ page: 'calendar' });
+  
+  // Verify sample bills exist initially
+  assert.ok(app.html().includes('Netflix Premium'));
+  assert.ok(app.state().subscriptions.length > 0);
+  assert.ok(app.state().flows.some(f => f.kind === 'expense'));
+
+  // Trigger clearing sample bills
+  app.click({ action: 'bills-clear-samples' });
+  app.submitModal({});
+
+  // Verify sample bills are removed
+  const state = app.state();
+  assert.equal(state.subscriptions.length, 0);
+  assert.ok(!state.flows.some(f => f.kind === 'expense'));
+  assert.ok(!app.html().includes('Netflix Premium'));
+});
+
