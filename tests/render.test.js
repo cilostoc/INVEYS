@@ -1057,6 +1057,51 @@ test('sample recurring bills and commitments can be cleared and clean workspace 
   assert.ok(!cleanApp.state().flows.some(f => f.id === 'f3'));
 });
 
+test('home renders quick action hero buttons for senior & mobile usability', () => {
+  const app = boot();
+  app.click({ page: 'home' });
+  const html = app.html();
+
+  assert.match(html, /quick-actions-panel/);
+  assert.match(html, /btn-hero-expense/);
+  assert.match(html, /btn-hero-income/);
+  assert.match(html, /btn-hero-capture/);
+  assert.match(html, /transaction-new:expense/);
+  assert.match(html, /transaction-new:income/);
+
+  // Trigger quick income recording
+  app.click({ action: 'transaction-new:income' });
+  const modalHtml = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalHtml, /class="[^"]*active"[^>]*data-kind="income"/);
+  assert.match(modalHtml, /value="income"/);
+});
+
+test('Easy Mode toggle enables senior-friendly typography, summary cards and settings toggle', () => {
+  const app = boot();
+  app.click({ page: 'home' });
+
+  // Initially Easy Mode is off, senior summary banner is not rendered
+  assert.ok(!app.html().includes('senior-summary-banner'));
+
+  // Toggle Easy Mode via action
+  app.click({ action: 'easy-mode' });
+  let html = app.html();
+  assert.match(html, /senior-summary-banner/);
+  assert.match(html, /senior-card-liquid/);
+  assert.match(html, /senior-card-income/);
+  assert.match(html, /senior-card-expense/);
+
+  // Check Settings page has Easy Mode controls
+  app.click({ page: 'settings' });
+  assert.match(app.html(), /Mode Santai|Easy & Large Font Mode/);
+
+  // Toggle off
+  app.click({ action: 'easy-mode' });
+  app.click({ page: 'home' });
+  assert.ok(!app.html().includes('senior-summary-banner'));
+});
+
+
 
 
 
