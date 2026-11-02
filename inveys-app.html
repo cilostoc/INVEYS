@@ -10131,6 +10131,8 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
       L('Jurnal Transaksi Finansial','The details behind your financial life.'),
       L('Catat pemasukan, pengeluaran, dan transfer dengan rapi tanpa kalkulasi ganda.','Record income, expenses, and transfers without counting the same money twice.'),
       button(L('Tambah transaksi','Add transaction'),'transaction-new','primary','plus')+
+      button(L('💾 Backup','💾 Backup'),'backup-download')+
+      button(L('🔄 Pulihkan','🔄 Restore'),'backup-restore-modal')+
       (hasSampleTx?button('🧹 '+L('Bersihkan contoh transaksi','Clear sample transactions'),'transactions-clear-samples','danger'):'')+
       button('⚡ '+L('Aturan otomatis','Rules'),'rules-manage')+
       button(L('Kategori','Categories'),'','','','data-page="categories"'),
@@ -11255,7 +11257,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     return header(
       L('Pusat Rilis & Manajemen Pembaruan VPS','Release Center & VPS Update Management'),
       L('Arsitektur modular 4 segmen · Versi aktif v'+releases.version+'. Pembaruan aplikasi mandiri dan cadangan database terisolasi.','4-Segment modular architecture · Active version v'+releases.version+'. Self-contained app updates and isolated database backups.'),
-      `<div class="heading-actions">${button(L('🚀 1-Klik Update VPS','🚀 1-Click VPS Update'),'vps-update-run','primary')}${button(L('🔍 Cek Kesehatan Segmen','🔍 Check Segment Health'),'vps-segments-check')}${button(L('Ekspor backup workspace','Export workspace backup'),'export')}</div>`,
+      `<div class="heading-actions">${button(L('🚀 1-Klik Update VPS','🚀 1-Click VPS Update'),'vps-update-run','primary')}${button(L('💾 Backup Sebelum Update','💾 Backup Before Update'),'backup-download')}${button(L('🔄 Pulihkan Cadangan','🔄 Restore Backup'),'backup-restore-modal')}${button(L('🔍 Cek Kesehatan Segmen','🔍 Check Segment Health'),'vps-segments-check')}</div>`,
       'RELEASE CENTER'
     ) + `
     <!-- VPS 1-Click Update Hero Banner -->
@@ -11587,6 +11589,10 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
         L('Sistem akan melakukan 4 tahapan aman:\n1. Snapshot cadangan database SQLite ke ~/.inveys/backups/\n2. Kompilasi ulang bundel mandiri (inveys-app.html)\n3. Verifikasi integritas checksum SHA-256 seluruh segmen\n4. Hot-reload layanan tanpa downtime dan tanpa risiko data.\n\nLanjutkan pembaruan sekarang?','The system will perform 4 automated steps:\n1. Create SQLite database snapshot backup to ~/.inveys/backups/\n2. Recompile standalone app bundle (inveys-app.html)\n3. Verify SHA-256 checksums across all segments\n4. Hot-reload services with zero downtime and zero data risk.\n\nProceed with update now?'),
         async ()=>{
           try {
+            try {
+              localStorage.setItem('inveys_pre_update_backup', JSON.stringify(state));
+              localStorage.setItem('inveys_pre_update_time', new Date().toISOString());
+            } catch(e){}
             toast(L('🚀 Memulai 1-Klik Update VPS (Backup -> Rebuild -> Verifikasi)…','🚀 Starting 1-Click VPS Update (Backup -> Rebuild -> Verify)…'));
             const res=await api('vps/update',{});
             if(res.ok){
@@ -14564,7 +14570,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     const period=investmentPeriod();
     const performance=investmentTab==='market'?investmentPerformance(result,INV.summary(rows.filter(h=>investmentHolding==='all'||h.id===investmentHolding))):'';
     const accountTotal=E.sum(INV.selectedAccounts(state,{account:investmentAccount,view:state.activeView}).map(a=>E.convert(state,a.balance,a.currency,investmentCurrency))),allDetail=INV.summary(INV.positions(state,{currency:investmentCurrency,account:investmentAccount})).value;
-    return header('Investment',L('Posisi aset, kinerja pasar, dan analisis portofolio.','Holdings, market performance, and portfolio analysis.'),button(L('Tambah aset','Add holding'),'investment-holding-new','primary','plus')+button(L('Ekspor CSV','Export CSV'),'investment-export'),'INVESTMENT WORKSPACE')+`<div class="investment-top-tabs" aria-label="Investment"><button data-action="investment-main:holdings" class="${investmentMain==='holdings'?'active':''}" aria-pressed="${investmentMain==='holdings'}">${icon('investment-holdings')}Holdings</button><button data-action="investment-main:advanced" class="${investmentMain==='advanced'?'active':''}" aria-pressed="${investmentMain==='advanced'}">${icon('investment-advanced')}Advanced <span class="badge">Pro</span></button></div><section class="panel panel-pad investment-panel"><div class="panel-head"><h2>${investmentMain==='holdings'?(investmentTab==='rebalancer'?L('Target Alokasi & Rebalancer Portofolio','Portfolio Target & Rebalancer'):L('Kinerja portofolio','Portfolio performance')):investmentTab==='gains'?L('Gain & loss belum terealisasi','Unrealized gains & losses'):investmentTab==='funds'?L('Analisis dana','Fund analysis'):L('Rincian alokasi','Allocation breakdown')}</h2>${button(L('Ekspor grafik','Export chart'),'investment-chart-export')}</div><nav class="report-tabs investment-tabs" aria-label="${L('Analisis investasi','Investment analysis')}">${tabs.map(([id,label])=>`<button class="${id===investmentTab?'active':''}" data-action="investment-tab:${id}" aria-pressed="${id===investmentTab}">${icon('investment-'+id)}${label}</button>`).join('')}</nav>${controls}${investmentRange==='custom'?`<form id="investment-filter" class="capture-controls"><label>${L('Dari','From')}<input type="date" name="from" value="${investmentFrom}"></label><label>${L('Sampai','To')}<input type="date" name="to" value="${investmentTo||date()}"></label><input name="currency" type="hidden" value="${investmentCurrency}"><button type="submit" class="btn">${L('Terapkan','Apply')}</button></form>`:''}${investmentTab==='market'?performance:investmentTab==='rebalancer'?investmentRebalancer(rows):investmentTab==='gains'?investmentGains(rows):`${investmentTab==='funds'?`<div class="investment-info">${L('Analisis ini hanya mencakup ETF dan reksa dana. Klasifikasi diisi pengguna sesuai dokumen fund; tidak ada data klasifikasi Morningstar otomatis atau analisis aset di dalam fund.','This analysis includes ETFs and mutual funds only. Classifications are user supplied from fund documents; no automatic Morningstar data or fund look-through.')}</div>`:''}${investmentAllocation(rows)}`}<p class="note">${L('Mata uang analisis','Analysis currency')}: ${investmentCurrency} · ${L('Kurs valuasi','Valuation FX')}: ${state.fx.date} · ${user(state.fx.source)}</p></section>${investmentHoldingsTable(rows)}<section class="panel panel-pad investment-panel"><div class="panel-head"><h2>${L('Data & riwayat','Data & history')}</h2><span class="badge">${state.holdingPrices.length} ${L('harga historis','historical quotes')}</span></div>    <div class="button-group">${button(L('Muat data contoh','Load sample data'),'investment-load-sample','','sparkles')}${button(L('Sinkron Crypto CEX','Sync Crypto CEX'),'investment-crypto-sync','primary','sparkles')}${button(L('Sinkron harga live','Sync live prices'),'investment-sync-prices','','sparkles')}${button(L('Harga historis aset','Security price history'),'investment-prices')}${button(L('Riwayat portofolio / benchmark','Portfolio / benchmark history'),'investment-import')}${button(L('Template benchmark','Benchmark template'),'investment-template')}${button(L('Template harga aset','Security quote template'),'investment-price-template')}${button(L('Simpan snapshot hari ini','Save today’s snapshot'),'investment-snapshot')}</div><div class="investment-reconciliation"><div><small>${L('Saldo akun investasi','Investment account balances')}</small><strong>${investmentMoney(accountTotal)}</strong></div><div><small>${L('Rincian posisi aset','Holdings detail')}</small><strong>${investmentMoney(allDetail)}</strong></div><div><small>${L('Selisih akun − detail','Account − holdings difference')}</small><strong>${investmentMoney(accountTotal-allDetail)}</strong></div></div><p class="note">${L('Rincian holdings tidak menambah saldo akun atau net worth. Selisih bisa berupa kas belum dicatat atau valuasi berbeda; perbarui saldo akun secara terpisah.','Holdings detail does not add to account balances or net worth. Differences may be unrecorded cash or different valuations; update account balances separately.')} ${state.activeView.owner==='all'?L('Seluruh keluarga','whole household'):escape(ownerName(state.activeView.owner))} · ${L('Tidak ada harga pasar live.','No live market feed.')}</p></section>`;
+    return header('Investment',L('Posisi aset, kinerja pasar, dan analisis portofolio.','Holdings, market performance, and portfolio analysis.'),button(L('Tambah aset','Add holding'),'investment-holding-new','primary','plus')+button(L('Ekspor CSV','Export CSV'),'investment-export'),'INVESTMENT WORKSPACE')+`<div class="investment-top-tabs" aria-label="Investment"><button data-action="investment-main:holdings" class="${investmentMain==='holdings'?'active':''}" aria-pressed="${investmentMain==='holdings'}">${icon('investment-holdings')}Holdings</button><button data-action="investment-main:advanced" class="${investmentMain==='advanced'?'active':''}" aria-pressed="${investmentMain==='advanced'}">${icon('investment-advanced')}Advanced <span class="badge">Pro</span></button></div><section class="panel panel-pad investment-panel"><div class="panel-head"><h2>${investmentMain==='holdings'?(investmentTab==='rebalancer'?L('Target Alokasi & Rebalancer Portofolio','Portfolio Target & Rebalancer'):L('Kinerja portofolio','Portfolio performance')):investmentTab==='gains'?L('Gain & loss belum terealisasi','Unrealized gains & losses'):investmentTab==='funds'?L('Analisis dana','Fund analysis'):L('Rincian alokasi','Allocation breakdown')}</h2>${button(L('Ekspor grafik','Export chart'),'investment-chart-export')}</div><nav class="report-tabs investment-tabs" aria-label="${L('Analisis investasi','Investment analysis')}">${tabs.map(([id,label])=>`<button class="${id===investmentTab?'active':''}" data-action="investment-tab:${id}" aria-pressed="${id===investmentTab}">${icon('investment-'+id)}${label}</button>`).join('')}</nav>${controls}${investmentRange==='custom'?`<form id="investment-filter" class="capture-controls"><label>${L('Dari','From')}<input type="date" name="from" value="${investmentFrom}"></label><label>${L('Sampai','To')}<input type="date" name="to" value="${investmentTo||date()}"></label><input name="currency" type="hidden" value="${investmentCurrency}"><button type="submit" class="btn">${L('Terapkan','Apply')}</button></form>`:''}${investmentTab==='market'?performance:investmentTab==='rebalancer'?investmentRebalancer(rows):investmentTab==='gains'?investmentGains(rows):`${investmentTab==='funds'?`<div class="investment-info">${L('Analisis ini hanya mencakup ETF dan reksa dana. Klasifikasi diisi pengguna sesuai dokumen fund; tidak ada data klasifikasi Morningstar otomatis atau analisis aset di dalam fund.','This analysis includes ETFs and mutual funds only. Classifications are user supplied from fund documents; no automatic Morningstar data or fund look-through.')}</div>`:''}${investmentAllocation(rows)}`}<p class="note">${L('Mata uang analisis','Analysis currency')}: ${investmentCurrency} · ${L('Kurs valuasi','Valuation FX')}: ${state.fx.date} · ${user(state.fx.source)}</p></section>${investmentHoldingsTable(rows)}<section class="panel panel-pad investment-panel"><div class="panel-head"><h2>${L('Data & riwayat','Data & history')}</h2><span class="badge">${state.holdingPrices.length} ${L('harga historis','historical quotes')}</span></div>    <div class="button-group">${button(L('Muat data contoh','Load sample data'),'investment-load-sample','','sparkles')}${button(L('💾 Backup Portofolio','💾 Backup Portfolio'),'backup-download')}${button(L('Sinkron Crypto CEX','Sync Crypto CEX'),'investment-crypto-sync','primary','sparkles')}${button(L('Sinkron harga live','Sync live prices'),'investment-sync-prices','','sparkles')}${button(L('Harga historis aset','Security price history'),'investment-prices')}${button(L('Riwayat portofolio / benchmark','Portfolio / benchmark history'),'investment-import')}${button(L('Template benchmark','Benchmark template'),'investment-template')}${button(L('Template harga aset','Security quote template'),'investment-price-template')}${button(L('Simpan snapshot hari ini','Save today’s snapshot'),'investment-snapshot')}</div><div class="investment-reconciliation"><div><small>${L('Saldo akun investasi','Investment account balances')}</small><strong>${investmentMoney(accountTotal)}</strong></div><div><small>${L('Rincian posisi aset','Holdings detail')}</small><strong>${investmentMoney(allDetail)}</strong></div><div><small>${L('Selisih akun − detail','Account − holdings difference')}</small><strong>${investmentMoney(accountTotal-allDetail)}</strong></div></div><p class="note">${L('Rincian holdings tidak menambah saldo akun atau net worth. Selisih bisa berupa kas belum dicatat atau valuasi berbeda; perbarui saldo akun secara terpisah.','Holdings detail does not add to account balances or net worth. Differences may be unrecorded cash or different valuations; update account balances separately.')} ${state.activeView.owner==='all'?L('Seluruh keluarga','whole household'):escape(ownerName(state.activeView.owner))} · ${L('Tidak ada harga pasar live.','No live market feed.')}</p></section>`;
   }
   function investmentCSV(){return INV.header+'\n'+state.investmentHistory.map(r=>['series','date','value','flow','currency','fxToIDR','usdToIDR','basis','source'].map(k=>'"'+String(r[k]).replaceAll('"','""')+'"').join(',')).join('\n');}
   function editHolding(id){
@@ -17545,7 +17551,53 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     `;
   }
 
-  function settings(){return header(L('Pengaturan & Kedaulatan Data', 'Your information. Your control.'),L('Kelola preferensi, keamanan brankas, kunci biometrik, PWA, dan portabilitas data finansial.','Manage your workspace, biometric security, PWA, and take your records with you.'),'','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+vaultSecuritySettings()+pwaSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>${L('Rekap Harta SPT Tahunan (DJP Online)','Annual Tax Asset Recap (DJP Online)')}</b><p>${L('Klasifikasi otomatis harta & utang ke kode resmi DJP (012, 031, 051, 101, dll.) dengan fitur salin tabel e-Form atau unduh CSV.','Automate asset & liability mapping into official DJP Online codes (012, 031, 051, 101, etc.) with 1-click table copy or CSV download.')}</p></div>${button(L('🇮🇩 Rekap SPT Pajak','🇮🇩 Tax Recap DJP'),'tax-djp-modal','secondary')}</div><div class="settings-row"><div><b>${L('Bersihkan Transaksi Contoh','Clear Sample Transactions')}</b><p>${L('Hapus semua transaksi contoh demo bawaan agar Anda dapat memulai pencatatan transaksi dengan jurnal yang bersih.','Remove all default demo sample transactions from the journal so beginners can start fresh.')}</p></div>${button('🧹 '+L('Bersihkan Transaksi Contoh','Clear Sample Transactions'),'transactions-clear-samples','danger')}</div><div class="settings-row"><div><b>${L('Bersihkan Tagihan Rutin Contoh','Clear Sample Recurring Bills')}</b><p>${L('Hapus semua tagihan langganan dan pengeluaran rutin contoh demo bawaan agar kalender arus kas Anda bersih.','Remove all default demo sample subscriptions and recurring bills so you can start with a clean cash flow schedule.')}</p></div>${button('🧹 '+L('Bersihkan Tagihan Contoh','Clear Sample Bills'),'bills-clear-samples','danger')}</div><div class="settings-row"><div><b>${L('Nolkan Saldo Utang & Pinjaman','Zero Debt & Loan Balances')}</b><p>${L('Ubah semua saldo utang, pinjaman, dan tagihan kartu kredit menjadi 0 (status lunas). Struktur akun dan data utang Anda tetap tersimpan rapi.','Set all outstanding debt, loan, and credit card statement balances to 0 (paid-off status). Your accounts and debt structures remain intact.')}</p></div>${button('🧹 '+L('Nolkan Saldo Utang','Zero Debt Balances'),'debts-zero','danger')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input">`;}
+  function backupRestoreSettings(){
+    const lastBackup = localStorage.getItem('inveys_last_backup_time');
+    const lastBackupText = lastBackup ? new Date(lastBackup).toLocaleString(locale()) : L('Belum pernah dicadangkan di sesi ini', 'Not backed up in this session yet');
+    const txCount = state.transactions?.length || 0;
+    const incCount = (state.transactions || []).filter(t => t.kind === 'income').length;
+    const expCount = (state.transactions || []).filter(t => t.kind === 'expense').length;
+    const holdingsCount = state.holdings?.length || 0;
+    const accCount = state.accounts?.length || 0;
+
+    return `
+      <section class="panel panel-pad" style="margin-top:22px">
+        <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h2>💾 ${L('Pusat Cadangan & Pemulihan Data (Backup & Restore)', 'Data Backup & Restore Center')}</h2>
+            <p>${L('Cadangkan seluruh transaksi penerimaan, pengeluaran, transfer, dan portofolio investasi agar aman sebelum pembaruan aplikasi. Pulihkan kapan saja dengan 1 klik.', 'Back up all income, expense, and investment transactions before application updates. Restore anytime with 1-click preview.')}</p>
+          </div>
+          <span class="badge plus">SAFE & SOVEREIGN</span>
+        </div>
+
+        <div class="settings-row">
+          <div>
+            <b>${L('Cadangkan Seluruh Data (Backup Transaksi & Investasi)', 'Full Financial Backup (Transactions & Investments)')}</b>
+            <p>${L('Unduh file cadangan komprehensif (.json) berisi riwayat transaksi lengkap, aset investasi, rekening, target, dan aturan otomatis. Simpan file ini di tempat aman sebelum melakukan update VPS atau browser.', 'Download a comprehensive backup file (.json) containing all transactions, investments, accounts, and rules. Save before updating VPS or browser.')}</p>
+            <small style="color:var(--muted);font-size:11px;">
+              📊 ${L('Data saat ini:','Current data:')} <b>${txCount} ${L('transaksi','txs')}</b> (${incCount} ${L('pemasukan','income')}, ${expCount} ${L('pengeluaran','expense')}) · <b>${holdingsCount} ${L('posisi investasi','holdings')}</b> · <b>${accCount} ${L('rekening','accounts')}</b><br>
+              🕒 ${L('Terakhir dicadangkan: ','Last backed up: ')}<b>${escape(lastBackupText)}</b>
+            </small>
+          </div>
+          <button type="button" class="btn primary" data-action="backup-download">
+            💾 ${L('Unduh Cadangan (.json)', 'Download Backup (.json)')}
+          </button>
+        </div>
+
+        <div class="settings-row">
+          <div>
+            <b>${L('Pulihkan Data dari Cadangan (Restore Center)', 'Restore Data from Backup (Restore Center)')}</b>
+            <p>${L('Pulihkan riwayat transaksi dan portofolio dari file cadangan sebelumnya setelah update aplikasi atau migrasi perangkat. Dilengkapi pratinjau cerdas dan opsi penggabungan (merge anti-duplikasi).', 'Restore transaction history and portfolio from previous backup after app updates or device migration. Features smart preview and non-destructive merge.')}</p>
+          </div>
+          <button type="button" class="btn" data-action="backup-restore-modal">
+            🔄 ${L('Buka Menu Pemulihan', 'Open Restore Center')}
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  function settings(){return header(L('Pengaturan & Kedaulatan Data', 'Your information. Your control.'),L('Kelola preferensi, keamanan brankas, kunci biometrik, PWA, dan portabilitas data finansial.','Manage your workspace, biometric security, PWA, and take your records with you.'),'','SETTINGS & DATA')+preferenceSettings()+appearanceSettings()+vaultSecuritySettings()+pwaSettings()+backupRestoreSettings()+`<section class="panel panel-pad"><h2>Workspace & portability</h2><div class="settings-row"><div><b>Workspace name</b><p>${escape(state.name)}</p></div>${button('Rename','rename')}</div><div class="settings-row"><div><b>${L('Kunci API AI & Telegram Bot','AI API Keys & Telegram Bot')}</b><p>${L('Kelola, edit, uji, dan simpan kunci API Gemini, OpenAI, 9Router, Muse, dan Telegram Bot langsung di aplikasi.','Directly manage, edit, test, and save API keys for Gemini, OpenAI, 9Router, Muse, and Telegram Bot in-app.')}</p></div>${button(L('Kelola Kunci API & Bot','Manage API Keys & Bot'),'api-keys:all','primary')}</div><div class="settings-row"><div><b>${L('Kategori Transaksi (Monarch Style)','Transaction Categories (Monarch Style)')}</b><p>${L('Kelola kelompok kategori, ikon emoji, dan pengelompokan transaksi.','Manage category groups, emoji icons, and transaction classification.')}</p></div>${button(L('Buka Kategori','Open Categories'),'open-categories')}</div><div class="settings-row"><div><b>Export your financial records</b><p>Download your complete workspace as JSON. Keep this file somewhere secure.</p></div>${button('Export workspace','export','','download')}</div><div class="settings-row"><div><b>Import a workspace</b><p>Restore a previously exported INVEYS JSON file. Preview before replacement.</p></div>${button('Import JSON','import')}</div><div class="settings-row"><div><b>Transaction export</b><p>Download a spreadsheet-friendly transaction journal.</p></div>${button('Export CSV','export-csv','','download')}</div><div class="settings-row"><div><b>${L('Rekap Harta SPT Tahunan (DJP Online)','Annual Tax Asset Recap (DJP Online)')}</b><p>${L('Klasifikasi otomatis harta & utang ke kode resmi DJP (012, 031, 051, 101, dll.) dengan fitur salin tabel e-Form atau unduh CSV.','Automate asset & liability mapping into official DJP Online codes (012, 031, 051, 101, etc.) with 1-click table copy or CSV download.')}</p></div>${button(L('🇮🇩 Rekap SPT Pajak','🇮🇩 Tax Recap DJP'),'tax-djp-modal','secondary')}</div><div class="settings-row"><div><b>${L('Bersihkan Transaksi Contoh','Clear Sample Transactions')}</b><p>${L('Hapus semua transaksi contoh demo bawaan agar Anda dapat memulai pencatatan transaksi dengan jurnal yang bersih.','Remove all default demo sample transactions from the journal so beginners can start fresh.')}</p></div>${button('🧹 '+L('Bersihkan Transaksi Contoh','Clear Sample Transactions'),'transactions-clear-samples','danger')}</div><div class="settings-row"><div><b>${L('Bersihkan Tagihan Rutin Contoh','Clear Sample Recurring Bills')}</b><p>${L('Hapus semua tagihan langganan dan pengeluaran rutin contoh demo bawaan agar kalender arus kas Anda bersih.','Remove all default demo sample subscriptions and recurring bills so you can start with a clean cash flow schedule.')}</p></div>${button('🧹 '+L('Bersihkan Tagihan Contoh','Clear Sample Bills'),'bills-clear-samples','danger')}</div><div class="settings-row"><div><b>${L('Nolkan Saldo Utang & Pinjaman','Zero Debt & Loan Balances')}</b><p>${L('Ubah semua saldo utang, pinjaman, dan tagihan kartu kredit menjadi 0 (status lunas). Struktur akun dan data utang Anda tetap tersimpan rapi.','Set all outstanding debt, loan, and credit card statement balances to 0 (paid-off status). Your accounts and debt structures remain intact.')}</p></div>${button('🧹 '+L('Nolkan Saldo Utang','Zero Debt Balances'),'debts-zero','danger')}</div><div class="settings-row"><div><b>Start with your own records</b><p>Clear sample records and start a multi-currency workspace. Manage rates in Settings.</p></div>${button('Create empty workspace','empty-workspace')}</div><div class="settings-row"><div><b>Restore the sample workspace</b><p>Replace your current records with the original demo. Export first if needed.</p></div>${button('Reset demo','reset-demo','danger')}</div><div class="settings-row"><div><b>Delete local financial data</b><p>Remove this workspace from browser storage and start empty. Exported files remain yours to manage.</p></div>${button('Delete data','delete-data','danger')}</div></section><section class="panel panel-pad" style="margin-top:22px"><h2>About this MVP</h2><p class="card-description" style="margin-top:14px">INVEYS is an early, local-first Financial Operating System. This build supports manual financial records, recurring cash flow, goal allocations, debt projections, scenarios, and local planning tasks. Records are stored in this browser profile without application-level encryption or authentication. Use sample data while evaluating it. Live bank connections, multi-user permissions, tax engines, and production authentication are not configured. Telegram and Muse are optional local-server integrations configured in Integrations.</p></section><input type="file" accept="application/json,.json" id="import-file" class="file-input"><input type="file" accept="application/json,.json" id="backup-file-picker" class="file-input">`;}
   const prevTickerValues=new Map();
   function updateRollingTickers(){
     if(typeof window==='undefined'||typeof requestAnimationFrame==='undefined')return;
@@ -18205,9 +18257,493 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   function addTask(){openModal('A clear next step',form(field('Task','name','','text','required maxlength="120"')+field('Responsible person','owner','Me','text','required maxlength="80"')+field('Review date','due',date(),'date'),'Create task'),d=>{state.tasks.push({id:uid(),name:requireText(d.name),owner:requireText(d.owner),due:d.due,done:false});toast('Task created.');});}
   function confirmAction(title,description,handler,label='Confirm'){openModal(title,`<p class="dialog-copy">${description}</p><form><p id="form-error" class="form-error"></p><div class="form-actions"><button type="button" class="btn" data-action="modal-close">Cancel</button><button type="submit" class="btn primary">${label}</button></div></form>`,handler);}
   function emptyWorkspace(currency=state.currency){return {version:1,currency,name:'My financial workspace',demo:false,accounts:[],debts:[],goals:[],flows:[],budgets:[],transactions:[],tasks:[],members:[{id:'m1',name:'Me',role:'Local workspace owner',initials:'ME'}],cards:[],subscriptions:[],billPayments:{},history:[]};}
-  function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  function exportCSV(){const sanitize=v=>{let str=String(v??'');if(/^[=+@-]/.test(str))str="'"+str;return '"'+str.replaceAll('"','""')+'"';};const rows=[['Date','Description','Type','Amount','Currency','Account','Destination','Category'],...state.transactions.map(t=>[t.date,t.name,t.kind,(t.amount/100).toFixed(2),t.currency,getAccount(t.accountId)?.name||'',getAccount(t.targetId)?.name||'',t.category])];download('inveys-transactions.csv',rows.map(r=>r.map(sanitize).join(',')).join('\r\n'),'text/csv');toast('Transaction CSV exported.');}
-  function importFile(file){if(!file)return;if(file.size>5000000){toast('Choose a JSON file smaller than 5 MB.');return;}file.text().then(text=>{const candidate=E.validate(JSON.parse(text));const p=E.position(candidate);confirmAction('Restore this workspace?',`${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, ${candidate.goals.length} goals. Reporting currency: ${escape(candidate.currency)}. This replaces all current local records. Export your current workspace first if needed.`,()=>{state=candidate;resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;save();toast('Workspace restored.');},'Replace workspace');}).catch(error=>toast('Import failed: '+error.message));}
+  let stagedBackup = null, stagedBackupRaw = null, stagedBackupFileName = '';
+  function download(name,content,type){
+    try {
+      const blob=new Blob([content],{type});
+      if(typeof URL==='undefined'||typeof URL.createObjectURL!=='function') return;
+      const url=URL.createObjectURL(blob);
+      if(typeof document==='undefined'||typeof document.createElement!=='function') return;
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=name;
+      if(document.body && typeof document.body.appendChild==='function'){
+        document.body.appendChild(a);
+      }
+      if(typeof a.click==='function') a.click();
+      if(typeof a.remove==='function') a.remove();
+      setTimeout(()=>{ try{URL.revokeObjectURL(url);}catch(e){} },1000);
+    } catch(e) {
+      console.warn('Download fallback/error:', e);
+    }
+  }
+  function downloadFinancialBackup(){
+    try {
+      const now = new Date();
+      const isoDate = now.toISOString();
+      const dateStamp = date();
+      const fileName = `inveys-backup-${(state.name||'workspace').toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${dateStamp}.json`;
+
+      const txs = Array.isArray(state.transactions) ? state.transactions : [];
+      const incTxs = txs.filter(t => t.kind === 'income');
+      const expTxs = txs.filter(t => t.kind === 'expense');
+      const trfTxs = txs.filter(t => t.kind === 'transfer');
+      const holdings = Array.isArray(state.holdings) ? state.holdings : [];
+      const accounts = Array.isArray(state.accounts) ? state.accounts : [];
+
+      const totalIncome = incTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      const totalExpense = expTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+      const payload = {
+        format: 'inveys-financial-backup-v1',
+        version: 1,
+        appName: 'INVEYS Financial OS',
+        appVersion: (typeof releases!=='undefined' && releases?.version) ? releases.version : '2.0.0',
+        exportedAt: isoDate,
+        summary: {
+          workspaceName: state.name || 'Workspace',
+          currency: state.currency || 'IDR',
+          transactionCount: txs.length,
+          incomeCount: incTxs.length,
+          expenseCount: expTxs.length,
+          transferCount: trfTxs.length,
+          totalIncomeCents: totalIncome,
+          totalExpenseCents: totalExpense,
+          holdingsCount: holdings.length,
+          accountsCount: accounts.length,
+          goalsCount: (state.goals || []).length,
+          debtsCount: (state.debts || []).length,
+          budgetsCount: (state.budgets || []).length,
+          rulesCount: (state.transactionRules || []).length,
+          categoriesCount: (state.categories || []).length
+        },
+        workspace: JSON.parse(JSON.stringify(state))
+      };
+
+      try {
+        localStorage.setItem('inveys_last_backup_time', isoDate);
+      } catch(e){}
+      download(fileName, JSON.stringify(payload, null, 2), 'application/json');
+      successToast(L('💾 File cadangan transaksi & investasi berhasil diunduh!','💾 Financial backup file downloaded successfully!'));
+    } catch(err) {
+      console.error('Backup download error:', err);
+      toast(L('Gagal membuat file cadangan: ','Failed to create backup: ') + err.message);
+    }
+  }
+  function triggerBackupFilePicker(){
+    let picker = $('#backup-file-picker') || $('#import-file');
+    if(!picker){
+      picker = document.createElement('input');
+      picker.type = 'file';
+      picker.id = 'backup-file-picker';
+      picker.accept = 'application/json,.json';
+      picker.className = 'file-input';
+      picker.style.display = 'none';
+      if(document.body && typeof document.body.appendChild === 'function'){
+        document.body.appendChild(picker);
+      }
+      picker.addEventListener('change', e => {
+        if(e.target.files?.[0]) handleBackupFile(e.target.files[0]);
+      });
+    }
+    picker.value = '';
+    picker.click();
+  }
+  function handleBackupFile(file){
+    if(!file) return;
+    if(file.size > 25000000){
+      toast(L('Pilih file JSON berukuran di bawah 25 MB.','Choose a JSON file smaller than 25 MB.'));
+      return;
+    }
+    file.text().then(text => {
+      let raw;
+      try {
+        raw = JSON.parse(text);
+      } catch(err) {
+        toast(L('Format file cadangan tidak valid (bukan JSON yang valid).','Invalid backup file format (not valid JSON).'));
+        return;
+      }
+      let candidate = (raw && raw.workspace && typeof raw.workspace === 'object') ? raw.workspace : raw;
+      try {
+        candidate = (typeof E.migrate === 'function') ? E.migrate(candidate) : candidate;
+        candidate = E.validate(candidate);
+      } catch(err) {
+        toast(L('Validasi data cadangan gagal: ','Backup validation failed: ') + err.message);
+        return;
+      }
+      stagedBackup = candidate;
+      stagedBackupRaw = raw;
+      stagedBackupFileName = file.name || 'inveys-backup.json';
+      renderBackupPreviewModal(candidate, raw, stagedBackupFileName);
+    }).catch(err => {
+      toast(L('Gagal membaca file cadangan: ','Failed to read backup file: ') + err.message);
+    });
+  }
+  function openRestoreModal(){
+    if(stagedBackup){
+      renderBackupPreviewModal(stagedBackup, stagedBackupRaw, stagedBackupFileName);
+      return;
+    }
+    let lastPreUpdate = null, lastPreRestore = null;
+    try {
+      lastPreUpdate = localStorage.getItem('inveys_pre_update_time');
+      lastPreRestore = localStorage.getItem('inveys_pre_restore_safety_time');
+    } catch(e){}
+
+    const preUpdateTimeText = lastPreUpdate ? new Date(lastPreUpdate).toLocaleString(locale()) : null;
+    let hasPreUpdate = false, hasSafety = false;
+    try {
+      hasPreUpdate = Boolean(localStorage.getItem('inveys_pre_update_backup'));
+      hasSafety = Boolean(localStorage.getItem('inveys_pre_restore_safety_backup'));
+    } catch(e){}
+    const preRestoreTimeText = lastPreRestore ? new Date(lastPreRestore).toLocaleString(locale()) : null;
+
+    const body = `
+      <div style="margin-bottom:16px;">
+        <p style="color:var(--muted);font-size:13px;margin:0 0 16px;line-height:1.5;">
+          ${L('Pulihkan riwayat transaksi (pemasukan, pengeluaran, transfer) dan portofolio investasi dari file cadangan INVEYS (.json) setelah pembaruan aplikasi atau migrasi perangkat.','Restore transaction history (income, expense, transfer) and investment portfolio from an INVEYS (.json) backup file after app updates or device migration.')}
+        </p>
+
+        <div id="backup-dropzone" style="border:2px dashed var(--border);border-radius:12px;padding:32px 20px;text-align:center;background:var(--panel-muted,rgba(125,125,125,0.05));cursor:pointer;transition:border-color 0.2s;">
+          <div style="font-size:38px;line-height:1;margin-bottom:10px;">💾</div>
+          <div style="font-weight:600;font-size:15px;color:var(--ink);margin-bottom:4px;">${L('Klik atau Tarik File Cadangan (.json) ke Sini','Click or Drag & Drop Backup File (.json) Here')}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">${L('Mendukung format inveys-backup-*.json dan cadangan workspace standar','Supports inveys-backup-*.json and standard workspace backups')}</div>
+          <button type="button" class="btn primary" data-action="backup-file-select" onclick="event.stopPropagation();">
+            📁 ${L('Pilih File dari Perangkat','Choose File from Device')}
+          </button>
+        </div>
+
+        ${hasPreUpdate ? `
+          <div style="margin-top:16px;border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:var(--panel-bg,var(--bg));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div>
+              <span class="badge plus" style="margin-bottom:4px;">AUTO-SNAPSHOT VPS</span>
+              <div style="font-weight:600;font-size:13px;color:var(--ink);">${L('Cadangan Otomatis Sebelum 1-Klik Update VPS Terakhir','Auto-Snapshot Before Last 1-Click VPS Update')}</div>
+              <div style="color:var(--muted);font-size:11px;">🕒 ${escape(preUpdateTimeText || '-')}</div>
+            </div>
+            <button type="button" class="btn" data-action="backup-restore-pre-update">🔄 ${L('Pulihkan Snapshot Ini','Restore Snapshot')}</button>
+          </div>
+        ` : ''}
+
+        ${hasSafety ? `
+          <div style="margin-top:12px;border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:var(--panel-bg,var(--bg));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div>
+              <span class="badge" style="margin-bottom:4px;">SAFETY BACKUP</span>
+              <div style="font-weight:600;font-size:13px;color:var(--ink);">${L('Snapshot Keselamatan Sebelum Restore Terakhir','Safety Snapshot Before Last Restore')}</div>
+              <div style="color:var(--muted);font-size:11px;">🕒 ${escape(preRestoreTimeText || '-')}</div>
+            </div>
+            <button type="button" class="btn" data-action="backup-restore-safety">↩️ ${L('Urungkan & Kembalikan','Undo & Revert')}</button>
+          </div>
+        ` : ''}
+      </div>
+      <div class="form-actions" style="margin-top:20px;border-top:1px solid var(--border);padding-top:14px;display:flex;justify-content:flex-end;">
+        <button type="button" class="btn" data-action="modal-close">${L('Tutup','Close')}</button>
+      </div>
+    `;
+
+    openModal(L('Pusat Pemulihan Data Finansial (Restore Center)','Financial Restore Center'), body);
+
+    setTimeout(()=>{
+      const dz = $('#backup-dropzone');
+      if(dz){
+        dz.addEventListener('click', () => triggerBackupFilePicker());
+        dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = 'var(--primary)'; });
+        dz.addEventListener('dragleave', e => { e.preventDefault(); dz.style.borderColor = 'var(--border)'; });
+        dz.addEventListener('drop', e => {
+          e.preventDefault();
+          dz.style.borderColor = 'var(--border)';
+          if(e.dataTransfer?.files?.[0]) handleBackupFile(e.dataTransfer.files[0]);
+        });
+      }
+    }, 50);
+  }
+  function renderBackupPreviewModal(candidate, raw, fileName){
+    const txs = Array.isArray(candidate.transactions) ? candidate.transactions : [];
+    const incTxs = txs.filter(t => t.kind === 'income');
+    const expTxs = txs.filter(t => t.kind === 'expense');
+    const trfTxs = txs.filter(t => t.kind === 'transfer');
+    const totalInc = incTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const totalExp = expTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const holdings = Array.isArray(candidate.holdings) ? candidate.holdings : [];
+    const accounts = Array.isArray(candidate.accounts) ? candidate.accounts : [];
+    const goals = Array.isArray(candidate.goals) ? candidate.goals : [];
+    const debts = Array.isArray(candidate.debts) ? candidate.debts : [];
+
+    const curr = candidate.currency || state.currency || 'IDR';
+    const backupDate = raw?.exportedAt ? new Date(raw.exportedAt).toLocaleString(locale()) : (raw?.workspace?.history?.[0]?.date || '-');
+    const appVer = raw?.appVersion ? `v${raw.appVersion}` : (raw?.version ? `v${raw.version}` : '');
+
+    const body = `
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <span class="badge plus">✓ ${L('FILE CADANGAN TERVALIDASI','VERIFIED BACKUP FILE')}</span>
+          <span style="font-size:12px;color:var(--muted);">${escape(backupDate)} ${appVer ? '· '+escape(appVer) : ''}</span>
+        </div>
+
+        <div style="background:var(--panel-muted,rgba(125,125,125,0.06));border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+          <div style="font-weight:700;font-size:15px;color:var(--ink);">${escape(candidate.name || 'Workspace')}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">📁 ${escape(fileName || 'inveys-backup.json')} · ${L('Mata Uang Basis:','Base Currency:')} <b>${escape(curr)}</b></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:18px;">
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600;">📥 ${L('Pemasukan / Penerimaan','Income / Receipts')}</div>
+            <div style="font-weight:700;font-size:16px;color:var(--success, #10b981);margin-top:4px;">${money(totalInc, false, curr)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${incTxs.length} ${L('transaksi pemasukan','income transactions')}</div>
+          </div>
+
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600;">📤 ${L('Pengeluaran','Expenses')}</div>
+            <div style="font-weight:700;font-size:16px;color:var(--danger, #ef4444);margin-top:4px;">${money(totalExp, false, curr)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${expTxs.length} ${L('transaksi pengeluaran','expense transactions')}</div>
+          </div>
+
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600;">📈 ${L('Portofolio & Investasi','Holdings & Investments')}</div>
+            <div style="font-weight:700;font-size:16px;color:var(--ink);margin-top:4px;">${holdings.length} ${L('Posisi Aset','Asset Positions')}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${L('Saham, Emas Galeri24/Pegadaian, Crypto','Stocks, Gold, Crypto')}</div>
+          </div>
+
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600;">🏦 ${L('Rekening & Entitas','Accounts & Records')}</div>
+            <div style="font-weight:700;font-size:16px;color:var(--ink);margin-top:4px;">${accounts.length} ${L('Rekening','Accounts')}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${trfTxs.length} transfer · ${goals.length} target · ${debts.length} utang</div>
+          </div>
+        </div>
+
+        <div style="font-weight:700;font-size:13px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">${L('Pilih Metode Pemulihan:','Select Restore Mode:')}</div>
+
+        <!-- Option 1: Replace All -->
+        <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;background:var(--bg);display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:240px;">
+            <div style="font-weight:700;font-size:14px;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span>🔄</span> <b>${L('Pilihan 1: Pulihkan Penuh (Timpa Seluruh Data)','Option 1: Full Restore (Replace All Data)')}</b>
+              <span class="badge plus" style="font-size:10px;">${L('DISARANKAN SETELAH UPDATE','RECOMMENDED AFTER UPDATE')}</span>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.4;">
+              ${L('Mengganti seluruh data ruang kerja dengan data cadangan ini secara utuh. Seluruh riwayat transaksi, rekening, dan aset investasi akan kembali persis seperti saat file cadangan dibuat. Sistem otomatis membuat snapshot keselamatan sebelum menimpa.','Replaces all current records with this backup snapshot. Complete transactions, accounts, and investments will match the backup. An automatic safety snapshot will be taken first.')}
+            </p>
+          </div>
+          <button type="button" class="btn primary" data-action="backup-exec-replace">
+            🔄 ${L('Pulihkan Penuh','Full Restore')}
+          </button>
+        </div>
+
+        <!-- Option 2: Non-destructive Merge -->
+        <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;background:var(--bg);display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:240px;">
+            <div style="font-weight:700;font-size:14px;color:var(--ink);display:flex;align-items:center;gap:6px;">
+              <span>➕</span> <b>${L('Pilihan 2: Gabungkan Transaksi & Investasi (Anti-Duplikasi)','Option 2: Merge Transactions & Investments (No Duplicates)')}</b>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.4;">
+              ${L('Menambahkan transaksi penerimaan/pengeluaran dan posisi investasi dari cadangan yang belum ada di aplikasi saat ini. Data baru yang sudah Anda catat tetap aman dan tidak ada data yang digandakan.','Appends transactions and holdings from backup that do not exist yet in the workspace. Any newly added records are preserved and nothing is duplicated.')}
+            </p>
+          </div>
+          <button type="button" class="btn" data-action="backup-exec-merge">
+            ➕ ${L('Gabungkan Data','Merge Data')}
+          </button>
+        </div>
+
+        <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;">
+          <span>🛡️</span>
+          <span>${L('Keamanan terjamin: Snapshot keselamatan cadangan saat ini akan disimpan otomatis di memori browser sebelum proses pemulihan berjalan.','Safety assured: A safety snapshot of your current state will be preserved in browser memory before restoration.')}</span>
+        </div>
+      </div>
+
+      <div class="form-actions" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;display:flex;justify-content:space-between;align-items:center;">
+        <button type="button" class="btn" data-action="backup-file-select">📁 ${L('Pilih File Lain','Choose Another File')}</button>
+        <button type="button" class="btn" data-action="modal-close">${L('Batal','Cancel')}</button>
+      </div>
+    `;
+
+    openModal(L('Pratinjau Cadangan Data Finansial','Financial Backup Preview'), body);
+  }
+  function mergeBackupTransactions(candidate){
+    let addedTx = 0, addedHoldings = 0, addedAccounts = 0;
+
+    const existingAccIds = new Set((state.accounts || []).map(a => a.id));
+    const existingAccNames = new Set((state.accounts || []).map(a => (a.name || '').toLowerCase().trim()));
+    if (Array.isArray(candidate.accounts)) {
+      candidate.accounts.forEach(a => {
+        if (!existingAccIds.has(a.id) && !existingAccNames.has((a.name || '').toLowerCase().trim())) {
+          state.accounts.push(a);
+          existingAccIds.add(a.id);
+          addedAccounts++;
+        }
+      });
+    }
+
+    const existingTxIds = new Set((state.transactions || []).map(t => t.id));
+    const existingTxFingerprints = new Set(
+      (state.transactions || []).map(t => `${t.date}|${t.kind}|${t.amount}|${(t.name||'').trim().toLowerCase()}|${t.accountId}`)
+    );
+
+    if (Array.isArray(candidate.transactions)) {
+      candidate.transactions.forEach(t => {
+        const fp = `${t.date}|${t.kind}|${t.amount}|${(t.name||'').trim().toLowerCase()}|${t.accountId}`;
+        if (!existingTxIds.has(t.id) && !existingTxFingerprints.has(fp)) {
+          state.transactions.push(t);
+          existingTxIds.add(t.id);
+          existingTxFingerprints.add(fp);
+          addedTx++;
+        }
+      });
+    }
+
+    state.transactions.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    const existingHoldingIds = new Set((state.holdings || []).map(h => h.id));
+    const existingHoldingKeys = new Set(
+      (state.holdings || []).map(h => `${(h.ticker || h.symbol || h.name || '').toLowerCase()}|${h.accountId}`)
+    );
+
+    if (Array.isArray(candidate.holdings)) {
+      candidate.holdings.forEach(h => {
+        const key = `${(h.ticker || h.symbol || h.name || '').toLowerCase()}|${h.accountId}`;
+        if (!existingHoldingIds.has(h.id) && !existingHoldingKeys.has(key)) {
+          state.holdings.push(h);
+          existingHoldingIds.add(h.id);
+          existingHoldingKeys.add(key);
+          addedHoldings++;
+        }
+      });
+    }
+
+    if (Array.isArray(candidate.categories)) {
+      const existingCats = new Set((state.categories || []).map(c => typeof c === 'string' ? c : (c.id || c.name)));
+      candidate.categories.forEach(c => {
+        const cKey = typeof c === 'string' ? c : (c.id || c.name);
+        if (!existingCats.has(cKey)) {
+          state.categories.push(c);
+          existingCats.add(cKey);
+        }
+      });
+    }
+
+    if (Array.isArray(candidate.transactionRules)) {
+      const existingRules = new Set((state.transactionRules || []).map(r => r.id));
+      candidate.transactionRules.forEach(r => {
+        if (!existingRules.has(r.id)) {
+          state.transactionRules.push(r);
+          existingRules.add(r.id);
+        }
+      });
+    }
+
+    return { addedTx, addedHoldings, addedAccounts };
+  }
+  function executeFullRestore(){
+    if (!stagedBackup) {
+      toast(L('Tidak ada file cadangan yang siap dipulihkan.','No staged backup to restore.'));
+      return;
+    }
+    try {
+      try {
+        localStorage.setItem('inveys_pre_restore_safety_backup', JSON.stringify(state));
+        localStorage.setItem('inveys_pre_restore_safety_time', new Date().toISOString());
+      } catch(e){}
+
+      state = stagedBackup;
+      resetFinancialSession();
+      messages = []; drafts = []; captureText = ''; museAnswer = ''; telegramItems = []; mcResult = null; mcConfig = null;
+
+      persistCorrection(state);
+      if (isServerMode && typeof syncToServer === 'function') syncToServer();
+
+      $('#modal')?.close();
+      stagedBackup = null;
+      stagedBackupRaw = null;
+      render();
+      successToast(L('🎉 Seluruh data finansial berhasil dipulihkan dari cadangan!','🎉 Entire financial workspace successfully restored from backup!'));
+    } catch(err) {
+      console.error('Full restore error:', err);
+      toast(L('Gagal memulihkan cadangan: ','Failed to restore backup: ') + err.message);
+    }
+  }
+  function executeMergeRestore(){
+    if (!stagedBackup) {
+      toast(L('Tidak ada file cadangan yang siap dipulihkan.','No staged backup to restore.'));
+      return;
+    }
+    try {
+      try {
+        localStorage.setItem('inveys_pre_restore_safety_backup', JSON.stringify(state));
+        localStorage.setItem('inveys_pre_restore_safety_time', new Date().toISOString());
+      } catch(e){}
+
+      const result = mergeBackupTransactions(stagedBackup);
+      resetFinancialSession();
+      persistCorrection(state);
+      if (isServerMode && typeof syncToServer === 'function') syncToServer();
+
+      $('#modal')?.close();
+      stagedBackup = null;
+      stagedBackupRaw = null;
+      render();
+      successToast(L(`🎉 Berhasil menggabungkan ${result.addedTx} transaksi & ${result.addedHoldings} investasi baru!`,`🎉 Successfully merged ${result.addedTx} transactions & ${result.addedHoldings} new holdings!`));
+    } catch(err) {
+      console.error('Merge restore error:', err);
+      toast(L('Gagal menggabungkan data: ','Failed to merge data: ') + err.message);
+    }
+  }
+  function restorePreUpdateSnapshot(){
+    try {
+      const raw = localStorage.getItem('inveys_pre_update_backup');
+      if (!raw) {
+        toast(L('Tidak ditemukan snapshot otomatis sebelum update di browser ini.','No pre-update auto-snapshot found in this browser.'));
+        return;
+      }
+      const candidate = E.validate(JSON.parse(raw));
+      confirmAction(
+        L('Pulihkan snapshot sebelum update?','Restore pre-update snapshot?'),
+        L(`Akan memulihkan ${candidate.accounts.length} rekening, ${candidate.transactions.length} transaksi, dan ${candidate.holdings?.length || 0} posisi investasi dari snapshot sebelum update terakhir.`,`Will restore ${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, and ${candidate.holdings?.length || 0} holdings from the snapshot taken before the last update.`),
+        () => {
+          try {
+            localStorage.setItem('inveys_pre_restore_safety_backup', JSON.stringify(state));
+            localStorage.setItem('inveys_pre_restore_safety_time', new Date().toISOString());
+          } catch(e){}
+          state = candidate;
+          resetFinancialSession();
+          messages = []; drafts = []; captureText = ''; museAnswer = ''; telegramItems = []; mcResult = null; mcConfig = null;
+          persistCorrection(state);
+          if (isServerMode && typeof syncToServer === 'function') syncToServer();
+          $('#modal')?.close();
+          render();
+          successToast(L('🎉 Snapshot sebelum update berhasil dipulihkan!','🎉 Pre-update snapshot successfully restored!'));
+        },
+        L('Pulihkan Sekarang','Restore Now')
+      );
+    } catch(err) {
+      toast(L('Gagal memulihkan snapshot: ','Failed to restore snapshot: ') + err.message);
+    }
+  }
+  function restoreSafetySnapshot(){
+    try {
+      const raw = localStorage.getItem('inveys_pre_restore_safety_backup');
+      if (!raw) {
+        toast(L('Tidak ditemukan snapshot keselamatan di browser ini.','No safety snapshot found in this browser.'));
+        return;
+      }
+      const candidate = E.validate(JSON.parse(raw));
+      confirmAction(
+        L('Kembalikan ke snapshot sebelum restore?','Undo & restore safety snapshot?'),
+        L(`Akan mengembalikan ${candidate.accounts.length} rekening, ${candidate.transactions.length} transaksi, dan ${candidate.holdings?.length || 0} posisi investasi dari kondisi sebelum pemulihan terakhir.`,`Will revert to ${candidate.accounts.length} accounts, ${candidate.transactions.length} transactions, and ${candidate.holdings?.length || 0} holdings from before the last restore.`),
+        () => {
+          state = candidate;
+          resetFinancialSession();
+          messages = []; drafts = []; captureText = ''; museAnswer = ''; telegramItems = []; mcResult = null; mcConfig = null;
+          persistCorrection(state);
+          if (isServerMode && typeof syncToServer === 'function') syncToServer();
+          $('#modal')?.close();
+          render();
+          successToast(L('🎉 Data berhasil dikembalikan ke kondisi sebelum restore!','🎉 Data successfully reverted to state before restore!'));
+        },
+        L('Kembalikan Data','Revert Data')
+      );
+    } catch(err) {
+      toast(L('Gagal memulihkan snapshot: ','Failed to restore snapshot: ') + err.message);
+    }
+  }
+  function importFile(file){if(!file)return;handleBackupFile(file);}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
   function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('vey-')||name.startsWith('invi-')){inviAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'tax-djp-modal':openDjpTaxModal(id);break;
@@ -18245,8 +18781,14 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     case 'modal-close':$('#modal').close();break;
     case 'remove-goal':case 'remove-debt':case 'remove-flow':{if(name==='remove-debt'&&state.cards.some(c=>c.debtId===id)){toast(state.language==='id'?'Hapus metadata kartu terlebih dahulu.':'Remove the linked credit card first.');break;}const key={'remove-goal':'goals','remove-debt':'debts','remove-flow':'flows'}[name];confirmAction('Remove this record?','This changes your financial position or planning commitments. Account balances are not changed.',()=>{state[key]=state[key].filter(row=>row.id!==id);toast('Record removed.');},'Remove record');break;}
     case 'rename':openModal('Name your workspace',form(field('Workspace name','name',state.name,'text','required maxlength="80"'),'Save name'),d=>{state.name=requireText(d.name);toast('Workspace renamed.');});break;
-    case 'export':download('inveys-workspace-'+date()+'.json',JSON.stringify(state,null,2),'application/json');toast('Workspace exported.');break;
-    case 'export-csv':exportCSV();break;case 'import':$('#import-file').click();break;
+    case 'export': case 'backup-download': downloadFinancialBackup(); break;
+    case 'export-csv': exportCSV(); break;
+    case 'import': case 'backup-restore-modal': openRestoreModal(); break;
+    case 'backup-file-select': triggerBackupFilePicker(); break;
+    case 'backup-restore-pre-update': restorePreUpdateSnapshot(); break;
+    case 'backup-restore-safety': restoreSafetySnapshot(); break;
+    case 'backup-exec-replace': executeFullRestore(); break;
+    case 'backup-exec-merge': executeMergeRestore(); break;
     case 'reset-demo':confirmAction('Restore the demo?','All current local records will be replaced by sample data. Export your workspace first if you want to keep it.',()=>{state=E.migrate(seed());resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;toast('Sample workspace restored.');},'Restore demo');break;
     case 'delete-data':confirmAction('Delete local financial records?','This removes financial records from this browser profile. Exported files and backups outside this browser are not deleted.',()=>{localStorage.removeItem(storageKey);state=E.migrate(emptyWorkspace());resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;toast('Local financial records deleted.');},'Delete records');break;
     case 'empty-workspace':openModal('Start your financial workspace',form(field('Workspace name','name','My financial workspace','text','required maxlength="80"')+field('Reporting currency','currency','','select',options(E.currencies,state.currency)),'Create empty workspace','This replaces all current records. Export first if needed. Currency labels do not convert amounts.'),d=>{state=E.migrate(emptyWorkspace(d.currency));state.name=requireText(d.name);resetFinancialSession();messages=[];drafts=[];captureText='';museAnswer='';telegramItems=[];mcResult=null;mcConfig=null;toast('Your empty workspace is ready.');});break;
@@ -18256,7 +18798,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   }}
   document.addEventListener('click',event=>{const target=event.target.closest('button,[data-action]');if(!target)return;if(target.dataset.page){if(target.dataset.close)$('#modal').close();navigate(target.dataset.page);}else if(target.dataset.action)act(target.dataset.action);else if(target.dataset.question)ask(target.dataset.question);else if(target.dataset.starter){veyPlaySound('poke');const box=$('#quick-text');if(box){box.value=target.dataset.starter;quickText=target.dataset.starter;box.focus();if(box.style){box.style.height='auto';box.style.height=Math.min(132,box.scrollHeight)+'px';}}}else if(target.dataset.quickFill){veyPlaySound('poke');const box=$('#quick-text');if(box){box.value=target.dataset.quickFill;quickText=target.dataset.quickFill;box.focus();if(box.style){box.style.height='auto';box.style.height=Math.min(132,box.scrollHeight)+'px';}}}});
   document.addEventListener('input',event=>{const el=event.target;if(el.id==='admin-search-input'){adminData.query=el.value.toLowerCase().trim();const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='forecast-preview-year'){forecastSelectedYear=Math.max(0,Math.min(selectedPlan().years,Number(el.value)||0));if(forecastResult)$('#forecast-preview').innerHTML=forecastPreview(forecastResult,selectedPlan());}if(el.id==='gold-spot-price-slider'||el.id==='gold-spot-price-input'){const val=Number(el.value);if(Number.isFinite(val)&&val>0){state.goldInstallment.customSpotPrice=val;if(state.goldInstallment.synced){const h=state.holdings.find(h=>h.id==='h-gold-galeri24');if(h){h.price=val;h.quoteDate=date();}const acc=state.accounts.find(a=>a.id==='acc-gold-pegadaian');if(acc){acc.balance=Math.round(50*val*100);acc.updated=date();}}render();}}if(el.id==='gold-paid-months-slider'){const val=Math.max(0,Math.min(60,Number(el.value)||0));state.goldInstallment.paidMonths=val;render();}if(el.id==='quick-text'){quickText=el.value;if(el.style){el.style.height='auto';el.style.height=Math.min(132,el.scrollHeight)+'px';}}if(el.dataset.scenario){scenario[el.dataset.scenario]=E.cents(el.value);$('#value-'+el.dataset.scenario).textContent=money(scenario[el.dataset.scenario]);updateScenario();}if(el.dataset.debtId){const id=el.dataset.debtId;const d=state.debts.find(d=>d.id===id);$('#extra-label-'+id).textContent=money(E.cents(el.value),false,d.currency);$('#debt-results-'+id).innerHTML=debtResult(d,E.cents(el.value));}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';}if(el.id==='transaction-search'){txQuery=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='category-manager-search'){const q=el.value.toLowerCase().trim();$$('.monarch-settings-cat-row').forEach(row=>{const text=((row.dataset.catRow||'')+' '+(row.dataset.catDisplay||'')).toLowerCase();row.style.display=!q||text.includes(q)?'flex':'none';});}});
-  document.addEventListener('change',event=>{const el=event.target;if(el.id==='setting-autolock-select'||el.dataset.action==='change-autolock'){localStorage.setItem('inveys_autolock',el.value);resetAutoLockTimer();toast('🔒 '+L('Waktu kunci otomatis diperbarui','Auto-lock timer updated'));}if(['admin-role-filter','admin-plan-filter','admin-status-filter'].includes(el.id)){if(el.id==='admin-role-filter')adminData.roleFilter=el.value;if(el.id==='admin-plan-filter')adminData.planFilter=el.value;if(el.id==='admin-status-filter')adminData.statusFilter=el.value;const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='import-file')importFile(el.files[0]);});
+  document.addEventListener('change',event=>{const el=event.target;if(el.id==='setting-autolock-select'||el.dataset.action==='change-autolock'){localStorage.setItem('inveys_autolock',el.value);resetAutoLockTimer();toast('🔒 '+L('Waktu kunci otomatis diperbarui','Auto-lock timer updated'));}if(['admin-role-filter','admin-plan-filter','admin-status-filter'].includes(el.id)){if(el.id==='admin-role-filter')adminData.roleFilter=el.value;if(el.id==='admin-plan-filter')adminData.planFilter=el.value;if(el.id==='admin-status-filter')adminData.statusFilter=el.value;const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='import-file'||el.id==='backup-file-picker'){ if(el.files?.[0]) handleBackupFile(el.files[0]); }});
   document.addEventListener('submit',event=>{if(event.target.id==='quick-form'){event.preventDefault();const d=Object.fromEntries(new FormData(event.target));quickSend(d.text,d.accountId);return;}if(event.target.id==='chat-form'){event.preventDefault();ask($('#chat-question').value.trim());}});
   $('#close-modal').addEventListener('click',()=>$('#modal').close());$('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=$('#modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('#modal').close();}});
   $('#menu-button').addEventListener('click',()=>{setSidebarOpen(!sidebarOpen);if(sidebarOpen)$('#navigation button')?.focus();});$('#search-button').addEventListener('click',searchModal);$('#notification-button').addEventListener('click',openReminders);$('#workspace-button')?.addEventListener('click',()=>navigate('home'));

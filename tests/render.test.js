@@ -1128,6 +1128,116 @@ test('debts and loans default to zero balance when sample debts disabled, and de
   assert.match(app.html(), /Bebas Utang|Debt Free/);
 });
 
+test('financial backup download updates last backup timestamp and sets up safe export', () => {
+  const app = boot();
+  app.click({ page: 'settings' });
+  assert.match(app.html(), /Pusat Cadangan & Pemulihan Data|Data Backup & Restore Center/);
+  assert.match(app.html(), /backup-download/);
+  assert.match(app.html(), /backup-restore-modal/);
+
+  // Click backup-download
+  app.click({ action: 'backup-download' });
+  const lastBackup = app.context.localStorage.getItem('inveys_last_backup_time');
+  assert.ok(lastBackup, 'Last backup timestamp should be saved in localStorage');
+  const d = new Date(lastBackup);
+  assert.ok(!isNaN(d.getTime()), 'Timestamp should be a valid ISO date');
+});
+
+test('financial restore center modal renders dropzone and handles pre-update snapshot', () => {
+  const app = boot();
+  // Simulate an auto-snapshot taken before a VPS update
+  const samplePreUpdate = app.state();
+  app.context.localStorage.setItem('inveys_pre_update_backup', JSON.stringify(samplePreUpdate));
+  app.context.localStorage.setItem('inveys_pre_update_time', new Date().toISOString());
+
+  app.click({ action: 'backup-restore-modal' });
+  const modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /backup-dropzone/);
+  assert.match(modalBody, /AUTO-SNAPSHOT VPS/);
+  assert.match(modalBody, /backup-restore-pre-update/);
+});
+
+test('financial restore handles wrapped backup file, previews breakdown, and supports full replace and merge', async () => {
+  const app = boot();
+  const originalState = app.state();
+
+  // Create a customized candidate backup
+  const candidate = JSON.parse(JSON.stringify(originalState));
+  candidate.name = 'Cadangan Pribadi Hendra';
+  const newTx = {
+    id: 'tx-backup-test-1',
+    date: '2026-11-01',
+    name: 'Bonus Dividen Q3',
+    kind: 'income',
+    amount: 150000000,
+    currency: 'IDR',
+    accountId: originalState.accounts[0]?.id || 'acc1',
+    category: 'Investasi'
+  };
+  candidate.transactions.push(newTx);
+
+  const wrappedBackup = {
+    format: 'inveys-financial-backup-v1',
+    version: 1,
+    appName: 'INVEYS Financial OS',
+    appVersion: '2.0.0',
+    exportedAt: new Date().toISOString(),
+    summary: {
+      workspaceName: candidate.name,
+      currency: 'IDR',
+      transactionCount: candidate.transactions.length,
+      incomeCount: candidate.transactions.filter(t => t.kind === 'income').length,
+      expenseCount: candidate.transactions.filter(t => t.kind === 'expense').length
+    },
+    workspace: candidate
+  };
+
+  const file = {
+    name: 'inveys-backup-test.json',
+    size: 2048,
+    text: async () => JSON.stringify(wrappedBackup)
+  };
+
+  // Trigger file selection
+  app.chooseQuickFile(file, 'backup-file-picker');
+  await new Promise(r => setTimeout(r, 50));
+
+  // Preview modal should now be shown
+  const previewBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(previewBody, /FILE CADANGAN TERVALIDASI|VERIFIED BACKUP FILE/);
+  assert.match(previewBody, /Cadangan Pribadi Hendra/);
+  assert.match(previewBody, /backup-exec-replace/);
+  assert.match(previewBody, /backup-exec-merge/);
+
+  // Test Option 2: Merge non-destructive
+  app.click({ action: 'backup-exec-merge' });
+  const mergedState = app.state();
+  assert.ok(mergedState.transactions.some(t => t.id === 'tx-backup-test-1'), 'Merged transaction should be added');
+  assert.ok(app.context.localStorage.getItem('inveys_pre_restore_safety_backup'), 'Safety backup should be captured');
+
+  // Verify no duplicate if re-merged
+  app.chooseQuickFile(file, 'backup-file-picker');
+  await new Promise(r => setTimeout(r, 50));
+  const txCountBefore = app.state().transactions.length;
+  app.click({ action: 'backup-exec-merge' });
+  const txCountAfter = app.state().transactions.length;
+  assert.equal(txCountAfter, txCountBefore, 'Re-merging should not duplicate transactions');
+
+  // Test Option 1: Full replace
+  candidate.name = 'Full Replaced Workspace';
+  const fileReplace = {
+    name: 'inveys-backup-replace.json',
+    size: 2048,
+    text: async () => JSON.stringify({ format: 'inveys-financial-backup-v1', workspace: candidate })
+  };
+  app.chooseQuickFile(fileReplace, 'backup-file-picker');
+  await new Promise(r => setTimeout(r, 50));
+  app.click({ action: 'backup-exec-replace' });
+
+  assert.equal(app.state().name, 'Full Replaced Workspace');
+});
+
+
 
 
 
