@@ -30,6 +30,7 @@ function boot(saved, env = {}) {
     __INVEYS_CURRENT_USER__: env.currentUser || null,
     __INVEYS_LOAD_SAMPLE_TRANSACTIONS__: env.loadSampleTransactions ?? true,
     __INVEYS_LOAD_SAMPLE_BILLS__: env.loadSampleBills ?? true,
+    __INVEYS_LOAD_SAMPLE_DEBTS__: env.loadSampleDebts ?? true,
     FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
@@ -1100,6 +1101,33 @@ test('Easy Mode toggle enables senior-friendly typography, summary cards and set
   app.click({ page: 'home' });
   assert.ok(!app.html().includes('senior-summary-banner'));
 });
+
+test('debts and loans default to zero balance when sample debts disabled, and debts-zero action resets all balances to 0',()=>{
+  // Clean debts mode
+  const cleanApp = boot(undefined, { loadSampleDebts: false });
+  const stClean = cleanApp.state();
+  assert.ok(stClean.debts.length > 0);
+  assert.ok(stClean.debts.every(d => d.balance === 0 && d.minimum === 0));
+  assert.ok(stClean.cards.every(c => c.statementAmount === 0));
+
+  cleanApp.click({ page: 'debt' });
+  const debtHtml = cleanApp.html();
+  assert.match(debtHtml, /Bebas Utang|Debt Free/);
+  assert.match(debtHtml, /Lunas|Paid/);
+
+  // App with sample debts can be zeroed out on demand via debts-zero
+  const app = boot(undefined, { loadSampleDebts: true });
+  assert.ok(app.state().debts.some(d => d.balance > 0));
+  app.click({ page: 'debt' });
+  app.click({ action: 'debts-zero' });
+  app.submitModal({});
+  
+  const stZero = app.state();
+  assert.ok(stZero.debts.every(d => d.balance === 0 && d.minimum === 0));
+  assert.ok(stZero.cards.every(c => c.statementAmount === 0));
+  assert.match(app.html(), /Bebas Utang|Debt Free/);
+});
+
 
 
 

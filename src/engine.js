@@ -74,7 +74,7 @@
     const liquid = sum(s.accounts.filter(a => ['Checking', 'Savings', 'Cash', 'E-Wallet'].includes(a.type)).map(a => reporting(s,a,'balance')));
     const income = sum(s.flows.filter(f => f.kind === 'income').map(f => reporting(s,f,'amount')));
     const expenses = sum(s.flows.filter(f => f.kind === 'expense').map(f => reporting(s,f,'amount')));
-    const debtPayments = sum(s.debts.map(d => reporting(s,d,'minimum')));
+    const debtPayments = sum(s.debts.filter(d => (d.balance || 0) > 0).map(d => reporting(s,d,'minimum')));
     const outflows = expenses + debtPayments;
     const goalCommitments = sum(s.goals.map(g => reporting(s,g,'monthly')));
     return {assets, liabilities, netWorth: assets - liabilities, liquid, income, expenses, debtPayments, outflows, surplus: income - outflows, goalCommitments, available: income - outflows - goalCommitments, reserveMonths: outflows > 0 ? liquid / outflows : null};
@@ -183,7 +183,7 @@
     for (const t of s.tasks) if (typeof t.name !== 'string' || typeof t.owner !== 'string' || typeof t.done !== 'boolean' || typeof t.due !== 'string') throw new Error('Invalid task metadata.');
     for (const m of s.members) if (typeof m.name !== 'string' || typeof m.role !== 'string' || typeof m.initials !== 'string') throw new Error('Invalid member metadata.');
     for (const a of s.accounts) if (!Number.isSafeInteger(a.balance) || !['Checking', 'Savings', 'Cash', 'Investment', 'Property', 'Other', 'E-Wallet'].includes(a.type)) throw new Error('Invalid account.');
-    for (const d of s.debts) if (!Number.isSafeInteger(d.balance) || d.balance < 0 || !Number.isSafeInteger(d.minimum) || d.minimum <= 0 || !Number.isFinite(d.apr) || d.apr < 0 || d.apr > 100) throw new Error('Invalid debt.');
+    for (const d of s.debts) if (!Number.isSafeInteger(d.balance) || d.balance < 0 || !Number.isSafeInteger(d.minimum) || d.minimum < 0 || !Number.isFinite(d.apr) || d.apr < 0 || d.apr > 100) throw new Error('Invalid debt.');
     for (const g of s.goals) if (![g.target, g.saved, g.monthly].every(Number.isSafeInteger) || g.target <= 0 || g.saved < 0 || g.monthly < 0) throw new Error('Invalid goal.');
     for (const f of s.flows) if (!Number.isSafeInteger(f.amount) || f.amount < 0 || !['income', 'expense'].includes(f.kind) || !Number.isInteger(f.day) || f.day < 1 || f.day > 28) throw new Error('Invalid cash-flow item.');
     for (const t of s.transactions) if (!Number.isSafeInteger(t.amount) || t.amount <= 0 || !s.accounts.some(a => a.id === t.accountId) || !['income', 'expense', 'transfer'].includes(t.kind) || (t.kind === 'transfer' && (t.targetDebtId ? !s.debts.some(d=>d.id===t.targetDebtId) : (!s.accounts.some(a => a.id === t.targetId) || t.accountId === t.targetId)))) throw new Error('Invalid transaction.');
@@ -203,7 +203,7 @@
     for(const c of s.cards||[]) {
       const remaining=Math.max(0,c.statementAmount-c.paid);
       const days=dayDifference(today,c.dueDate);
-      if(remaining>0&&days<=c.reminderDays)items.push({id:c.id+'-due-'+c.dueDate,cardId:c.id,name:c.name,type:'due',date:c.dueDate,days,remaining,currency:s.debts.find(d=>d.id===c.debtId).currency||s.currency});
+      if(remaining>0&&days<=c.reminderDays)items.push({id:c.id+'-due-'+c.dueDate,cardId:c.id,name:c.name,type:'due',date:c.dueDate,days,remaining,currency:s.debts.find(d=>d.id===c.debtId)?.currency||s.currency});
       if(c.limitDate){const days=dayDifference(today,c.limitDate);if(days<=c.reminderDays)items.push({id:c.id+'-limit-'+c.limitDate,cardId:c.id,name:c.name,type:'limit',date:c.limitDate,days});}
     }
     return items.sort((a,b)=>a.days-b.days);
