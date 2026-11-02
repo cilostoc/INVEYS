@@ -10956,10 +10956,58 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
 
   const R=window.InveysRecording;
   const L=(id,en)=>state.language==='id'?id:en;
-  let captureAccount='',captureKind='receipt',captureProvider='9router';
+  let captureAccount='',captureKind='receipt',captureProvider='9router',captureFiles=[],captureGdriveUrl='';
   try{captureProvider=localStorage.getItem('inveys_capture_provider')||'9router';}catch(e){}
   let quickAccount='',quickText='',quickReply='';
   let drafts=[],captureText='',captureStatus='',captureBusy=false,service={},telegramItems=[],museAnswer='',fxBusy=false,recorder=null,voiceRecognition=null;
+
+  function captureAddFiles(fileList){
+    if(!fileList||!fileList.length) return;
+    let added=0;
+    const existing=new Set(captureFiles.map(f=>`${f.name}-${f.size}`));
+    for(let i=0;i<fileList.length;i++){
+      const f=fileList[i];
+      if(f.size&&f.size>8*1024*1024){
+        toast(L(`File ${f.name} melebihi batas 8 MB.`,`File ${f.name} exceeds 8 MB limit.`));
+        continue;
+      }
+      const key=`${f.name}-${f.size}`;
+      if(!existing.has(key)){
+        captureFiles.push(f);
+        existing.add(key);
+        added++;
+      }
+    }
+    if(added>0){
+      successToast(L(`${added} dokumen ditambahkan ke antrean ekstraksi.`,`${added} documents added to extraction queue.`));
+      render();
+    }
+  }
+
+  function setupCaptureDropzone(){
+    if(typeof document==='undefined') return;
+    const dz=$('#capture-dropzone');
+    if(!dz||dz.__dropzoneBound) return;
+    dz.__dropzoneBound=true;
+    dz.addEventListener('dragover',e=>{
+      e.preventDefault();
+      dz.style.borderColor='var(--primary)';
+      dz.style.background='var(--panel-bg, rgba(56, 161, 105, 0.08))';
+    });
+    dz.addEventListener('dragleave',e=>{
+      e.preventDefault();
+      dz.style.borderColor='var(--border)';
+      dz.style.background='var(--panel-muted, rgba(125,125,125,0.04))';
+    });
+    dz.addEventListener('drop',e=>{
+      e.preventDefault();
+      dz.style.borderColor='var(--border)';
+      dz.style.background='var(--panel-muted, rgba(125,125,125,0.04))';
+      if(e.dataTransfer?.files?.length){
+        captureAddFiles(e.dataTransfer.files);
+      }
+    });
+  }
   const releases=window.InveysReleases;
   state.fx.auto ??= true;
   async function api(path,data){
@@ -10976,7 +11024,103 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   function capture(){
     const effectiveProvider = captureProvider || '9router';
     const providerLabel = effectiveProvider === 'claude' ? 'Anthropic Claude' : (effectiveProvider === 'openrouter' ? 'OpenRouter' : (effectiveProvider === 'gemini' ? 'Google Gemini' : (effectiveProvider === 'openai' ? 'OpenAI' : (effectiveProvider === '9router' ? '9Router Gateway' : L('OCR Lokal','Local OCR')))));
-    return header(L('Catat lebih cepat, tetap dalam kendali.','Capture faster. Stay in control.'),L('OCR, suara, dan statement menghasilkan draft. Periksa nominal, mata uang, tanggal, dan akun sebelum menyimpan.','OCR, voice and statements create drafts. Review amount, currency, date and account before saving.'),'','CAPTURE')+transactionSwitcher('capture')+`<section class="panel panel-pad"><div class="capture-controls"><label>${L('Akun pencatatan','Recording account')}<select id="capture-account">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===captureAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></label><label>${L('Jenis sumber','Source type')}<select id="capture-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk / suara','Receipt / voice')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank (historis)','Bank statement (historical)')}</option></select></label><label>${L('Engine Ekstraksi AI','AI Extraction Engine')}<select id="capture-provider" class="capture-engine-select"><option value="claude" ${effectiveProvider==='claude'?'selected':''}>🎭 Anthropic Claude (${service.ai?.claude?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="openrouter" ${effectiveProvider==='openrouter'?'selected':''}>🌐 OpenRouter (${service.ai?.openrouter?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="gemini" ${effectiveProvider==='gemini'?'selected':''}>🤖 Google Gemini (${service.ai?.gemini?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="openai" ${effectiveProvider==='openai'?'selected':''}>🧠 OpenAI (${service.ai?.openai?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="9router" ${effectiveProvider==='9router'?'selected':''}>🚀 9Router Gateway (${service.ai?.['9router']?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="local" ${effectiveProvider==='local'?'selected':''}>📁 ${L('OCR Lokal (Offline / Tanpa Cloud)','Local OCR (Offline / No Cloud)')}</option></select></label><label>${L('Gambar struk / PDF / CSV / audio (maks. 8 MB)','Receipt image / PDF / CSV / audio (max. 8 MB)')}<input id="capture-file" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,text/csv,text/plain,.csv,audio/*"></label></div><p class="note">${L('⚡ Ekstraksi Cerdas AI mendukung dokumen PDF e-statement multi-halaman, file CSV mutasi rekening, dan struk belanja multi-item. AI otomatis merapikan merchant, mendeteksi transfer antar akun, dan menetapkan kategori.','⚡ AI Smart Extract supports multi-page PDF bank statements, bank CSV exports, and multi-item receipts. AI automatically normalizes merchants, detects inter-account transfers, and assigns categories.')} <span class="badge ${['claude','openrouter','9router'].includes(effectiveProvider)?'purple':'blue'}">${L('Engine: ','Engine: ')}${escape(providerLabel)}</span></p><label for="capture-text">${L('Teks hasil ekstraksi / transkrip / CSV (dapat dikoreksi)','Extracted text / transcript / CSV (editable)')}</label><textarea id="capture-text" rows="6" maxlength="100000" placeholder="2026-10-03 Coffee 25000 DR&#10;2026-10-03 Salary 5000000 CR">${escape(captureText)}</textarea><div class="button-group">${button(captureBusy?L('⚡ Mengekstrak…','⚡ Extracting…'):L('⚡ Ekstrak Cerdas AI (PDF/CSV)','⚡ AI Smart Extract (PDF/CSV)'),'capture-ai-extract','primary')}${button(L('Buat draft','Create drafts'),'capture-parse')}${button(L('OCR file lokal','Extract local OCR'),'capture-extract')}${button(L('Input suara','Voice input'),'capture-voice')}${button(L('Hentikan suara','Stop voice'),'capture-stop')}${button(L('Transkripsi audio dengan Muse','Transcribe audio with Muse'),'capture-audio')}</div><p role="status" class="note">${escape(captureStatus)}</p><p class="note">${L('AI Lokal mendeteksi otomatis e-statement bank (Bank BRI, BRI Kartu Kredit, Bank Mandiri, SeaBank, BCA, Bank Jago, GoPay, OVO, DANA, ShopeePay) dan struk pembelian (Indomaret, Alfamart, SPBU, Cafe/Restoran). CR/Masuk = pemasukan; D/DB/Keluar = pengeluaran.','Local AI automatically detects bank and e-wallet e-statements (Bank BRI, BRI Credit Card, Bank Mandiri, SeaBank, BCA, Bank Jago, GoPay, OVO, DANA, ShopeePay) and purchase receipts (Indomaret, Alfamart, Gas Stations, Cafes/Restaurants). CR/Inflow = income; D/DB/Outflow = expense.')}</p></section>${draftPanel()}`;}
+
+    const extractBtnLabel = captureBusy 
+      ? L('⚡ Mengekstrak Dokumen…','⚡ Extracting Documents…')
+      : (captureFiles.length > 1
+          ? L(`⚡ Ekstrak Semua Dokumen (${captureFiles.length} Berkas)`,`⚡ Extract All Documents (${captureFiles.length} Files)`)
+          : (captureFiles.length === 1
+              ? L(`⚡ Ekstrak Dokumen (${escape(captureFiles[0].name)})`,`⚡ AI Smart Extract (1 File)`)
+              : (captureGdriveUrl
+                  ? L('⚡ Ekstrak dari Google Drive','⚡ Extract from Google Drive')
+                  : L('⚡ Ekstrak Cerdas AI (PDF/CSV)','⚡ AI Smart Extract (PDF/CSV)'))));
+
+    const totalQueueBytes = captureFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+
+    return header(
+      L('Catat lebih cepat, tetap dalam kendali.','Capture faster. Stay in control.'),
+      L('OCR, suara, dan statement menghasilkan draft. Periksa nominal, mata uang, tanggal, dan akun sebelum menyimpan.','OCR, voice and statements create drafts. Review amount, currency, date and account before saving.'),
+      '',
+      'CAPTURE'
+    ) + transactionSwitcher('capture') + `
+      <section class="panel panel-pad">
+        <div class="capture-controls">
+          <label>${L('Akun pencatatan','Recording account')}<select id="capture-account">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===captureAccount?'selected':''}>${escape(a.name)} · ${a.currency}</option>`).join('')}</select></label>
+          <label>${L('Jenis sumber','Source type')}<select id="capture-kind"><option value="receipt" ${captureKind==='receipt'?'selected':''}>${L('Struk / suara','Receipt / voice')}</option><option value="statement" ${captureKind==='statement'?'selected':''}>${L('Statement bank (historis)','Bank statement (historical)')}</option></select></label>
+          <label>${L('Engine Ekstraksi AI','AI Extraction Engine')}<select id="capture-provider" class="capture-engine-select"><option value="claude" ${effectiveProvider==='claude'?'selected':''}>🎭 Anthropic Claude (${service.ai?.claude?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="openrouter" ${effectiveProvider==='openrouter'?'selected':''}>🌐 OpenRouter (${service.ai?.openrouter?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="gemini" ${effectiveProvider==='gemini'?'selected':''}>🤖 Google Gemini (${service.ai?.gemini?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="openai" ${effectiveProvider==='openai'?'selected':''}>🧠 OpenAI (${service.ai?.openai?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="9router" ${effectiveProvider==='9router'?'selected':''}>🚀 9Router Gateway (${service.ai?.['9router']?.enabled ? L('Aktif','Active') : L('Belum Diatur','Not Configured')})</option><option value="local" ${effectiveProvider==='local'?'selected':''}>📁 ${L('OCR Lokal (Offline / Tanpa Cloud)','Local OCR (Offline / No Cloud)')}</option></select></label>
+        </div>
+
+        <!-- Drag & Drop Multi-file Zone -->
+        <div id="capture-dropzone" class="capture-dropzone-box" style="border:2px dashed var(--border);border-radius:12px;padding:24px 16px;text-align:center;background:var(--panel-muted,rgba(125,125,125,0.04));cursor:pointer;transition:border-color 0.2s, background 0.2s;margin-top:14px;" onclick="document.querySelector('#capture-file')?.click()">
+          <div style="font-size:32px;margin-bottom:6px;">📑</div>
+          <div style="font-weight:700;font-size:14px;color:var(--ink);">${L('Tarik & Lepas Dokumen Statement di Sini atau Klik untuk Memilih','Drag & Drop Statement Documents Here or Click to Browse')}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">${L('Mendukung multi-file sekaligus (pilih banyak berkas): PDF e-Statement, CSV Mutasi, Foto/Scan Rekening Koran (maks. 8 MB per file)','Supports multiple files (select multiple): Bank PDF Statements, CSV Exports, Receipt Scans (max 8 MB per file)')}</div>
+          <input id="capture-file" type="file" multiple accept="image/png,image/jpeg,image/webp,application/pdf,text/csv,text/plain,.csv,audio/*" style="display:none">
+          <button type="button" class="btn primary" style="margin-top:12px;" data-action="capture-browse" onclick="event.stopPropagation();">
+            📁 ${L('Pilih Dokumen (Bisa Banyak Sekaligus)','Select Documents (Multiple)')}
+          </button>
+        </div>
+
+        <!-- Selected Files Queue -->
+        ${captureFiles.length>0 ? `
+          <div class="capture-file-queue" style="margin-top:14px;border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--bg);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+              <span style="font-weight:700;font-size:13px;color:var(--ink);">📑 ${captureFiles.length} ${L('Dokumen dalam Antrean Ekstraksi','Documents in Extraction Queue')} (${(totalQueueBytes/(1024*1024)).toFixed(2)} MB)</span>
+              <button type="button" class="quiet-link" data-action="capture-clear-files" style="font-size:12px;color:var(--danger,#ef4444);">🧹 ${L('Bersihkan Antrean','Clear Queue')}</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              ${captureFiles.map((f,idx)=>`
+                <span class="file-chip" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel-muted,rgba(125,125,125,0.08));border-radius:20px;font-size:12px;border:1px solid var(--border);">
+                  <span>${f.name.endsWith('.pdf')?'📄':(f.name.endsWith('.csv')?'📊':'🖼️')}</span>
+                  <b>${escape(f.name)}</b>
+                  <small style="color:var(--muted);">${((f.size||1024)/1024).toFixed(0)} KB</small>
+                  <button type="button" data-action="capture-remove-file:${idx}" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0 2px;font-size:14px;font-weight:bold;line-height:1;" title="${L('Hapus dari antrean','Remove from queue')}">&times;</button>
+                </span>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Google Drive Link Input Section -->
+        <div class="capture-gdrive-wrap" style="margin-top:14px;border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:var(--panel-muted,rgba(125,125,125,0.03));">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:18px;">🔗</span>
+            <b>${L('Atau Impor via Link Google Drive (e-Statement / Rekening Koran / Sheets)', 'Or Import via Google Drive Link (Bank Statement / Sheets)')}</b>
+            <span class="badge plus" style="font-size:10px;">AUTO-FETCH</span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">
+            ${L('Tempel tautan file Google Drive (PDF / CSV) atau Google Sheets mutasi Anda. Pastikan izin akses diatur ke "Siapa saja yang memiliki link dapat melihat".', 'Paste link to your Google Drive file (PDF / CSV) or Google Sheets. Ensure access is set to "Anyone with the link can view".')}
+          </p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input type="url" id="capture-gdrive-input" style="flex:1;min-width:240px;" placeholder="https://drive.google.com/file/d/.../view?usp=sharing" value="${escape(captureGdriveUrl)}">
+            <button type="button" class="btn" data-action="capture-gdrive-fetch" ${captureBusy ? 'disabled' : ''}>
+              📥 ${L('Muat dari Drive','Fetch from Drive')}
+            </button>
+          </div>
+        </div>
+
+        <p class="note" style="margin-top:14px;">
+          ${L('⚡ Ekstraksi Cerdas AI mendukung dokumen PDF e-statement multi-halaman, file CSV mutasi rekening, dan struk belanja multi-item. AI otomatis merapikan merchant, mendeteksi transfer antar akun, dan menetapkan kategori.','⚡ AI Smart Extract supports multi-page PDF bank statements, bank CSV exports, and multi-item receipts. AI automatically normalizes merchants, detects inter-account transfers, and assigns categories.')} 
+          <span class="badge ${['claude','openrouter','9router'].includes(effectiveProvider)?'purple':'blue'}">${L('Engine: ','Engine: ')}${escape(providerLabel)}</span>
+        </p>
+
+        <label for="capture-text">${L('Teks hasil ekstraksi / transkrip / CSV (dapat dikoreksi)','Extracted text / transcript / CSV (editable)')}</label>
+        <textarea id="capture-text" rows="5" maxlength="100000" placeholder="2026-10-03 Coffee 25000 DR&#10;2026-10-03 Salary 5000000 CR">${escape(captureText)}</textarea>
+
+        <div class="button-group">
+          ${button(extractBtnLabel,'capture-ai-extract','primary')}
+          ${button(L('Buat draft','Create drafts'),'capture-parse')}
+          ${button(L('OCR file lokal','Extract local OCR'),'capture-extract')}
+          ${button(L('Input suara','Voice input'),'capture-voice')}
+          ${button(L('Hentikan suara','Stop voice'),'capture-stop')}
+          ${button(L('Transkripsi audio dengan Muse','Transcribe audio with Muse'),'capture-audio')}
+        </div>
+        <p role="status" class="note">${escape(captureStatus)}</p>
+        <p class="note">${L('AI Lokal mendeteksi otomatis e-statement bank (Bank BRI, BRI Kartu Kredit, Bank Mandiri, SeaBank, BCA, Bank Jago, GoPay, OVO, DANA, ShopeePay) dan struk pembelian (Indomaret, Alfamart, SPBU, Cafe/Restoran). CR/Masuk = pemasukan; D/DB/Keluar = pengeluaran.','Local AI automatically detects bank and e-wallet e-statements (Bank BRI, BRI Credit Card, Bank Mandiri, SeaBank, BCA, Bank Jago, GoPay, OVO, DANA, ShopeePay) and purchase receipts (Indomaret, Alfamart, Gas Stations, Cafes/Restaurants). CR/Inflow = income; D/DB/Outflow = expense.')}</p>
+      </section>
+      ${draftPanel()}
+    `;
+  }
   function draftSkeletonWave(){
     const label=captureStatus||L('AI sedang menganalisis dokumen dan mendeteksi transaksi…','AI is analyzing document and detecting transactions…');
     return `<section class="panel panel-pad capture-skeleton-card" style="margin-top:24px" role="status" aria-busy="true" aria-live="polite" aria-label="${escape(label)}">
@@ -11022,7 +11166,29 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
   }
   function draftPanel(){if(captureBusy||quickFileBusy)return draftSkeletonWave();if(!drafts.length)return '';return `<section class="panel panel-pad" style="margin-top:24px"><h2>${L('Tinjau draft','Review drafts')} · ${drafts.length}</h2><p class="note">${L('Duplikasi potensial harus dikonfirmasi dengan alasan. Statement historis secara default hanya dicatat ke jurnal agar saldo snapshot tidak dihitung dua kali.','Potential duplicates need confirmation with a reason. Historical statements default to journal-only to avoid counting snapshot balances twice.')}</p><div class="draft-batch-bar"><span class="draft-batch-title">${L('Pilihan cepat:','Quick select:')}</span><button type="button" class="btn-subtle" data-action="capture-select-clean" title="${L('Centang baris yang bukan duplikat','Select only non-duplicate rows')}">🛡️ ${L('Pilih yang Aman','Clean only')}</button><button type="button" class="btn-subtle" data-action="capture-select-all">☑️ ${L('Pilih Semua','All')}</button><button type="button" class="btn-subtle" data-action="capture-deselect-all">⬜ ${L('Batal Semua','None')}</button></div>${drafts.map((d,i)=>{const matches=R.duplicates(state,d);return `<div class="draft-row"><label><input type="checkbox" data-draft="${i}" data-key="selected" ${d.selected?'checked':''}> ${L('Simpan baris','Save row')} ${i+1}</label>${OPS.receiptMatches(state,d).length?button(L('Cocokkan struk','Match receipt'),'ops-receipt:'+i):''}${matches.length?`<span class="badge ${matches.some(m=>m.type==='transfer_counterpart')?'blue':'orange'}" title="${escape(matches.map(m=>m.reason).join('; '))}">${matches.some(m=>m.type==='transfer_counterpart')?L('Pasangan transfer terdeteksi','Transfer counterpart detected'):L('Potensi duplikasi','Potential duplicate')} · ${matches.length}</span>`:''}${d.kind==='transfer'?`<span class="badge blue">⇄ Transfer</span>`:''}<div class="capture-controls"><label>${L('Deskripsi','Description')}<input data-draft="${i}" data-key="name" value="${escape(d.name)}" maxlength="120"></label><label>${L('Tanggal','Date')}<input type="date" data-draft="${i}" data-key="date" value="${escape(d.date)}"></label><label>${L('Nominal','Amount')} · ${escape(d.currency)}<input type="number" min="0.01" step="0.01" data-draft="${i}" data-key="amount" class="${d.kind==='expense'?'expense-amount':''}" value="${d.amount/100}"></label><label>${L('Akun','Account')}<select data-draft="${i}" data-key="accountId">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===d.accountId?'selected':''}>${escape(a.name)} (${a.currency})</option>`).join('')}</select></label><label>${L('Jenis','Type')}<select data-draft="${i}" data-key="kind"><option value="expense" ${d.kind==='expense'?'selected':''}>${L('Pengeluaran','Expense')}</option><option value="income" ${d.kind==='income'?'selected':''}>${L('Pemasukan','Income')}</option><option value="transfer" ${d.kind==='transfer'?'selected':''}>${L('Transfer Antar Akun','Transfer')}</option></select></label>${d.kind==='transfer'?`<label>${L('Akun tujuan','Destination account')}<select data-draft="${i}" data-key="targetId">${state.accounts.filter(a=>a.id!==d.accountId).map(a=>`<option value="${a.id}" ${a.id===d.targetId?'selected':''}>${escape(a.name)} (${a.currency})</option>`).join('')}</select></label>`:''}</div><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><label><input type="checkbox" data-draft="${i}" data-key="affectBalance" ${d.affectBalance?'checked':''}> ${L('Perbarui saldo akun','Update account balance')}</label>${d.kind!=='transfer'?`<label class="draft-rule-toggle" title="${L('Simpan sebagai aturan otomatis di Operations agar transaksi serupa otomatis bersih','Save as auto-rule in Operations so future transactions are automatically cleaned')}"><input type="checkbox" data-draft="${i}" data-key="saveAsRule" ${d.saveAsRule?'checked':''}> <span>⚡ ${L('Ingat aturan ini','Remember rule')}</span></label>`:''}</div><label>${L('Alasan menyimpan jika terindikasi duplikat','Reason to save if flagged as a duplicate')}<input data-draft="${i}" data-key="duplicateReason" value="${escape(d.duplicateReason||'')}" maxlength="200"></label></div>`;}).join('')}<div class="button-group">${button(L('Periksa duplikasi lagi','Recheck duplicates'),'capture-review')}${drafts.length>1?button(L('⚡ Pasangkan Transfer Otomatis','⚡ Auto-Pair Transfers'),'capture-pair-transfers'):''}${button(L('Simpan yang dipilih','Save selected'),'capture-save','primary')}${button(L('Buang draft','Discard drafts'),'capture-clear')}</div></section>`;}
   function draftText(text,source='text',inboxId=null,context=null){const detected=R.detectBankStatement?R.detectBankStatement(text):null;let a=context?getAccount(context.accountId):getAccount($('#capture-account')?.value);if(!context&&detected){const kws={gopay:['gopay','go-pay','gojek'],ovo:['ovo'],dana:['dana'],shopeepay:['shopeepay','shopee'],mandiri:['mandiri'],bca:['bca'],bri:['bri'],bri_kk:['bri'],seabank:['seabank'],jago:['jago']}[detected.type]||[];const m=state.accounts.find(acc=>kws.some(k=>acc.name.toLowerCase().includes(k))||(detected.type in {gopay:1,ovo:1,dana:1,shopeepay:1}&&acc.type==='E-Wallet'&&kws.some(k=>acc.name.toLowerCase().includes(k))));if(m){a=m;captureAccount=m.id;}}if(!a)a=getAccount(captureAccount)||state.accounts[0];if(!a)throw Error(L('Tambahkan akun terlebih dahulu','Add an account first'));const historical=context?context.historical:$('#capture-kind')?.value==='statement';let parsed=R.parse(text,a.currency,date()).slice(0,500).map((d,i)=>({...d,accountId:a.id,source,inboxId,sourceKey:inboxId?'telegram-'+inboxId+'-'+i:undefined,category:d.category||'Imported',affectBalance:!historical}));if(R.pairTransferDrafts&&parsed.length>1)parsed=R.pairTransferDrafts(parsed,state.accounts);drafts=parsed.map(d=>({...d,selected:!R.duplicates(state,d).length}));captureText=text;if(drafts.length){captureStatus=detected?L(`⚡ Terdeteksi: ${detected.bank} · ${drafts.length} transaksi siap ditinjau.`,`⚡ Detected: ${detected.bank} · ${drafts.length} transactions ready for review.`):L(`${drafts.length} draft siap ditinjau.`,`${drafts.length} drafts ready for review.`);}else{captureStatus=L('Nominal tidak ditemukan. Koreksi teks atau catat manual.','No amount found. Correct the text or record manually.');}navigate('capture');}
-  async function fileData(selectedFile){const f=selectedFile||$('#capture-file')?.files?.[0]||quickAttachment;if(!f||f.size>8*1024*1024)throw Error(L('Pilih file maksimal 8 MB','Choose a file up to 8 MB'));const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(f);});const mime=f.type||(f.name?.endsWith('.csv')?'text/csv':(f.name?.endsWith('.txt')?'text/plain':'application/octet-stream'));return {data,type:mime,name:f.name||'document'};}
+  async function fileData(selectedFile){
+    const f=selectedFile||$('#capture-file')?.files?.[0]||quickAttachment;
+    if(!f)throw Error(L('Pilih file maksimal 8 MB','Choose a file up to 8 MB'));
+    if(f.size&&f.size>8*1024*1024)throw Error(L('Pilih file maksimal 8 MB','Choose a file up to 8 MB'));
+    let data;
+    if(f.data){
+      data=f.data;
+    } else if(typeof FileReader!=='undefined'){
+      data=await new Promise((resolve,reject)=>{
+        const r=new FileReader();
+        r.onload=()=>resolve(String(r.result).split(',')[1]);
+        r.onerror=reject;
+        r.readAsDataURL(f);
+      });
+    } else if(typeof f.text==='function') {
+      const txt=await f.text();
+      data=(typeof Buffer!=='undefined')?Buffer.from(txt).toString('base64'):btoa(txt);
+    } else {
+      throw Error(L('Gagal membaca file','Failed to read file'));
+    }
+    const mime=f.type||(f.name?.endsWith('.csv')?'text/csv':(f.name?.endsWith('.txt')?'text/plain':'application/octet-stream'));
+    return {data,type:mime,name:f.name||'document'};
+  }
   function commitDrafts(){const chosen=drafts.filter(d=>d.selected);if(!chosen.length)throw Error(L('Pilih minimal satu draft','Select at least one draft'));const next=structuredClone(state);let rulesCount=0;for(const d of chosen){if(d.saveAsRule&&d.name&&d.category&&d.kind!=='transfer'){const kw=(d.originalName||d.name).trim().split(/[\s-_/]+/).filter(w=>w.length>=3)[0]||d.name.trim();if(kw&&!next.operations.rules.some(r=>r.conditions.contains?.toLowerCase()===kw.toLowerCase())){next.operations.rules.unshift({id:uid(),name:`Auto: ${d.name.trim()}`,enabled:true,conditions:{contains:kw},actions:{name:d.name.trim(),category:d.category.trim()}});rulesCount++;}}const a=next.accounts.find(a=>a.id===d.accountId);if(!a||d.currency!==a.currency)throw Error(L('Mata uang draft harus sama dengan akun. Koreksi nominal saat mengganti akun.','Draft currency must match the account. Correct the amount when changing accounts.'));if(!E.validDate(d.date)||!Number.isSafeInteger(d.amount)||d.amount<=0||!String(d.name).trim())throw Error('Invalid draft');if(d.kind==='transfer'){if(!d.targetId||d.targetId===d.accountId)throw Error(L('Pilih akun tujuan yang berbeda untuk transfer','Select a different destination account for transfer'));}if(d.sourceKey&&next.transactions.some(t=>t.sourceKey===d.sourceKey))throw Error(L('Baris sumber ini sudah disimpan','This source row has already been saved'));const dup=R.duplicates(next,d);if(dup.length&&!String(d.duplicateReason||'').trim())throw Error(L('Duplikasi potensial: masukkan alasan sebelum menyimpan','Potential duplicate: enter a reason before saving'));const tx={id:uid(),name:d.name.trim().slice(0,120),date:d.date,kind:d.kind,amount:d.amount,accountId:d.accountId,currency:d.currency,category:d.kind==='transfer'?'Transfer':d.category,source:d.source,sourceKey:d.sourceKey,balanceApplied:d.affectBalance,duplicateReason:d.duplicateReason||''};if(d.kind==='transfer')tx.targetId=d.targetId;E.applyTransaction(next,tx);}
     E.validate(next);localStorage.setItem(storageKey,JSON.stringify(next));state=next;const ids=[...new Set(chosen.map(d=>d.inboxId).filter(x=>x!==null&&x!==undefined))].filter(id=>drafts.filter(d=>d.inboxId===id).every(d=>chosen.includes(d)||state.transactions.some(t=>t.sourceKey===d.sourceKey)));drafts=[];captureText='';save();for(const id of ids)api('telegram/ack',{id}).catch(()=>toast(L('Tersimpan lokal; ack Telegram gagal. Baris sumber tetap dilindungi dari impor ulang.','Saved locally; Telegram acknowledgement failed. Source rows remain protected from reimport.')));
     veyPlaySound('love');
@@ -11401,18 +11567,76 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
       render();
       break;
     }
+    case 'capture-browse':{
+      $('#capture-file')?.click();
+      break;
+    }
+    case 'capture-clear-files':{
+      captureFiles=[];
+      captureGdriveUrl='';
+      const fIn=$('#capture-file');
+      if(fIn) fIn.value='';
+      const gdIn=$('#capture-gdrive-input');
+      if(gdIn) gdIn.value='';
+      render();
+      toast(L('Antrean dokumen dikosongkan.','Document queue cleared.'));
+      break;
+    }
+    case 'capture-remove-file':{
+      const idx=parseInt(id,10);
+      if(!isNaN(idx)&&idx>=0&&idx<captureFiles.length){
+        captureFiles.splice(idx,1);
+        render();
+      }
+      break;
+    }
+    case 'capture-gdrive-fetch':{
+      const gUrl=($('#capture-gdrive-input')?.value||captureGdriveUrl||'').trim();
+      if(!gUrl){
+        toast(L('Masukkan tautan Google Drive / Docs / Sheets terlebih dahulu','Enter Google Drive / Docs / Sheets link first'));
+        break;
+      }
+      captureStatus=L('Mengunduh dokumen dari Google Drive…','Downloading document from Google Drive…');
+      toast(captureStatus);
+      captureBusy=true;
+      render();
+      try{
+        const r=await api('gdrive/fetch',{url:gUrl});
+        if(r&&r.data){
+          const gdriveFile={
+            name: r.name||'gdrive-document',
+            type: r.type||'application/pdf',
+            size: r.size||(r.data.length*3/4),
+            data: r.data,
+            gdriveUrl: gUrl
+          };
+          captureAddFiles([gdriveFile]);
+          captureGdriveUrl='';
+          const gdIn=$('#capture-gdrive-input');
+          if(gdIn) gdIn.value='';
+          successToast(L(`Berhasil memuat "${r.name}" dari Google Drive.`,`Successfully loaded "${r.name}" from Google Drive.`));
+        }
+      }catch(err){
+        toast(L('Gagal memuat Google Drive: ','Failed to fetch Google Drive: ')+(err.message||err));
+      }finally{
+        captureBusy=false;
+        render();
+      }
+      break;
+    }
     case 'capture-save':commitDrafts();break;
     case 'capture-ai-extract':{
       if(captureBusy){toast(L('Tunggu ekstraksi selesai.','Wait for extraction to finish.'));break;}
       const a=getAccount($('#capture-account')?.value)||state.accounts[0];
       if(!a)throw Error(L('Tambahkan akun terlebih dahulu','Add an account first'));
-      let file=null;
       const fInput=$('#capture-file');
+      if(fInput?.files?.length && !captureFiles.length){
+        captureAddFiles(fInput.files);
+      }
       const rawText=($('#capture-text')?.value||captureText||'').trim();
-      if(fInput?.files?.[0]){
-        file=await fileData(fInput.files[0]);
-      }else if(!rawText){
-        throw Error(L('Pilih file (PDF/CSV/Gambar) atau masukkan teks transaksi terlebih dahulu','Choose a file (PDF/CSV/Image) or enter transaction text first'));
+      const gUrl=($('#capture-gdrive-input')?.value||captureGdriveUrl||'').trim();
+      if(!captureFiles.length && !gUrl && !rawText){
+        throw Error(L('Pilih file (PDF/CSV/Gambar), tautan Google Drive, atau masukkan teks transaksi terlebih dahulu','Choose a file (PDF/CSV/Image), Google Drive link, or enter transaction text first'));
       }
       const chosenProvider = captureProvider || '9router';
       if(chosenProvider === 'local'){
@@ -11422,7 +11646,8 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
         toast(captureStatus);
         render();
         try{
-          const result=await api('extract',file);
+          const targetFile = captureFiles.length ? await fileData(captureFiles[0]) : await fileData();
+          const result=await api('extract',targetFile);
           captureText=result.text||'';
           captureStatus=L('Ekstraksi teks lokal selesai. Tekan "Buat draft" untuk meninjau.','Local text extraction complete. Press "Create drafts" to review.');
           toast(captureStatus);
@@ -11436,103 +11661,249 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
         break;
       }
       const providerLabel = chosenProvider === '9router' ? '9Router Gateway' : (chosenProvider === 'gemini' ? 'Google Gemini' : (chosenProvider === 'openai' ? 'OpenAI' : aiProviderName(chosenProvider)));
-      captureStatus=L(`Menganalisis dokumen dengan ${providerLabel}…`,`Analyzing document with ${providerLabel}…`);
       captureBusy=true;
-      toast(captureStatus);
       render();
       try{
         const historical=$('#capture-kind')?.value==='statement';
-        const payload={
-          provider: chosenProvider,
-          consent:true,
-          file:file||undefined,
-          text:!file?rawText:undefined,
-          recordContext:{currency:a.currency,date:date(),accountId:a.id}
-        };
-        const result=await api('ai-extract-statement',payload);
-        if(!result.drafts||!result.drafts.length){
-          captureStatus=L('AI tidak menemukan transaksi pada dokumen ini.','AI found no transactions in this document.');
+        let aggregatedDrafts=[];
+        let detectedSources=[];
+        let createdAccountNotices=[];
+        let createdCardNotices=[];
+
+        if(captureFiles.length>0){
+          for(let fi=0;fi<captureFiles.length;fi++){
+            const curObj=captureFiles[fi];
+            const file=await fileData(curObj);
+            captureStatus=L(`Menganalisis dokumen (${fi+1}/${captureFiles.length}): ${file.name} dengan ${providerLabel}…`,`Analyzing document (${fi+1}/${captureFiles.length}): ${file.name} with ${providerLabel}…`);
+            toast(captureStatus);
+            render();
+
+            const payload={
+              provider: chosenProvider,
+              consent: true,
+              file: file,
+              recordContext: { currency: a.currency, date: date(), accountId: a.id }
+            };
+            const result=await api('ai-extract-statement',payload);
+            if(!result.drafts||!result.drafts.length) continue;
+
+            // Auto-create or match bank account
+            let targetAcc=state.accounts.find(acc=>{
+              const bName=(result.accountInfo?.name||result.bank||'').toLowerCase();
+              return bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase()));
+            });
+            if(!targetAcc){
+              const accName=result.accountInfo?.name||result.bank||'Bank Account';
+              targetAcc={
+                id:uid(),
+                name:accName,
+                type:result.accountInfo?.type||'Checking',
+                balance:0,
+                currency:result.accountInfo?.currency||a.currency||state.currency,
+                owner:state.members[0]?.id||'shared',
+                updated:date(),
+                balancePolicy:'ledger'
+              };
+              state.accounts.push(targetAcc);
+              captureAccount=targetAcc.id;
+              createdAccountNotices.push(accName);
+            }
+
+            // Auto-create or match credit card if statement is credit card
+            if(result.cardInfo||result.documentType==='credit_card_statement'){
+              const cardName=result.cardInfo?.name||result.bank||'Kartu Kredit';
+              const last4=String(result.cardInfo?.last4||'1234').padStart(4,'0').slice(-4);
+              let card=state.cards.find(c=>c.last4===last4||c.name.toLowerCase()===cardName.toLowerCase());
+              if(!card){
+                const debtId=uid();
+                const stmtAmt=result.cardInfo?.statementAmount?Math.round(parseFloat(result.cardInfo.statementAmount)*100):0;
+                const minAmt=result.cardInfo?.minimumPayment?Math.round(parseFloat(result.cardInfo.minimumPayment)*100):Math.max(5000000,Math.round(stmtAmt*0.05));
+                const debt={
+                  id:debtId,
+                  name:'Tagihan '+cardName,
+                  balance:stmtAmt,
+                  minimum:minAmt>0?minAmt:5000000,
+                  apr:21.0,
+                  currency:targetAcc.currency
+                };
+                state.debts.push(debt);
+                card={
+                  id:uid(),
+                  debtId:debtId,
+                  name:cardName,
+                  owner:state.members[0]?.id||'shared',
+                  last4:last4,
+                  limit:result.cardInfo?.limit?Math.round(parseFloat(result.cardInfo.limit)*100):Math.max(1000000000,stmtAmt*2),
+                  statementAmount:stmtAmt,
+                  paid:0,
+                  dueDate:result.cardInfo?.dueDate&&E.validDate(result.cardInfo.dueDate)?result.cardInfo.dueDate:date(),
+                  reminderDays:7
+                };
+                state.cards.push(card);
+                createdCardNotices.push(cardName);
+              }
+            }
+            save();
+
+            const srcName=result.bank||file.name||'Dokumen';
+            if(!detectedSources.includes(srcName)) detectedSources.push(srcName);
+
+            const parsed=result.drafts.map((d,i)=>({
+              id:uid(),
+              name:d.name,
+              date:d.date||date(),
+              amount:Math.round(parseFloat(d.amount)*100),
+              kind:d.kind||'expense',
+              currency:d.currency||targetAcc.currency,
+              category:d.category||'Imported',
+              accountId:targetAcc.id,
+              source:'ai-statement',
+              sourceKey:'ai-'+Date.now()+'-'+fi+'-'+i,
+              affectBalance:!historical,
+              selected:true
+            }));
+            aggregatedDrafts.push(...parsed);
+          }
+        }else if(gUrl){
+          captureStatus=L(`Menganalisis dokumen Google Drive dengan ${providerLabel}…`,`Analyzing Google Drive document with ${providerLabel}…`);
+          toast(captureStatus);
+          render();
+          const payload={
+            provider: chosenProvider,
+            consent: true,
+            gdriveUrl: gUrl,
+            recordContext: { currency: a.currency, date: date(), accountId: a.id }
+          };
+          const result=await api('ai-extract-statement',payload);
+          if(result.drafts&&result.drafts.length){
+            let targetAcc=state.accounts.find(acc=>{
+              const bName=(result.accountInfo?.name||result.bank||'').toLowerCase();
+              return bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase()));
+            });
+            if(!targetAcc){
+              const accName=result.accountInfo?.name||result.bank||'Google Drive Statement';
+              targetAcc={
+                id:uid(),
+                name:accName,
+                type:result.accountInfo?.type||'Checking',
+                balance:0,
+                currency:result.accountInfo?.currency||a.currency||state.currency,
+                owner:state.members[0]?.id||'shared',
+                updated:date(),
+                balancePolicy:'ledger'
+              };
+              state.accounts.push(targetAcc);
+              captureAccount=targetAcc.id;
+              createdAccountNotices.push(accName);
+            }
+            if(result.cardInfo||result.documentType==='credit_card_statement'){
+              const cardName=result.cardInfo?.name||result.bank||'Kartu Kredit';
+              const last4=String(result.cardInfo?.last4||'1234').padStart(4,'0').slice(-4);
+              let card=state.cards.find(c=>c.last4===last4||c.name.toLowerCase()===cardName.toLowerCase());
+              if(!card){
+                const debtId=uid();
+                const stmtAmt=result.cardInfo?.statementAmount?Math.round(parseFloat(result.cardInfo.statementAmount)*100):0;
+                const minAmt=result.cardInfo?.minimumPayment?Math.round(parseFloat(result.cardInfo.minimumPayment)*100):Math.max(5000000,Math.round(stmtAmt*0.05));
+                const debt={
+                  id:debtId,
+                  name:'Tagihan '+cardName,
+                  balance:stmtAmt,
+                  minimum:minAmt>0?minAmt:5000000,
+                  apr:21.0,
+                  currency:targetAcc.currency
+                };
+                state.debts.push(debt);
+                card={
+                  id:uid(),
+                  debtId:debtId,
+                  name:cardName,
+                  owner:state.members[0]?.id||'shared',
+                  last4:last4,
+                  limit:result.cardInfo?.limit?Math.round(parseFloat(result.cardInfo.limit)*100):Math.max(1000000000,stmtAmt*2),
+                  statementAmount:stmtAmt,
+                  paid:0,
+                  dueDate:result.cardInfo?.dueDate&&E.validDate(result.cardInfo.dueDate)?result.cardInfo.dueDate:date(),
+                  reminderDays:7
+                };
+                state.cards.push(card);
+                createdCardNotices.push(cardName);
+              }
+            }
+            save();
+            detectedSources.push(result.bank||'Google Drive');
+            const parsed=result.drafts.map((d,i)=>({
+              id:uid(),
+              name:d.name,
+              date:d.date||date(),
+              amount:Math.round(parseFloat(d.amount)*100),
+              kind:d.kind||'expense',
+              currency:d.currency||targetAcc.currency,
+              category:d.category||'Imported',
+              accountId:targetAcc.id,
+              source:'ai-statement',
+              sourceKey:'ai-gd-'+Date.now()+'-'+i,
+              affectBalance:!historical,
+              selected:true
+            }));
+            aggregatedDrafts.push(...parsed);
+          }
+        }else if(rawText){
+          captureStatus=L(`Menganalisis teks transaksi dengan ${providerLabel}…`,`Analyzing transaction text with ${providerLabel}…`);
+          toast(captureStatus);
+          render();
+          const payload={
+            provider: chosenProvider,
+            consent: true,
+            text: rawText,
+            recordContext: { currency: a.currency, date: date(), accountId: a.id }
+          };
+          const result=await api('ai-extract-statement',payload);
+          if(result.drafts&&result.drafts.length){
+            let targetAcc=state.accounts.find(acc=>{
+              const bName=(result.accountInfo?.name||result.bank||'').toLowerCase();
+              return bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase()));
+            });
+            if(!targetAcc) targetAcc=a;
+            detectedSources.push(result.bank||'Teks Catatan');
+            const parsed=result.drafts.map((d,i)=>({
+              id:uid(),
+              name:d.name,
+              date:d.date||date(),
+              amount:Math.round(parseFloat(d.amount)*100),
+              kind:d.kind||'expense',
+              currency:d.currency||targetAcc.currency,
+              category:d.category||'Imported',
+              accountId:targetAcc.id,
+              source:'ai-statement',
+              sourceKey:'ai-txt-'+Date.now()+'-'+i,
+              affectBalance:!historical,
+              selected:true
+            }));
+            aggregatedDrafts.push(...parsed);
+          }
+        }
+
+        if(!aggregatedDrafts.length){
+          captureStatus=L('AI tidak menemukan transaksi pada dokumen/input ini.','AI found no transactions in this document/input.');
           toast(captureStatus);
           break;
         }
 
-        // Auto-create or match bank account
-        let targetAcc=state.accounts.find(acc=>{
-          const bName=(result.accountInfo?.name||result.bank||'').toLowerCase();
-          return bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase()));
-        });
-        let createdAccountNotice='';
-        if(!targetAcc){
-          const accName=result.accountInfo?.name||result.bank||'Bank Account';
-          targetAcc={
-            id:uid(),
-            name:accName,
-            type:result.accountInfo?.type||'Checking',
-            balance:0,
-            currency:result.accountInfo?.currency||a.currency||state.currency,
-            owner:state.members[0]?.id||'shared',
-            updated:date(),
-            balancePolicy:'ledger'
-          };
-          state.accounts.push(targetAcc);
-          captureAccount=targetAcc.id;
-          createdAccountNotice=L(` · Akun baru "${accName}" dibuat otomatis`,` · New account "${accName}" created automatically`);
+        if(R.pairTransferDrafts&&aggregatedDrafts.length>1){
+          aggregatedDrafts=R.pairTransferDrafts(aggregatedDrafts,state.accounts);
         }
+        drafts=aggregatedDrafts.map(d=>({...d,selected:!R.duplicates(state,d).length}));
+        captureFiles=[];
+        captureGdriveUrl='';
+        const fIn=$('#capture-file');
+        if(fIn) fIn.value='';
+        const gdIn=$('#capture-gdrive-input');
+        if(gdIn) gdIn.value='';
 
-        // Auto-create or match credit card if statement is credit card
-        let createdCardNotice='';
-        if(result.cardInfo||result.documentType==='credit_card_statement'){
-          const cardName=result.cardInfo?.name||result.bank||'Kartu Kredit';
-          const last4=String(result.cardInfo?.last4||'1234').padStart(4,'0').slice(-4);
-          let card=state.cards.find(c=>c.last4===last4||c.name.toLowerCase()===cardName.toLowerCase());
-          if(!card){
-            const debtId=uid();
-            const stmtAmt=result.cardInfo?.statementAmount?Math.round(parseFloat(result.cardInfo.statementAmount)*100):0;
-            const minAmt=result.cardInfo?.minimumPayment?Math.round(parseFloat(result.cardInfo.minimumPayment)*100):Math.max(5000000,Math.round(stmtAmt*0.05));
-            const debt={
-              id:debtId,
-              name:'Tagihan '+cardName,
-              balance:stmtAmt,
-              minimum:minAmt>0?minAmt:5000000,
-              apr:21.0,
-              currency:targetAcc.currency
-            };
-            state.debts.push(debt);
-            card={
-              id:uid(),
-              debtId:debtId,
-              name:cardName,
-              owner:state.members[0]?.id||'shared',
-              last4:last4,
-              limit:result.cardInfo?.limit?Math.round(parseFloat(result.cardInfo.limit)*100):Math.max(1000000000,stmtAmt*2),
-              statementAmount:stmtAmt,
-              paid:0,
-              dueDate:result.cardInfo?.dueDate&&E.validDate(result.cardInfo.dueDate)?result.cardInfo.dueDate:date(),
-              reminderDays:7
-            };
-            state.cards.push(card);
-            createdCardNotice=L(` · Kartu Kredit "${cardName}" dibuat otomatis`,` · Credit Card "${cardName}" created automatically`);
-          }
-        }
-        save();
-
-        let parsed=result.drafts.map((d,i)=>({
-          id:uid(),
-          name:d.name,
-          date:d.date||date(),
-          amount:Math.round(parseFloat(d.amount)*100),
-          kind:d.kind||'expense',
-          currency:d.currency||targetAcc.currency,
-          category:d.category||'Imported',
-          accountId:targetAcc.id,
-          source:'ai-statement',
-          sourceKey:'ai-'+Date.now()+'-'+i,
-          affectBalance:!historical,
-          selected:true
-        }));
-        if(R.pairTransferDrafts&&parsed.length>1)parsed=R.pairTransferDrafts(parsed,state.accounts);
-        drafts=parsed.map(d=>({...d,selected:!R.duplicates(state,d).length}));
-        captureStatus=L(`⚡ AI (${result.provider}) berhasil mengekstrak ${drafts.length} transaksi dari ${result.bank||'dokumen'}${createdAccountNotice}${createdCardNotice}.`,`⚡ AI (${result.provider}) extracted ${drafts.length} transactions from ${result.bank||'document'}${createdAccountNotice}${createdCardNotice}.`);
+        const srcLabel=detectedSources.join(', ')||'dokumen';
+        const accInfo=createdAccountNotices.length?L(` · Akun baru "${createdAccountNotices.join(', ')}" dibuat otomatis`,` · New account "${createdAccountNotices.join(', ')}" created`):'';
+        const cardInfo=createdCardNotices.length?L(` · Kartu kredit "${createdCardNotices.join(', ')}" dibuat otomatis`,` · Credit card "${createdCardNotices.join(', ')}" created`):'';
+        captureStatus=L(`⚡ AI (${chosenProvider}) berhasil mengekstrak ${drafts.length} transaksi dari ${srcLabel}${accInfo}${cardInfo}.`,`⚡ AI (${chosenProvider}) extracted ${drafts.length} transactions from ${srcLabel}${accInfo}${cardInfo}.`);
         toast(captureStatus);
       }catch(err){
         captureStatus=L('Ekstraksi AI gagal: ','AI extraction failed: ')+(err.message||err);
@@ -11607,9 +11978,9 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
       break;
     }
   }}catch(e){captureStatus=e.message;toast(e.message);}}
-  const v3Names=new Set(['int-ping-all','crypto-connect-modal','crypto-exchanges-modal','capture-parse','capture-review','capture-pair-transfers','capture-select-clean','capture-select-all','capture-deselect-all','capture-clear','capture-save','capture-extract','capture-ai-extract','capture-audio','capture-voice','capture-stop','fx-refresh','service-status','telegram-inbox','telegram-draft','telegram-send','muse-ask','updates-check','vps-update-run','vps-segments-check']);
-  document.addEventListener('change',e=>{const el=e.target;if(el.id==='capture-account')captureAccount=el.value;if(el.id==='capture-kind')captureKind=el.value;if(el.id==='capture-provider'){captureProvider=el.value;try{localStorage.setItem('inveys_capture_provider',el.value);}catch(err){}render();}if(el.id==='fx-auto'){state.fx.auto=el.checked;save();if(el.checked)refreshFX();}if(el.dataset.draft!==undefined){const d=drafts[Number(el.dataset.draft)];if(!d)return;const key=el.dataset.key;try{d[key]=el.type==='checkbox'?el.checked:key==='amount'?E.cents(el.value):el.value;if(key==='kind'&&d[key]==='transfer'&&!d.targetId){d.targetId=state.accounts.find(a=>a.id!==d.accountId)?.id||'';render();}else if(key==='kind'){render();}if(key==='accountId'&&getAccount(el.value)?.currency!==d.currency)toast(L('Pilih akun dengan mata uang draft yang sama.','Choose an account matching the draft currency.'));}catch(err){d.selected=false;toast(err.message);}}});
-  document.addEventListener('input',e=>{if(e.target.id==='capture-text')captureText=e.target.value;});
+  const v3Names=new Set(['int-ping-all','crypto-connect-modal','crypto-exchanges-modal','capture-parse','capture-review','capture-pair-transfers','capture-select-clean','capture-select-all','capture-deselect-all','capture-clear','capture-save','capture-extract','capture-ai-extract','capture-audio','capture-voice','capture-stop','capture-browse','capture-clear-files','capture-remove-file','capture-gdrive-fetch','fx-refresh','service-status','telegram-inbox','telegram-draft','telegram-send','muse-ask','updates-check','vps-update-run','vps-segments-check']);
+  document.addEventListener('change',e=>{const el=e.target;if(el.id==='capture-file'){captureAddFiles(el.files);}if(el.id==='capture-account')captureAccount=el.value;if(el.id==='capture-kind')captureKind=el.value;if(el.id==='capture-provider'){captureProvider=el.value;try{localStorage.setItem('inveys_capture_provider',el.value);}catch(err){}render();}if(el.id==='fx-auto'){state.fx.auto=el.checked;save();if(el.checked)refreshFX();}if(el.dataset.draft!==undefined){const d=drafts[Number(el.dataset.draft)];if(!d)return;const key=el.dataset.key;try{d[key]=el.type==='checkbox'?el.checked:key==='amount'?E.cents(el.value):el.value;if(key==='kind'&&d[key]==='transfer'&&!d.targetId){d.targetId=state.accounts.find(a=>a.id!==d.accountId)?.id||'';render();}else if(key==='kind'){render();}if(key==='accountId'&&getAccount(el.value)?.currency!==d.currency)toast(L('Pilih akun dengan mata uang draft yang sama.','Choose an account matching the draft currency.'));}catch(err){d.selected=false;toast(err.message);}}});
+  document.addEventListener('input',e=>{if(e.target.id==='capture-text')captureText=e.target.value;if(e.target.id==='capture-gdrive-input')captureGdriveUrl=e.target.value.trim();});
 
   const F=window.InveysFinance;
   const viewState=()=>F.scope(state);
@@ -17699,7 +18070,7 @@ const api={migrate,validate,audit,applyRules,preview,retroactive,saveRule,remove
     });
   }
 
-  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=broadcastBanner()+viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates,admin:adminPanel}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
+  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=broadcastBanner()+viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates,admin:adminPanel}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();if(page==='capture')setupCaptureDropzone();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
   function refreshCharts(){
     if(page==='scenarios'){updateScenario();localize();return;}
     if(page==='montecarlo'){if(mcResult&&$('#mc-chart'))$('#mc-chart').innerHTML=mcChart();return;}

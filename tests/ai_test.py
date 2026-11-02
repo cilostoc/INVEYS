@@ -122,5 +122,50 @@ class AI(unittest.TestCase):
    self.assertEqual(len(extracted['drafts']),1)
    self.assertEqual(t.call_args.args[0],'https://openrouter.ai/api/v1/chat/completions')
 
+ def test_gdrive_download_and_statement_extraction(self):
+  import json
+  from unittest.mock import MagicMock
+  # 1. Invalid link
+  with self.assertRaises(ValueError):
+   a.download_gdrive_file('')
+  with self.assertRaises(ValueError):
+   a.download_gdrive_file('https://example.com/not-gdrive')
+
+  # 2. Successful PDF download from Google Drive
+  fake_pdf_content = b'%PDF-1.4 Fake bank statement PDF'
+  fake_resp = MagicMock()
+  fake_resp.headers = {'Content-Type': 'application/pdf'}
+  fake_resp.read.return_value = fake_pdf_content
+  fake_resp.__enter__.return_value = fake_resp
+
+  with patch('urllib.request.urlopen', return_value=fake_resp):
+   res = a.download_gdrive_file('https://drive.google.com/file/d/1A2B3C4D5E6F/view?usp=sharing')
+   self.assertEqual(res['type'], 'application/pdf')
+   self.assertEqual(res['fileId'], '1A2B3C4D5E6F')
+   self.assertTrue(res['name'].endswith('.pdf'))
+   self.assertEqual(base64.b64decode(res['data']), fake_pdf_content)
+
+  # 3. HTML login error (restricted file)
+  fake_html_resp = MagicMock()
+  fake_html_resp.headers = {'Content-Type': 'text/html; charset=utf-8'}
+  fake_html_resp.read.return_value = b'<!DOCTYPE html><html><body>Login Google</body></html>'
+  fake_html_resp.__enter__.return_value = fake_html_resp
+
+  with patch('urllib.request.urlopen', return_value=fake_html_resp):
+   with self.assertRaises(ValueError) as ctx:
+    a.download_gdrive_file('https://drive.google.com/file/d/1A2B3C4D5E6F/view')
+   self.assertIn('publik', str(ctx.exception).lower())
+
+  # 4. Extract statement using gdriveUrl
+  env = {'OPENROUTER_API_KEY': 'sk-test', 'OPENROUTER_MODEL': 'anthropic/claude-3.5-sonnet'}
+  stmt_resp = {'choices': [{'message': {'content': json.dumps({'bank': 'BCA', 'drafts': [{'name': 'Transfer In', 'date': '2026-11-01', 'kind': 'income', 'amount': '1000000', 'currency': 'IDR', 'category': 'Income'}]})}}]}
+  with patch.dict(os.environ, env, clear=True), \
+       patch.object(a, 'download_gdrive_file', return_value={'name': 'bca.pdf', 'type': 'application/pdf', 'data': base64.b64encode(fake_pdf_content).decode()}) as mock_dl, \
+       patch.object(a, 'transport', return_value=stmt_resp):
+   out = a.extract_statement({'provider': 'openrouter', 'consent': True, 'gdriveUrl': 'https://drive.google.com/file/d/bca123/view'}, lambda f: '')
+   mock_dl.assert_called_once_with('https://drive.google.com/file/d/bca123/view')
+   self.assertEqual(out['bank'], 'BCA')
+   self.assertEqual(len(out['drafts']), 1)
+
 if __name__=='__main__':
  unittest.main()

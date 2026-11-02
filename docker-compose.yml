@@ -44,6 +44,9 @@ services:
       - "traefik.http.routers.inveys.tls=true"
       - "traefik.http.routers.inveys.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}"
       - "traefik.http.services.inveys.loadbalancer.server.port=3000"
+      - "org.opencontainers.image.documentation=https://github.com/hendrafebriansyah/INVYES/blob/main/README.md"
+      - "org.opencontainers.image.source=https://github.com/hendrafebriansyah/INVYES"
+      - "org.opencontainers.image.description=INVEYS - Personal and Family Financial Operating System"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/auth/status"]
       interval: 30s

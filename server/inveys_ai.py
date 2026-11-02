@@ -323,6 +323,88 @@ STATEMENT_SYSTEM = (
  '9. Extract up to 100 transactions. Never invent transactions not present in the document.'
 )
 
+def download_gdrive_file(url):
+ if not isinstance(url, str) or not url.strip():
+  raise ValueError('Link Google Drive tidak boleh kosong.')
+ url = url.strip()
+
+ file_id = None
+ doc_type = 'drive'
+
+ m_drive = re.search(r'drive\.google\.com/(?:file/d/|open\?id=|uc\?(?:export=download&)?id=)([a-zA-Z0-9_-]+)', url)
+ if m_drive:
+  file_id = m_drive.group(1)
+  doc_type = 'drive'
+ else:
+  m_sheet = re.search(r'docs\.google\.com/spreadsheets/d/([a-zA-Z0-9_-]+)', url)
+  if m_sheet:
+   file_id = m_sheet.group(1)
+   doc_type = 'sheets'
+  else:
+   m_doc = re.search(r'docs\.google\.com/document/d/([a-zA-Z0-9_-]+)', url)
+   if m_doc:
+    file_id = m_doc.group(1)
+    doc_type = 'docs'
+
+ if not file_id:
+  raise ValueError('Format link Google Drive tidak valid. Pastikan link berisi ID berkas Google Drive yang valid.')
+
+ if doc_type == 'sheets':
+  download_url = f'https://docs.google.com/spreadsheets/d/{file_id}/export?format=csv'
+ elif doc_type == 'docs':
+  download_url = f'https://docs.google.com/document/d/{file_id}/export?format=pdf'
+ else:
+  download_url = f'https://drive.google.com/uc?export=download&id={file_id}&confirm=t'
+
+ headers = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+ }
+
+ try:
+  req = urllib.request.Request(download_url, headers=headers)
+  with urllib.request.urlopen(req, timeout=30) as resp:
+   content_type = resp.headers.get('Content-Type', '').lower()
+   raw_bytes = resp.read(MAX + 1024)
+ except urllib.error.HTTPError as e:
+  if e.code == 404:
+   raise ValueError('File Google Drive tidak ditemukan (404). Periksa kembali link Anda.') from None
+  if e.code in (401, 403):
+   raise ValueError('Akses file Google Drive ditolak (403). Pastikan izin akses link diatur ke "Siapa saja yang memiliki link dapat melihat" (Anyone with the link).') from None
+  raise ValueError(f'Gagal mengunduh file Google Drive (HTTP {e.code}): {e.reason}') from None
+ except Exception as e:
+  raise ValueError(f'Gagal menghubungi server Google Drive: {str(e)}') from None
+
+ if len(raw_bytes) > MAX:
+  raise ValueError(f'Ukuran file Google Drive melebihi batas maksimal ({MAX // (1024*1024)} MB).')
+
+ is_html = 'text/html' in content_type or raw_bytes.strip().startswith(b'<!DOCTYPE html') or raw_bytes.strip().startswith(b'<html')
+ if is_html:
+  raise ValueError('File Google Drive tidak dapat diunduh publik. Pastikan izin akses file diatur ke "Siapa saja yang memiliki link" (Anyone with the link).')
+
+ if raw_bytes.startswith(b'%PDF-') or 'application/pdf' in content_type:
+  mime = 'application/pdf'
+  filename = f'gdrive_statement_{file_id[:8]}.pdf'
+ elif raw_bytes.startswith(b'\x89PNG'):
+  mime = 'image/png'
+  filename = f'gdrive_statement_{file_id[:8]}.png'
+ elif raw_bytes.startswith(b'\xff\xd8\xff'):
+  mime = 'image/jpeg'
+  filename = f'gdrive_statement_{file_id[:8]}.jpg'
+ elif doc_type == 'sheets' or 'text/csv' in content_type:
+  mime = 'text/csv'
+  filename = f'gdrive_statement_{file_id[:8]}.csv'
+ else:
+  mime = 'application/octet-stream'
+  filename = f'gdrive_statement_{file_id[:8]}.bin'
+
+ return {
+  'name': filename,
+  'type': mime,
+  'data': base64.b64encode(raw_bytes).decode('ascii'),
+  'size': len(raw_bytes),
+  'fileId': file_id
+ }
+
 def extract_statement(data, extract):
  if not isinstance(data, dict) or data.get('consent') is not True:
   raise ValueError('AI data-sharing consent required')
@@ -345,8 +427,11 @@ def extract_statement(data, extract):
 
  file = data.get('file')
  raw_text = str(data.get('text', '')).strip()
+ gdrive_url = str(data.get('gdriveUrl') or data.get('url') or '').strip()
+ if not file and gdrive_url:
+  file = download_gdrive_file(gdrive_url)
  if not file and not raw_text:
-  raise ValueError('Attach a file or provide statement text')
+  raise ValueError('Attach a file, provide statement text, or provide a Google Drive link')
 
  raw_bytes = None
  if file:

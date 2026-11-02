@@ -2265,6 +2265,12 @@ class Handler(SimpleHTTPRequestHandler):
             if self.path == '/api/ai-extract-statement':
                 try: return self.send_json(inveys_ai.extract_statement(data, extract))
                 except ValueError as error: return self.send_json({'error': str(error)}, 400)
+            if self.path == '/api/gdrive/fetch':
+                try:
+                    url = data.get('url') or data.get('gdriveUrl')
+                    return self.send_json({'ok': True, 'file': inveys_ai.download_gdrive_file(url)})
+                except ValueError as error:
+                    return self.send_json({'error': str(error)}, 400)
             if self.path == '/api/extract': return self.send_json({'text': extract(data)})
             if self.path == '/api/transcribe': return self.send_json({'text': transcribe(data)})
             if self.path == '/api/muse':

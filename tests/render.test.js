@@ -755,6 +755,75 @@ test('capture page renders AI smart extract button and handles ai-extract-statem
   assert.match(app.html(),/9Router Gateway/);
 });
 
+test('capture page supports drag & drop, multi-file batch queue and google drive statement link',async()=>{
+  const app=boot();
+  app.click({page:'capture'});
+  const html=app.html();
+  // Drag & drop dropzone
+  assert.match(html,/id="capture-dropzone"/);
+  assert.match(html,/Tarik & Lepas Dokumen Statement|Drag & Drop Statement Documents/);
+  assert.match(html,/capture-browse/);
+  assert.match(html,/multiple/);
+  // Google Drive link support
+  assert.match(html,/id="capture-gdrive-input"/);
+  assert.match(html,/capture-gdrive-fetch/);
+  assert.match(html,/drive\.google\.com/);
+
+  // Mock API for Google Drive fetch and statement extraction
+  app.context.location.protocol='http:';
+  let gdriveFetched=false;
+  let statementCallCount=0;
+  app.context.fetch=async(url,opts)=>{
+    if(url==='/api/status')return {ok:true,json:async()=>({csrf:'test'})};
+    if(url==='/api/gdrive/fetch'){
+      gdriveFetched=true;
+      return {
+        ok:true,
+        json:async()=>({
+          ok:true,
+          name:'Rekening_BCA_Okt2026.pdf',
+          type:'application/pdf',
+          size:10240,
+          data:'JVBERi0xLjQKJ...'
+        })
+      };
+    }
+    if(url==='/api/ai-extract-statement'){
+      statementCallCount++;
+      return {
+        ok:true,
+        json:async()=>({
+          ok:true,
+          bank:statementCallCount===1?'Bank BCA':'Bank Mandiri',
+          drafts:[
+            {name:statementCallCount===1?'Gaji Bulanan':'Beli Bensin',date:'2026-10-01',kind:statementCallCount===1?'income':'expense',amount:statementCallCount===1?'15000000':'50000',currency:'IDR',category:statementCallCount===1?'Gaji':'Transportasi'}
+          ],
+          provider:'9router'
+        })
+      };
+    }
+    return {ok:true,json:async()=>({})};
+  };
+
+  // Test Google Drive fetch
+  app.input('capture-gdrive-input','https://drive.google.com/file/d/1A2B3C4D5E6F7G8H9I0/view?usp=sharing');
+  app.click({action:'capture-gdrive-fetch'});
+  await new Promise(resolve=>setImmediate(resolve));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.ok(gdriveFetched);
+  // Queue should show fetched file
+  assert.match(app.html(),/Rekening_BCA_Okt2026\.pdf/);
+  assert.match(app.html(),/capture-remove-file/);
+  assert.match(app.html(),/capture-clear-files/);
+
+  // Extract staged document
+  app.click({action:'capture-ai-extract'});
+  await new Promise(resolve=>setImmediate(resolve));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.strictEqual(statementCallCount,1);
+  assert.match(app.html(),/Gaji Bulanan/);
+});
+
 test('quick composer renders INVI financial copilot mascot chatbot with animated SVG and status indicators', () => {
   const app = boot();
   // Expanded state

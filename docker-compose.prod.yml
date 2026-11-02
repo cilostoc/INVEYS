@@ -29,6 +29,10 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - inveys_data:/data
+    labels:
+      - "org.opencontainers.image.documentation=https://github.com/hendrafebriansyah/INVYES/blob/main/README.md"
+      - "org.opencontainers.image.source=https://github.com/hendrafebriansyah/INVYES"
+      - "org.opencontainers.image.description=INVEYS - Personal and Family Financial Operating System"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/auth/status"]
       interval: 30s
