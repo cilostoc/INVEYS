@@ -24,6 +24,7 @@ function boot(saved, env = { loadSampleBills: true }) {
   const context=vm.createContext({document,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},
     location:{hash:''},crypto:{randomUUID},console,Date,Intl,Number,Math,String,Set,JSON,Array,Object,Error,URL,Blob,structuredClone,TextEncoder,
     __INVEYS_LOAD_SAMPLE_BILLS__: env.loadSampleBills ?? true,
+    __INVEYS_LOAD_SAMPLE_INCOME__: env.loadSampleIncome ?? true,
     FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
@@ -147,5 +148,21 @@ test('Clearing sample bills via bills-clear-samples removes them completely from
   assert.equal(state.subscriptions.length, 0);
   assert.ok(!state.flows.some(f => f.kind === 'expense'));
   assert.ok(!app.html().includes('Netflix Premium'));
+});
+
+test('Clearing sample planned income via incomes-clear-samples removes them completely from calendar and state', () => {
+  const app = boot(null, { loadSampleIncome: true });
+  app.click({ page: 'calendar' });
+
+  // Verify sample income exists initially
+  assert.ok(app.state().flows.some(f => f.kind === 'income'));
+
+  // Trigger clearing sample income
+  app.click({ action: 'incomes-clear-samples' });
+  app.submitModal({});
+
+  // Verify sample income is removed
+  const state = app.state();
+  assert.ok(!state.flows.some(f => f.kind === 'income'));
 });
 

@@ -87,6 +87,13 @@
   ];
   const sampleExpenseFlowIds = new Set(['f3', 'f4', 'f5', 'f6', 'f7', 'f8']);
 
+  const demoIncomeFlows = [
+    {id:'f1',name:'Alex · Salary',kind:'income',amount:720000,day:1},
+    {id:'f2',name:'Sam · Salary',kind:'income',amount:360000,day:1}
+  ];
+  const sampleIncomeFlowIds = new Set(['f1', 'f2']);
+  const isSampleIncomeFlow = f => f && (sampleIncomeFlowIds.has(f.id) || f.name === 'Alex · Salary' || f.name === 'Sam · Salary');
+
   const demoDebts = [
     {id:'d1',name:'Auto loan',balance:1820000,apr:5.9,minimum:42500},
     {id:'d2',name:'Student loan',balance:1840000,apr:4.5,minimum:36500},
@@ -96,8 +103,14 @@
 
   const shouldLoadSampleBills = () => Boolean(typeof globalThis !== 'undefined' && globalThis.__INVEYS_LOAD_SAMPLE_BILLS__);
   const shouldLoadSampleDebts = () => Boolean(typeof globalThis !== 'undefined' && globalThis.__INVEYS_LOAD_SAMPLE_DEBTS__);
+  const shouldLoadSampleIncome = () => Boolean(typeof globalThis !== 'undefined' && globalThis.__INVEYS_LOAD_SAMPLE_INCOME__);
 
-  const seed = (includeDemoTransactions = shouldLoadSampleTransactions(), includeDemoBills = shouldLoadSampleBills(), includeDemoDebts = shouldLoadSampleDebts()) => ({
+  const seed = (
+    includeDemoTransactions = shouldLoadSampleTransactions(),
+    includeDemoBills = shouldLoadSampleBills(),
+    includeDemoDebts = shouldLoadSampleDebts(),
+    includeDemoIncome = shouldLoadSampleIncome()
+  ) => ({
     version:1,currency:'USD',name:"Hendra's Vault",demo:true,
     accounts:[{id:'a1',name:'Northstar Checking',type:'Checking',balance:824000,owner:'Alex',updated:date()},{id:'a2',name:'High-Yield Savings',type:'Savings',balance:3845000,owner:'Household',updated:date()},{id:'a3',name:'Long-Term Portfolio',type:'Investment',balance:18476000,owner:'Alex',updated:date()},{id:'a4',name:'Retirement Account',type:'Investment',balance:3200000,owner:'Sam',updated:date()}],
     debts: includeDemoDebts
@@ -108,9 +121,10 @@
           {id:'d3',name:'Credit card',balance:0,apr:19.9,minimum:0}
         ],
     goals:[{id:'g1',name:'Emergency reserve',emoji:'◌',target:2500000,saved:1800000,monthly:50000,due:'2027-06-01'},{id:'g2',name:'A place to call home',emoji:'⌂',target:1500000,saved:540000,monthly:60000,due:'2028-01-01'},{id:'g3',name:'Japan, together',emoji:'✈',target:800000,saved:210000,monthly:25000,due:'2027-10-01'}],
-    flows: includeDemoBills
-      ? [{id:'f1',name:'Alex · Salary',kind:'income',amount:720000,day:1},{id:'f2',name:'Sam · Salary',kind:'income',amount:360000,day:1}, ...demoExpenseFlows]
-      : [{id:'f1',name:'Alex · Salary',kind:'income',amount:720000,day:1},{id:'f2',name:'Sam · Salary',kind:'income',amount:360000,day:1}],
+    flows: [
+      ...(includeDemoIncome ? demoIncomeFlows.map(f => ({...f})) : []),
+      ...(includeDemoBills ? demoExpenseFlows.map(f => ({...f})) : [])
+    ],
     targetAllocations:[
       {id:'ta1',assetClass:'Equity',percent:60},
       {id:'ta2',assetClass:'Fixed Income',percent:30},
@@ -189,6 +203,19 @@
       });
     }
     if (debtChanged) {
+      try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch(e){}
+    }
+  }
+  if (!shouldLoadSampleIncome()) {
+    let incomeChanged = false;
+    if (Array.isArray(state.flows)) {
+      const filtered = state.flows.filter(f => !isSampleIncomeFlow(f));
+      if (filtered.length !== state.flows.length) {
+        state.flows = filtered;
+        incomeChanged = true;
+      }
+    }
+    if (incomeChanged) {
       try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch(e){}
     }
   }
@@ -693,7 +720,8 @@
   function cashflow(){
     const p=E.position(viewState()),f=E.forecast(viewState());
     const sankeyData = F.monarchCashFlowSankey(viewState(), { monthKey: cashflowViewMonth });
-    return header('Make room for what matters.','See the rhythm of your income, commitments, and future cash.',button('Add cash-flow item','flow-new','primary','plus'),'CASH FLOW')+cashflowSwitcher('cashflow')+
+    const hasSampleIncomes = (state.flows || []).some(isSampleIncomeFlow);
+    return header(L('Rencana Arus Kas','Make room for what matters.'),L('Pantau ritme pemasukan, komitmen pengeluaran, dan proyeksi likuiditas masa depan.','See the rhythm of your income, commitments, and future cash.'),button(L('Tambah arus kas','Add cash-flow item'),'flow-new','primary','plus')+(hasSampleIncomes ? button('🧹 ' + L('Bersihkan contoh pemasukan','Clear sample income'), 'incomes-clear-samples', 'danger') : ''),'CASH FLOW')+cashflowSwitcher('cashflow')+
       `<div class="metrics-grid">
         ${metric('Monthly income',amount(p.income),'Planned recurring income','up')}
         ${metric('Planned outflows',amount(p.outflows),'Expenses + minimum debt payments','cashflow')}
@@ -1394,10 +1422,12 @@
     const monthTitle = monthDate.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
 
     const hasSampleBills = (state.subscriptions || []).some(s => sampleSubIds.has(s.id)) || (state.flows || []).some(f => sampleExpenseFlowIds.has(f.id));
+    const hasSampleIncomes = (state.flows || []).some(isSampleIncomeFlow);
     const headerHTML = header(
       L('Kalender Arus Kas & Tagihan Rutin','Recurring Bills & Cash Flow Calendar'),
       L('Pantau seluruh jadwal pemasukan (gaji/payday), tagihan rutin, jatuh tempo kartu, dan langganan dalam visual kalender ala Monarch Money.','Track recurring bills, card due dates, subscriptions, and scheduled paydays in a Monarch Money style visual calendar.'),
       button(L('Tambah langganan','Add subscription'),'bill-new','primary','plus') +
+      (hasSampleIncomes ? button('🧹 ' + L('Bersihkan contoh pemasukan','Clear sample income'), 'incomes-clear-samples', 'danger') : '') +
       (hasSampleBills ? button('🧹 ' + L('Bersihkan contoh tagihan','Clear sample bills'), 'bills-clear-samples', 'danger') : ''),
       L('KALENDER & ARUS KAS RUTIN','BILLS & CASH FLOW')
     ) + cashflowSwitcher('calendar');
@@ -10088,6 +10118,7 @@
     case 'flow-new':editFlow();break;case 'flow':editFlow(id);break;case 'transaction-new':addTransaction(id || 'expense');break;case 'tx-edit':case 'transaction-edit':editTransaction(id);break;
     case 'transactions-clear-samples':{confirmAction(L('Bersihkan semua contoh transaksi?','Clear all sample transactions?'),L('Semua transaksi contoh bawaan demo akan dihapus dari jurnal sehingga Anda dapat memulai pencatatan transaksi nyata dengan bersih. Saldo akun dan rekening Anda tetap aman.','All demo sample transactions will be removed from your journal so you can start recording real transactions cleanly. Your account balances and assets remain safe.'),()=>{state.transactions=state.transactions.filter(t=>!sampleTxIds.has(t.id));persistCorrection(state);render();successToast(L('Semua transaksi contoh berhasil dibersihkan! Jurnal Anda siap digunakan.','All sample transactions have been cleared! Your journal is ready.'));},L('Bersihkan Jurnal','Clear Journal'));break;}
     case 'bills-clear-samples':{confirmAction(L('Bersihkan semua contoh tagihan rutin?','Clear all sample recurring bills?'),L('Semua tagihan langganan dan pengeluaran rutin contoh bawaan demo akan dihapus sehingga kalender dan komitmen arus kas Anda bersih. Anda dapat menambahkan tagihan nyata Anda sendiri.','All demo sample subscriptions and recurring expense commitments will be removed so your calendar and cash flow commitments are clean. You can add your own real bills.'),()=>{state.subscriptions=(state.subscriptions||[]).filter(s=>!sampleSubIds.has(s.id));state.flows=(state.flows||[]).filter(f=>!sampleExpenseFlowIds.has(f.id));if(state.billPayments&&typeof state.billPayments==='object'){for(const m in state.billPayments){for(const sId of sampleSubIds)delete state.billPayments[m][sId];for(const fId of sampleExpenseFlowIds)delete state.billPayments[m]['flow-'+fId];}}persistCorrection(state);render();successToast(L('Semua contoh tagihan rutin berhasil dibersihkan! Kalender tagihan Anda siap digunakan.','All sample recurring bills have been cleared! Your bills calendar is ready.'));},L('Bersihkan Tagihan','Clear Bills'));break;}
+    case 'incomes-clear-samples':{confirmAction(L('Bersihkan semua contoh pemasukan terencana?','Clear all sample planned monthly income?'),L('Semua contoh proyeksi pemasukan terencana bawaan demo (seperti Alex · Salary dan Sam · Salary) akan dihapus sehingga kalender pemasukan dan proyeksi arus kas Anda bersih. Anda dapat menambahkan pemasukan nyata Anda sendiri.','All demo sample planned recurring income flows (like Alex · Salary and Sam · Salary) will be removed so your cash flow forecast and payday calendar are clean. You can add your own real income.'),()=>{state.flows=(state.flows||[]).filter(f=>!isSampleIncomeFlow(f));persistCorrection(state);render();successToast(L('Semua contoh proyeksi pemasukan terencana berhasil dibersihkan!','All sample planned monthly income flows have been cleared!'));},L('Bersihkan Pemasukan','Clear Income'));break;}
     case 'debts-zero':{confirmAction(L('Nolkan semua saldo utang & pinjaman?','Zero out all debt balances?'),L('Semua saldo utang, pinjaman, dan tagihan kartu kredit akan diubah menjadi 0 (status lunas). Struktur akun dan daftar utang Anda tetap tersimpan.','All debt, loan, and credit card statement balances will be set to 0 (paid-off status). Your accounts and debt records remain in place.'),()=>{if(Array.isArray(state.debts)){state.debts.forEach(d=>{d.balance=0;d.minimum=0;});}if(Array.isArray(state.cards)){state.cards.forEach(c=>{c.statementAmount=0;c.paid=0;});}persistCorrection(state);render();successToast(L('Semua saldo utang & pinjaman berhasil diubah menjadi 0 (Lunas)!','All debt & loan balances have been set to 0 (Paid off)!'));},L('Nolkan Saldo Utang','Zero Debts'));break;}
     case 'open-categories':navigate('categories');break;
     case 'category-new':editCategory();break;

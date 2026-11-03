@@ -31,6 +31,7 @@ function boot(saved, env = {}) {
     __INVEYS_LOAD_SAMPLE_TRANSACTIONS__: env.loadSampleTransactions ?? true,
     __INVEYS_LOAD_SAMPLE_BILLS__: env.loadSampleBills ?? true,
     __INVEYS_LOAD_SAMPLE_DEBTS__: env.loadSampleDebts ?? true,
+    __INVEYS_LOAD_SAMPLE_INCOME__: env.loadSampleIncome ?? true,
     FormData:class{constructor(form){this.entries=Object.entries(form.testData||{});}[Symbol.iterator](){return this.entries[Symbol.iterator]();}},
     setTimeout:()=>0,clearTimeout(){}});
   context.window=context;context.globalThis=context;context.addEventListener=()=>{};context.scrollTo=()=>{};
@@ -1125,6 +1126,24 @@ test('sample recurring bills and commitments can be cleared and clean workspace 
   const cleanApp = boot(null, { loadSampleBills: false });
   assert.equal(cleanApp.state().subscriptions.length, 0);
   assert.ok(!cleanApp.state().flows.some(f => f.id === 'f3'));
+});
+
+test('sample planned recurring income flows can be cleared and clean workspace has no sample income', () => {
+  // 1. Boot with sample income
+  const app = boot(null, { loadSampleIncome: true });
+  assert.ok(app.state().flows.some(f => f.id === 'f1' || f.name.includes('Salary')));
+
+  // 2. Click clear sample income action
+  app.click({ page: 'calendar' });
+  app.click({ action: 'incomes-clear-samples' });
+  app.submitModal({});
+
+  // 3. Sample income flows are cleared
+  assert.ok(!app.state().flows.some(f => f.id === 'f1' || f.name.includes('Salary')));
+
+  // 4. Boot clean workspace (normal mode where loadSampleIncome is false)
+  const cleanApp = boot(null, { loadSampleIncome: false });
+  assert.ok(!cleanApp.state().flows.some(f => f.kind === 'income'));
 });
 
 test('home renders quick action hero buttons for senior & mobile usability', () => {
