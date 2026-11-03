@@ -246,6 +246,33 @@ test('pairTransferDrafts merges complementary statement debit and credit into on
  assert.match(trfDraft.name,/Bank BCA → Bank Mandiri/);
 });
 
+test('third-party transfer platforms (Flip, OY!, Xendit) clean merchant, categorize and pair correctly',()=>{
+ assert.equal(R.cleanMerchant('TRSF E-BANKING DB 0311/FLIP TECH/1000000','expense'),'Transfer via Flip');
+ assert.equal(R.cleanMerchant('CR TRANSFER DARI PT FLIPTECH LENTERA INSPIRASI','income'),'Transfer Masuk via Flip');
+ assert.equal(R.cleanMerchant('TRSF DB OY INDONESIA JAKARTA','expense'),'Transfer via OY! Indonesia');
+ assert.equal(R.cleanMerchant('CR TRSF PT DOMPET HARAPAN BANGSA','income'),'Transfer Masuk via OY!');
+ assert.equal(R.cleanMerchant('PAYMENT VIA XENDIT ID','expense'),'Pembayaran Xendit');
+
+ assert.equal(R.suggestCategory('Transfer via Flip','expense'),'Transfer Antar Akun');
+ assert.equal(R.suggestCategory('Transfer Masuk via Flip','income'),'Transfer Antar Akun');
+
+ const accounts=[
+  {id:'bca',name:'Bank BCA',currency:'IDR'},
+  {id:'mandiri',name:'Bank Mandiri',currency:'IDR'}
+ ];
+ const drafts=[
+  {name:R.cleanMerchant('TRSF E-BANKING DB 0311/FLIP TECH/500000','expense'),date:'2026-11-01',amount:50000000,kind:'expense',accountId:'bca',currency:'IDR',category:'Transfer Antar Akun'},
+  {name:R.cleanMerchant('CR TRANSFER DARI PT FLIPTECH LENTERA','income'),date:'2026-11-01',amount:50000000,kind:'income',accountId:'mandiri',currency:'IDR',category:'Transfer Antar Akun'}
+ ];
+ const paired=R.pairTransferDrafts(drafts,accounts);
+ assert.equal(paired.length,1);
+ assert.equal(paired[0].kind,'transfer');
+ assert.equal(paired[0].accountId,'bca');
+ assert.equal(paired[0].targetId,'mandiri');
+ assert.equal(paired[0].amount,50000000);
+ assert.match(paired[0].name,/Bank BCA → Bank Mandiri/);
+});
+
 test('Bank Jago statement detection and parser extracts income, expense, transfers and cashback',()=>{
  const sampleStatement=`
 PT Bank Jago Tbk - Laporan Keuangan Bulanan November 2021

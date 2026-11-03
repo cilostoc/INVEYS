@@ -8159,6 +8159,9 @@ function cleanMerchant(desc,kind){
  if(/Cashback.*Jago Bayarin|Jago Bayarin/i.test(s))return 'Cashback Jago Bayarin';
  if(/Isi Saldo Dompet Digital/i.test(s)){if(/ShopeePay/i.test(s))return 'Top Up ShopeePay';if(/OVO/i.test(s))return 'Top Up OVO';if(/GoPay/i.test(s))return 'Top Up GoPay';return 'Top Up Dompet Digital';}
  if(/ALTOPay.*Transfer Masuk/i.test(s)||/Transfer Masuk.*ALTOPay/i.test(s))return 'Transfer Masuk ALTOPay';
+ if(/FLIPTECH|FLIP TECH|PT FLIPTECH LENTERA|FLIP\.ID/i.test(s))return kind==='income'?'Transfer Masuk via Flip':'Transfer via Flip';
+ if(/OY INDONESIA|DOMPET HARAPAN BANGSA|\bOY!\b/i.test(s))return kind==='income'?'Transfer Masuk via OY!':'Transfer via OY! Indonesia';
+ if(/XENDIT|SINAR DIGITAL TERDEPAN/i.test(s))return kind==='income'?'Transfer Masuk Xendit':'Pembayaran Xendit';
  s=s.replace(/^[-\s;:,]+/, '').replace(/[-\s;:,]+$/, '').replace(/\s+/g,' ');
  return s.slice(0,120);
 }
@@ -8169,7 +8172,7 @@ function suggestCategory(name,kind){
   if(/gaji|span|salary|upah|honor|tukin/i.test(s))return 'Gaji & Pendapatan';
   if(/shopback|cashback|hadiah|bonus|reward/i.test(s))return 'Hadiah & Cashback';
   if(/pembalikan|refund|retur/i.test(s))return 'Pengembalian Dana';
-  if(/rekening pribadi|transfer antar/i.test(s))return 'Transfer Antar Akun';
+  if(/rekening pribadi|transfer antar|via flip|via oy|xendit/i.test(s))return 'Transfer Antar Akun';
   return 'Pemasukan Lainnya';
  }
  if(/makan|coffee|kopi|cafe|tianlala|food|resto|gacoan|kfc|mcd|starbucks|hokben|pizza|solaria/i.test(s))return 'Makanan & Minuman';
@@ -8183,7 +8186,7 @@ function suggestCategory(name,kind){
  if(/dansos|sosial|donasi|zakat|infaq|sedekah/i.test(s))return 'Sosial & Donasi';
  if(/listrik|pln|pdam|air|wifi|indihome|telkom|pulsa|paket data/i.test(s))return 'Utilitas & Tagihan';
  if(/qris/i.test(s))return 'Belanja & Kebutuhan Rumah';
- if(/transfer|smbc|superbank|krom|boby|isa|adinda|zenzen|cimb|mandiri|rekening pribadi/i.test(s))return 'Transfer Antar Akun';
+ if(/transfer|smbc|superbank|krom|boby|isa|adinda|zenzen|cimb|mandiri|rekening pribadi|flip|oy!|oy indonesia/i.test(s))return 'Transfer Antar Akun';
  return 'Pengeluaran Umum';
 }
 function detectBankStatement(text){
@@ -8755,7 +8758,7 @@ function pairTransferDrafts(draftList,accounts=[]){
    const acc2=accounts.find(a=>a.id===d2.accountId);
    const t1=(d1.name+' '+(d1.category||'')).toLowerCase();
    const t2=(d2.name+' '+(d2.category||'')).toLowerCase();
-   const isTransferMention=/transfer|pindah|bi-fast|overbooking|trf|inhouse|kliring|llg/i.test(t1)||/transfer|pindah|bi-fast|overbooking|trf|inhouse|kliring|llg/i.test(t2);
+   const isTransferMention=/transfer|pindah|bi-fast|overbooking|trf|inhouse|kliring|llg|flip|oy!|oy indonesia/i.test(t1)||/transfer|pindah|bi-fast|overbooking|trf|inhouse|kliring|llg|flip|oy!|oy indonesia/i.test(t2);
    const crossMention=(acc2&&t1.includes(acc2.name.toLowerCase().slice(0,3)))||(acc1&&t2.includes(acc1.name.toLowerCase().slice(0,3)));
    if(isTransferMention||crossMention||daysDiff===0){matchIdx=j;break;}
   }
