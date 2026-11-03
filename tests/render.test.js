@@ -1306,6 +1306,44 @@ test('financial restore handles wrapped backup file, previews breakdown, and sup
   assert.equal(app.state().name, 'Full Replaced Workspace');
 });
 
+test('capture draft validation shows inline error message, marks invalid fields, and supports jump to error', () => {
+  const app = boot();
+  app.click({ page: 'capture' });
+  app.input('capture-text', 'Coffee 25');
+  app.click({ action: 'capture-parse' });
+
+  // Set draft to transfer without targetId
+  const initialTxCount = app.state().transactions.length;
+  app.changeDraft(0, 'kind', 'transfer');
+  app.changeDraft(0, 'targetId', '');
+
+  // Attempt save (commitDrafts will reject and show error toast/inline alert)
+  app.click({ action: 'capture-save' });
+
+  // Transactions must not have been committed
+  assert.equal(app.state().transactions.length, initialTxCount);
+
+  const html = app.html();
+  // Inline error message right under targetId select
+  assert.match(html, /id="draft-err-targetId-0"/);
+  assert.match(html, /inline-field-error/);
+  assert.match(html, /draft-row-has-error/);
+  assert.match(html, /Perlu Dilengkapi|Action Required/);
+  assert.match(html, /field-invalid/);
+  assert.match(html, /capture-jump-error/);
+
+  // Jump to error action works without error
+  app.click({ action: 'capture-jump-error' });
+
+  // Fixing the field with a valid target account allows save to succeed
+  app.changeDraft(0, 'targetId', 'a2');
+  app.click({ action: 'capture-save' });
+  assert.equal(app.state().transactions.length, initialTxCount + 1);
+  const fixedHtml = app.html();
+  assert.ok(!fixedHtml.includes('draft-err-targetId-0'));
+});
+
+
 
 
 
