@@ -130,6 +130,9 @@ class AI(unittest.TestCase):
    a.download_gdrive_file('')
   with self.assertRaises(ValueError):
    a.download_gdrive_file('https://example.com/not-gdrive')
+  with self.assertRaises(ValueError) as folder_ctx:
+   a.download_gdrive_file('https://drive.google.com/drive/folders/1Folder12345')
+  self.assertIn('folder', str(folder_ctx.exception).lower())
 
   # 2. Successful PDF download from Google Drive
   fake_pdf_content = b'%PDF-1.4 Fake bank statement PDF'
@@ -144,6 +147,31 @@ class AI(unittest.TestCase):
    self.assertEqual(res['fileId'], '1A2B3C4D5E6F')
    self.assertTrue(res['name'].endswith('.pdf'))
    self.assertEqual(base64.b64decode(res['data']), fake_pdf_content)
+
+   res_u0 = a.download_gdrive_file('https://drive.google.com/file/u/0/d/1A2B3C4D5E6F/view')
+   self.assertEqual(res_u0['fileId'], '1A2B3C4D5E6F')
+
+  # 2b. Google Sheets download (regular and published)
+  fake_csv_content = b'Tanggal,Deskripsi,Debet,Kredit\n2026-10-01,Gaji,0,10000000\n'
+  fake_sheet_resp = MagicMock()
+  fake_sheet_resp.headers = {'Content-Type': 'text/csv'}
+  fake_sheet_resp.read.return_value = fake_csv_content
+  fake_sheet_resp.__enter__.return_value = fake_sheet_resp
+
+  with patch('urllib.request.urlopen', return_value=fake_sheet_resp):
+   res_sheet = a.download_gdrive_file('https://docs.google.com/spreadsheets/d/1SheetId123/edit#gid=456')
+   self.assertEqual(res_sheet['type'], 'text/csv')
+   self.assertEqual(res_sheet['fileId'], '1SheetId123')
+
+   res_pub = a.download_gdrive_file('https://docs.google.com/spreadsheets/d/e/2PACX-1vPubId123/pubhtml?gid=789')
+   self.assertEqual(res_pub['type'], 'text/csv')
+   self.assertEqual(res_pub['fileId'], '2PACX-1vPubId123')
+
+  # 2c. Google Docs download
+  with patch('urllib.request.urlopen', return_value=fake_resp):
+   res_doc = a.download_gdrive_file('https://docs.google.com/document/d/1DocId123/edit')
+   self.assertEqual(res_doc['type'], 'application/pdf')
+   self.assertEqual(res_doc['fileId'], '1DocId123')
 
   # 3. HTML login error (restricted file)
   fake_html_resp = MagicMock()

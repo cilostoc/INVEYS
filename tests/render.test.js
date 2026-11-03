@@ -1362,6 +1362,101 @@ test('capture draft validation shows inline error message, marks invalid fields,
   assert.ok(!fixedHtml.includes('draft-err-targetId-0'));
 });
 
+test('capture draft error banner supports converting transfers to expense and saving valid rows only', () => {
+  const app = boot();
+  app.click({ page: 'capture' });
+  app.input('capture-text', '2026-11-03 Coffee 25\n2026-11-03 Lunch 50');
+  app.click({ action: 'capture-parse' });
+
+  // Set second draft to transfer without targetId
+  const initialTxCount = app.state().transactions.length;
+  app.changeDraft(1, 'kind', 'transfer');
+  app.changeDraft(1, 'targetId', '');
+
+  // Attempt save
+  app.click({ action: 'capture-save' });
+  assert.equal(app.state().transactions.length, initialTxCount);
+
+  // Error alert banner must be visible with action buttons
+  const errHtml = app.html();
+  assert.match(errHtml, /draft-error-alert/);
+  assert.match(errHtml, /capture-transfers-to-expense/);
+  assert.match(errHtml, /capture-save-valid/);
+
+  // Test converting transfers to expense:
+  app.click({ action: 'capture-transfers-to-expense' });
+  const convertedHtml = app.html();
+  assert.ok(!convertedHtml.includes('draft-error-alert'));
+
+  // Now saving succeeds for both rows
+  app.click({ action: 'capture-save' });
+  assert.equal(app.state().transactions.length, initialTxCount + 2);
+});
+
+test('capture-gdrive-fetch supports wrapped file response structure and direct AI extract with link', async () => {
+  const app = boot();
+  app.click({ page: 'capture' });
+
+  app.context.location.protocol = 'http:';
+  let fetchedUrl = '';
+  app.context.fetch = async (url, options) => {
+    if (url === '/api/status') return { ok: true, json: async () => ({ csrf: 'test' }) };
+    if (url === '/api/gdrive/fetch') {
+      fetchedUrl = JSON.parse(options.body).url;
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          file: {
+            name: 'Statement_BRI_2021.pdf',
+            type: 'application/pdf',
+            size: 102400,
+            data: Buffer.from('%PDF-1.4 Fake BRI PDF').toString('base64'),
+            fileId: '1BriSheet123'
+          }
+        })
+      };
+    }
+    if (url === '/api/ai-extract-statement') {
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          bank: 'Bank BRI',
+          currency: 'IDR',
+          accountInfo: { name: 'Bank BRI', currency: 'IDR' },
+          drafts: [
+            { name: 'Biaya SMS Notifikasi', date: '2021-09-30', kind: 'expense', amount: '1500', currency: 'IDR', category: 'Biaya Finansial & Pajak' },
+            { name: 'Transfer ke Rek Bpk Budi', date: '2021-09-30', kind: 'transfer', amount: '500000', currency: 'IDR', category: 'Transfer' }
+          ]
+        })
+      };
+    }
+    return { ok: true, json: async () => ({}) };
+  };
+
+  app.input('capture-gdrive-input', 'https://drive.google.com/file/d/1BriSheet123/view?usp=sharing');
+  app.click({ action: 'capture-gdrive-fetch' });
+  await new Promise(r => setImmediate(r));
+  await new Promise(r => setImmediate(r));
+
+  assert.strictEqual(fetchedUrl, 'https://drive.google.com/file/d/1BriSheet123/view?usp=sharing');
+  assert.match(app.html(), /Statement_BRI_2021\.pdf/);
+
+  // Extract documents: the external transfer to Bpk Budi should auto-normalize to expense without blocking save
+  app.click({ action: 'capture-ai-extract' });
+  await new Promise(r => setImmediate(r));
+  await new Promise(r => setImmediate(r));
+
+  assert.match(app.html(), /Biaya SMS Notifikasi/);
+  assert.match(app.html(), /Transfer ke Rek Bpk Budi/);
+
+  // Save drafts: must succeed cleanly without throwing "Pilih akun tujuan yang berbeda untuk transfer"
+  const countBefore = app.state().transactions.length;
+  app.click({ action: 'capture-save' });
+  assert.equal(app.state().transactions.length, countBefore + 2);
+});
+
 
 
 

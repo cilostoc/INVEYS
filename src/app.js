@@ -1800,7 +1800,7 @@
   }
   function focusDraftError(idx, fieldKey, message){
     toast('⚠️ ' + message);
-    setTimeout(()=>{
+    const scrollAndFocus = () => {
       const rowEl = $('#draft-row-' + idx);
       if(rowEl && typeof rowEl.scrollIntoView === 'function'){
         rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1810,11 +1810,16 @@
       const targetInput = $(`#draft-${fieldKey}-${idx}`) || $(`[data-draft="${idx}"][data-key="${fieldKey}"]`);
       if(targetInput){
         targetInput.classList.add('field-invalid', 'field-invalid-shake');
-        if(typeof targetInput.focus === 'function') targetInput.focus();
+        try { targetInput.focus({ preventScroll: false }); } catch(e){ try { targetInput.focus(); } catch(e2){} }
         if(typeof targetInput.select === 'function') { try { targetInput.select(); } catch(e){} }
         setTimeout(()=>targetInput.classList.remove('field-invalid-shake'), 1200);
       }
-    }, 60);
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => setTimeout(scrollAndFocus, 80));
+    } else {
+      setTimeout(scrollAndFocus, 80);
+    }
   }
 
   function draftPanel(){
@@ -1824,6 +1829,32 @@
     return `<section class="panel panel-pad" style="margin-top:24px">
       <h2>${L('Tinjau draft','Review drafts')} · ${drafts.length}</h2>
       <p class="note">${L('Duplikasi potensial harus dikonfirmasi dengan alasan. Statement historis secara default hanya dicatat ke jurnal agar saldo snapshot tidak dihitung dua kali.','Potential duplicates need confirmation with a reason. Historical statements default to journal-only to avoid counting snapshot balances twice.')}</p>
+      ${errorDrafts.length > 0 ? `
+        <div class="draft-error-alert" style="background:rgba(239,68,68,0.12);border:1px solid var(--danger,#ef4444);border-radius:10px;padding:12px 16px;margin:12px 0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:22px">⚠️</span>
+            <div>
+              <b style="color:var(--danger,#ef4444);font-size:14px;display:block">
+                ${L(`Terdapat ${errorDrafts.length} baris yang perlu dilengkapi sebelum dapat disimpan`, `There are ${errorDrafts.length} rows that need attention before saving`)}
+              </b>
+              <small style="color:var(--muted);font-size:12.5px">
+                ${L('Misal: Akun tujuan transfer belum dipilih, nominal kosong, atau alasan duplikat belum diisi.', 'E.g. Transfer destination missing, zero amount, or duplicate reason needed.')}
+              </small>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm" data-action="capture-jump-error" style="background:var(--danger,#ef4444);color:#fff;border:none;font-weight:600">
+              ${L('Lompat ke Baris Bermasalah →','Jump to Error Row →')}
+            </button>
+            <button type="button" class="btn btn-sm btn-subtle" data-action="capture-transfers-to-expense" title="${L('Ubah semua baris transfer tanpa akun tujuan menjadi Pengeluaran biasa','Convert all incomplete transfers to regular expenses')}">
+              ${L('Ubah Transfer Jadi Pengeluaran','Convert Transfers to Expenses')}
+            </button>
+            <button type="button" class="btn btn-sm btn-subtle" data-action="capture-save-valid" title="${L('Abaikan baris bermasalah dan simpan seluruh baris yang sudah valid sekarang','Ignore incomplete rows and save all valid rows now')}">
+              ${L('Hanya Simpan yang Valid','Save Valid Rows Only')}
+            </button>
+          </div>
+        </div>
+      ` : ''}
       <div class="draft-batch-bar">
         <span class="draft-batch-title">${L('Pilihan cepat:','Quick select:')}</span>
         <button type="button" class="btn-subtle" data-action="capture-select-clean" title="${L('Centang baris yang bukan duplikat','Select only non-duplicate rows')}">🛡️ ${L('Pilih yang Aman','Clean only')}</button>
@@ -1972,10 +2003,18 @@
           const otherAccs = next.accounts.filter(acc => acc.id !== d.accountId);
           if(otherAccs.length === 1){
             d.targetId = otherAccs[0].id;
+          } else if(otherAccs.length > 1){
+            const nameMatch = otherAccs.find(acc => d.name && acc.name.length >= 3 && d.name.toLowerCase().includes(acc.name.toLowerCase()));
+            if(nameMatch){
+              d.targetId = nameMatch.id;
+            } else {
+              d.errors = { targetId: L('Pilih akun tujuan yang berbeda untuk transfer','Select a different destination account for transfer') };
+              firstError = { idx, field: 'targetId', message: L(`Baris #${idx+1} (${d.name || 'Transfer'}): Pilih akun tujuan yang berbeda untuk transfer`,`Row #${idx+1} (${d.name || 'Transfer'}): Select a different destination account for transfer`) };
+              break;
+            }
           } else {
-            d.errors = { targetId: L('Pilih akun tujuan yang berbeda untuk transfer','Select a different destination account for transfer') };
-            firstError = { idx, field: 'targetId', message: L(`Baris #${idx+1}: Pilih akun tujuan yang berbeda untuk transfer`,`Row #${idx+1}: Select a different destination account for transfer`) };
-            break;
+            d.kind = 'expense';
+            if(!d.category || d.category === 'Transfer') d.category = 'Transfer Antar Akun';
           }
         }
       }
@@ -2426,19 +2465,20 @@
       render();
       try{
         const r=await api('gdrive/fetch',{url:gUrl});
-        if(r&&r.data){
+        const fileObj = r?.file || r;
+        if(fileObj && fileObj.data){
           const gdriveFile={
-            name: r.name||'gdrive-document',
-            type: r.type||'application/pdf',
-            size: r.size||(r.data.length*3/4),
-            data: r.data,
+            name: fileObj.name||r.name||'gdrive-document',
+            type: fileObj.type||r.type||'application/pdf',
+            size: fileObj.size||r.size||(fileObj.data.length*3/4),
+            data: fileObj.data,
             gdriveUrl: gUrl
           };
           captureAddFiles([gdriveFile]);
           captureGdriveUrl='';
           const gdIn=$('#capture-gdrive-input');
           if(gdIn) gdIn.value='';
-          successToast(L(`Berhasil memuat "${r.name}" dari Google Drive.`,`Successfully loaded "${r.name}" from Google Drive.`));
+          successToast(L(`Berhasil memuat "${gdriveFile.name}" dari Google Drive.`,`Successfully loaded "${gdriveFile.name}" from Google Drive.`));
         }
       }catch(err){
         toast(L('Gagal memuat Google Drive: ','Failed to fetch Google Drive: ')+(err.message||err));
@@ -2458,6 +2498,40 @@
       }
       break;
     }
+    case 'capture-transfers-to-expense':{
+      let converted = 0;
+      drafts.forEach(d => {
+        if(d.kind === 'transfer' && (!d.targetId || d.targetId === d.accountId)){
+          d.kind = 'expense';
+          if(!d.category || d.category === 'Transfer') d.category = 'Transfer Antar Akun';
+          delete d.targetId;
+          if(d.errors) delete d.errors.targetId;
+          if(d.errors && !Object.keys(d.errors).length) delete d.errors;
+          converted++;
+        }
+      });
+      render();
+      if(converted > 0){
+        successToast(L(`Berhasil mengubah ${converted} baris transfer menjadi pengeluaran.`,`Successfully converted ${converted} transfer rows into expenses.`));
+      } else {
+        toast(L('Tidak ada baris transfer yang perlu diubah.','No transfer rows needed conversion.'));
+      }
+      break;
+    }
+    case 'capture-save-valid':{
+      const invalidCount = drafts.filter(d => d.selected && d.errors && Object.keys(d.errors).length > 0).length;
+      drafts.forEach(d => {
+        if(d.errors && Object.keys(d.errors).length > 0){
+          d.selected = false;
+        }
+      });
+      render();
+      if(invalidCount > 0){
+        toast(L(`${invalidCount} baris bermasalah dilewati. Menyimpan baris yang valid…`,`${invalidCount} incomplete rows skipped. Saving valid rows…`));
+      }
+      commitDrafts();
+      break;
+    }
     case 'capture-save':commitDrafts();break;
     case 'capture-ai-extract':{
       if(captureBusy){toast(L('Tunggu ekstraksi selesai.','Wait for extraction to finish.'));break;}
@@ -2471,6 +2545,29 @@
       const gUrl=($('#capture-gdrive-input')?.value||captureGdriveUrl||'').trim();
       if(!captureFiles.length && !gUrl && !rawText){
         throw Error(L('Pilih file (PDF/CSV/Gambar), tautan Google Drive, atau masukkan teks transaksi terlebih dahulu','Choose a file (PDF/CSV/Image), Google Drive link, or enter transaction text first'));
+      }
+      if(!captureFiles.length && gUrl){
+        try{
+          captureStatus=L('Mengunduh dokumen dari Google Drive…','Downloading document from Google Drive…');
+          toast(captureStatus);
+          const r=await api('gdrive/fetch',{url:gUrl});
+          const fileObj = r?.file || r;
+          if(fileObj && fileObj.data){
+            const gdriveFile={
+              name: fileObj.name||r.name||'gdrive-document',
+              type: fileObj.type||r.type||'application/pdf',
+              size: fileObj.size||r.size||(fileObj.data.length*3/4),
+              data: fileObj.data,
+              gdriveUrl: gUrl
+            };
+            captureAddFiles([gdriveFile]);
+            captureGdriveUrl='';
+            const gdIn=$('#capture-gdrive-input');
+            if(gdIn) gdIn.value='';
+          }
+        }catch(err){
+          console.warn('Pre-fetch Google Drive failed:', err);
+        }
       }
       const chosenProvider = captureProvider || '9router';
       if(chosenProvider === 'local'){
@@ -2504,6 +2601,49 @@
         let createdAccountNotices=[];
         let createdCardNotices=[];
 
+        const normalizeDraft = (d, targetAcc, fi, i, prefix='ai') => {
+          let kind = d.kind || 'expense';
+          let targetId = d.targetId || undefined;
+          if(kind === 'transfer'){
+            const otherAccs = state.accounts.filter(acc => acc.id !== targetAcc.id);
+            let match = null;
+            if(d.targetId){
+              match = otherAccs.find(acc => acc.id === d.targetId);
+            }
+            if(!match && d.targetAccount){
+              const tName = String(d.targetAccount).toLowerCase();
+              match = otherAccs.find(acc => acc.name.toLowerCase().includes(tName) || tName.includes(acc.name.toLowerCase()));
+            }
+            if(!match && d.name){
+              const desc = String(d.name).toLowerCase();
+              match = otherAccs.find(acc => acc.name.toLowerCase().length >= 3 && desc.includes(acc.name.toLowerCase()));
+            }
+            if(match){
+              targetId = match.id;
+            } else if(otherAccs.length === 1){
+              targetId = otherAccs[0].id;
+            } else {
+              kind = 'expense';
+              targetId = undefined;
+            }
+          }
+          return {
+            id: uid(),
+            name: d.name,
+            date: d.date || date(),
+            amount: Math.round(parseFloat(d.amount)*100),
+            kind,
+            currency: d.currency || targetAcc.currency,
+            category: d.category || (kind === 'transfer' ? 'Transfer Antar Akun' : 'Imported'),
+            accountId: targetAcc.id,
+            targetId,
+            source: 'ai-statement',
+            sourceKey: `${prefix}-${Date.now()}-${fi}-${i}`,
+            affectBalance: !historical,
+            selected: true
+          };
+        };
+
         if(captureFiles.length>0){
           for(let fi=0;fi<captureFiles.length;fi++){
             const curObj=captureFiles[fi];
@@ -2533,7 +2673,7 @@
                 name:accName,
                 type:result.accountInfo?.type||'Checking',
                 balance:0,
-                currency:result.accountInfo?.currency||a.currency||state.currency,
+                currency:result.accountInfo?.currency||result.currency||(result.drafts&&result.drafts[0]?.currency)||a.currency||state.currency,
                 owner:state.members[0]?.id||'shared',
                 updated:date(),
                 balancePolicy:'ledger'
@@ -2582,20 +2722,7 @@
             const srcName=result.bank||file.name||'Dokumen';
             if(!detectedSources.includes(srcName)) detectedSources.push(srcName);
 
-            const parsed=result.drafts.map((d,i)=>({
-              id:uid(),
-              name:d.name,
-              date:d.date||date(),
-              amount:Math.round(parseFloat(d.amount)*100),
-              kind:d.kind||'expense',
-              currency:d.currency||targetAcc.currency,
-              category:d.category||'Imported',
-              accountId:targetAcc.id,
-              source:'ai-statement',
-              sourceKey:'ai-'+Date.now()+'-'+fi+'-'+i,
-              affectBalance:!historical,
-              selected:true
-            }));
+            const parsed=result.drafts.map((d,i)=>normalizeDraft(d,targetAcc,fi,i,'ai'));
             aggregatedDrafts.push(...parsed);
           }
         }else if(gUrl){
@@ -2621,7 +2748,7 @@
                 name:accName,
                 type:result.accountInfo?.type||'Checking',
                 balance:0,
-                currency:result.accountInfo?.currency||a.currency||state.currency,
+                currency:result.accountInfo?.currency||result.currency||(result.drafts&&result.drafts[0]?.currency)||a.currency||state.currency,
                 owner:state.members[0]?.id||'shared',
                 updated:date(),
                 balancePolicy:'ledger'
@@ -2665,20 +2792,7 @@
             }
             save();
             detectedSources.push(result.bank||'Google Drive');
-            const parsed=result.drafts.map((d,i)=>({
-              id:uid(),
-              name:d.name,
-              date:d.date||date(),
-              amount:Math.round(parseFloat(d.amount)*100),
-              kind:d.kind||'expense',
-              currency:d.currency||targetAcc.currency,
-              category:d.category||'Imported',
-              accountId:targetAcc.id,
-              source:'ai-statement',
-              sourceKey:'ai-gd-'+Date.now()+'-'+i,
-              affectBalance:!historical,
-              selected:true
-            }));
+            const parsed=result.drafts.map((d,i)=>normalizeDraft(d,targetAcc,0,i,'ai-gd'));
             aggregatedDrafts.push(...parsed);
           }
         }else if(rawText){
@@ -2699,20 +2813,7 @@
             });
             if(!targetAcc) targetAcc=a;
             detectedSources.push(result.bank||'Teks Catatan');
-            const parsed=result.drafts.map((d,i)=>({
-              id:uid(),
-              name:d.name,
-              date:d.date||date(),
-              amount:Math.round(parseFloat(d.amount)*100),
-              kind:d.kind||'expense',
-              currency:d.currency||targetAcc.currency,
-              category:d.category||'Imported',
-              accountId:targetAcc.id,
-              source:'ai-statement',
-              sourceKey:'ai-txt-'+Date.now()+'-'+i,
-              affectBalance:!historical,
-              selected:true
-            }));
+            const parsed=result.drafts.map((d,i)=>normalizeDraft(d,targetAcc,0,i,'ai-txt'));
             aggregatedDrafts.push(...parsed);
           }
         }
@@ -2812,7 +2913,7 @@
       break;
     }
   }}catch(e){captureStatus=e.message;toast(e.message);}}
-  const v3Names=new Set(['int-ping-all','crypto-connect-modal','crypto-exchanges-modal','capture-parse','capture-review','capture-pair-transfers','capture-select-clean','capture-select-all','capture-deselect-all','capture-clear','capture-save','capture-jump-error','capture-extract','capture-ai-extract','capture-audio','capture-voice','capture-stop','capture-browse','capture-clear-files','capture-remove-file','capture-gdrive-fetch','fx-refresh','service-status','telegram-inbox','telegram-draft','telegram-send','muse-ask','updates-check','vps-update-run','vps-segments-check']);
+  const v3Names=new Set(['int-ping-all','crypto-connect-modal','crypto-exchanges-modal','capture-parse','capture-review','capture-pair-transfers','capture-select-clean','capture-select-all','capture-deselect-all','capture-clear','capture-save','capture-jump-error','capture-transfers-to-expense','capture-save-valid','capture-extract','capture-ai-extract','capture-audio','capture-voice','capture-stop','capture-browse','capture-clear-files','capture-remove-file','capture-gdrive-fetch','fx-refresh','service-status','telegram-inbox','telegram-draft','telegram-send','muse-ask','updates-check','vps-update-run','vps-segments-check']);
   document.addEventListener('change',e=>{
     const el=e.target;
     if(el.id==='capture-file'){captureAddFiles(el.files);}

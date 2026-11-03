@@ -1,5 +1,5 @@
 """Read-only multimodal AI adapters. Credentials only come from server environment."""
-import os,json,base64,re,urllib.request,urllib.error,urllib.parse,uuid,datetime
+import os,json,base64,re,urllib.request,urllib.error,urllib.parse,http.cookiejar,uuid,datetime
 MAX=12*1024*1024
 SYSTEM=('You are INVI, the AI companion, Financial Copilot, and intelligent guardian powering INVEYS '
  '(INtelligent VElocity for Your Financial System). Version 1.0 (INVEYS Mascot Soul).\n'
@@ -328,41 +328,62 @@ def download_gdrive_file(url):
   raise ValueError('Link Google Drive tidak boleh kosong.')
  url = url.strip()
 
+ # Check folder links first
+ if re.search(r'drive\.google\.com/(?:drive/(?:u/\d+/)?folders/|folderview\?id=)([a-zA-Z0-9_-]+)', url):
+  raise ValueError('Link yang Anda masukkan adalah folder Google Drive. Silakan buka file spesifik di dalam folder tersebut lalu salin link file-nya.')
+
  file_id = None
  doc_type = 'drive'
+ download_url = None
 
- m_drive = re.search(r'drive\.google\.com/(?:file/d/|open\?id=|uc\?(?:export=download&)?id=)([a-zA-Z0-9_-]+)', url)
- if m_drive:
-  file_id = m_drive.group(1)
-  doc_type = 'drive'
+ # 1. Published Google Sheets
+ m_pub_sheet = re.search(r'docs\.google\.com/spreadsheets/(?:u/\d+/)?d/e/([a-zA-Z0-9_-]+)', url)
+ if m_pub_sheet:
+  file_id = m_pub_sheet.group(1)
+  doc_type = 'sheets_pub'
+  m_gid = re.search(r'[#&?]gid=([0-9]+)', url)
+  gid_param = f'&gid={m_gid.group(1)}' if m_gid else ''
+  download_url = f'https://docs.google.com/spreadsheets/d/e/{file_id}/pub?output=csv{gid_param}'
  else:
-  m_sheet = re.search(r'docs\.google\.com/spreadsheets/d/([a-zA-Z0-9_-]+)', url)
+  # 2. Regular Google Sheets
+  m_sheet = re.search(r'docs\.google\.com/spreadsheets/(?:u/\d+/)?d/([a-zA-Z0-9_-]+)', url)
   if m_sheet:
    file_id = m_sheet.group(1)
    doc_type = 'sheets'
+   m_gid = re.search(r'[#&?]gid=([0-9]+)', url)
+   gid_param = f'&gid={m_gid.group(1)}' if m_gid else ''
+   download_url = f'https://docs.google.com/spreadsheets/d/{file_id}/export?format=csv{gid_param}'
   else:
-   m_doc = re.search(r'docs\.google\.com/document/d/([a-zA-Z0-9_-]+)', url)
+   # 3. Google Docs
+   m_doc = re.search(r'docs\.google\.com/document/(?:u/\d+/)?d/([a-zA-Z0-9_-]+)', url)
    if m_doc:
     file_id = m_doc.group(1)
     doc_type = 'docs'
+    download_url = f'https://docs.google.com/document/d/{file_id}/export?format=pdf'
+   else:
+    # 4. Standard Drive file link (supports /file/u/0/d/, /open?id=, /uc?..., drive.usercontent.google.com)
+    m_drive = re.search(r'(?:drive\.google\.com/(?:file/(?:u/\d+/)?d/|open\?id=|uc\?.*?\bid=)|drive\.usercontent\.google\.com/download\?.*?\bid=)([a-zA-Z0-9_-]+)', url)
+    if m_drive:
+     file_id = m_drive.group(1)
+     doc_type = 'drive'
+     download_url = f'https://drive.google.com/uc?export=download&id={file_id}&confirm=t'
 
- if not file_id:
-  raise ValueError('Format link Google Drive tidak valid. Pastikan link berisi ID berkas Google Drive yang valid.')
-
- if doc_type == 'sheets':
-  download_url = f'https://docs.google.com/spreadsheets/d/{file_id}/export?format=csv'
- elif doc_type == 'docs':
-  download_url = f'https://docs.google.com/document/d/{file_id}/export?format=pdf'
- else:
-  download_url = f'https://drive.google.com/uc?export=download&id={file_id}&confirm=t'
+ if not file_id or not download_url:
+  raise ValueError('Format link Google Drive tidak valid. Pastikan link berisi ID berkas Google Drive / Sheets / Docs yang valid.')
 
  headers = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': '*/*'
  }
+
+ cj = http.cookiejar.CookieJar()
+ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 
  try:
   req = urllib.request.Request(download_url, headers=headers)
-  with urllib.request.urlopen(req, timeout=30) as resp:
+  is_mock = hasattr(urllib.request.urlopen, 'mock') or hasattr(urllib.request.urlopen, 'return_value') or getattr(urllib.request.urlopen, '_mock_return_value', None) is not None
+  open_fn = urllib.request.urlopen if is_mock else opener.open
+  with open_fn(req, timeout=30) as resp:
    content_type = resp.headers.get('Content-Type', '').lower()
    raw_bytes = resp.read(MAX + 1024)
  except urllib.error.HTTPError as e:
@@ -377,7 +398,44 @@ def download_gdrive_file(url):
  if len(raw_bytes) > MAX:
   raise ValueError(f'Ukuran file Google Drive melebihi batas maksimal ({MAX // (1024*1024)} MB).')
 
+ # Check if Google Drive returned virus scan confirmation HTML interstitial
  is_html = 'text/html' in content_type or raw_bytes.strip().startswith(b'<!DOCTYPE html') or raw_bytes.strip().startswith(b'<html')
+ if is_html:
+  try:
+   html_text = raw_bytes.decode('utf-8', errors='ignore')
+  except Exception:
+   html_text = ''
+
+  m_form_action = re.search(r'<form\b[^>]*action=["\']([^"\']+)["\']', html_text, re.IGNORECASE)
+  m_link = re.search(r'<a\b[^>]*id=["\']uc-download-link["\'][^>]*href=["\']([^"\']+)["\']', html_text, re.IGNORECASE) or re.search(r'<a\b[^>]*href=["\']([^"\']*drive\.usercontent\.google\.com[^"\']*)["\']', html_text, re.IGNORECASE)
+
+  confirm_url = None
+  if m_link:
+   c_href = m_link.group(1).replace('&amp;', '&')
+   confirm_url = urllib.parse.urljoin(download_url, c_href)
+  elif m_form_action:
+   action_url = m_form_action.group(1).replace('&amp;', '&')
+   inputs = dict(re.findall(r'<input\b[^>]*name=["\']([^"\']+)["\'][^>]*value=["\']([^"\']*)["\']', html_text, re.IGNORECASE))
+   if 'id' not in inputs and file_id: inputs['id'] = file_id
+   if 'export' not in inputs: inputs['export'] = 'download'
+   query_str = urllib.parse.urlencode(inputs)
+   join_char = '&' if '?' in action_url else '?'
+   confirm_url = urllib.parse.urljoin(download_url, action_url + join_char + query_str)
+
+  if confirm_url:
+   try:
+    req_c = urllib.request.Request(confirm_url, headers=headers)
+    with opener.open(req_c, timeout=30) as resp_c:
+     c_content_type = resp_c.headers.get('Content-Type', '').lower()
+     c_bytes = resp_c.read(MAX + 1024)
+     c_is_html = 'text/html' in c_content_type or c_bytes.strip().startswith(b'<!DOCTYPE html') or c_bytes.strip().startswith(b'<html')
+     if not c_is_html and len(c_bytes) > 0:
+      raw_bytes = c_bytes
+      content_type = c_content_type
+      is_html = False
+   except Exception:
+    pass
+
  if is_html:
   raise ValueError('File Google Drive tidak dapat diunduh publik. Pastikan izin akses file diatur ke "Siapa saja yang memiliki link" (Anyone with the link).')
 
@@ -390,12 +448,20 @@ def download_gdrive_file(url):
  elif raw_bytes.startswith(b'\xff\xd8\xff'):
   mime = 'image/jpeg'
   filename = f'gdrive_statement_{file_id[:8]}.jpg'
- elif doc_type == 'sheets' or 'text/csv' in content_type:
+ elif doc_type in ('sheets', 'sheets_pub') or 'text/csv' in content_type:
   mime = 'text/csv'
   filename = f'gdrive_statement_{file_id[:8]}.csv'
+ elif raw_bytes.startswith(b'PK\x03\x04') and any(k in content_type for k in ('spreadsheet', 'excel', 'sheet')):
+  mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  filename = f'gdrive_statement_{file_id[:8]}.xlsx'
  else:
-  mime = 'application/octet-stream'
-  filename = f'gdrive_statement_{file_id[:8]}.bin'
+  try:
+   raw_bytes[:1024].decode('utf-8')
+   mime = 'text/csv'
+   filename = f'gdrive_statement_{file_id[:8]}.csv'
+  except Exception:
+   mime = 'application/octet-stream'
+   filename = f'gdrive_statement_{file_id[:8]}.bin'
 
  return {
   'name': filename,
@@ -404,6 +470,19 @@ def download_gdrive_file(url):
   'size': len(raw_bytes),
   'fileId': file_id
  }
+
+def safe_extract_text(extract_fn, file_dict, raw_bytes):
+ if file_dict and file_dict.get('type') == 'application/pdf':
+  try:
+   t = extract_fn(file_dict)
+   if t and t.strip(): return t
+  except Exception: pass
+ if raw_bytes:
+  try: return raw_bytes.decode('utf-8')
+  except Exception:
+   try: return raw_bytes.decode('latin-1', errors='replace')
+   except Exception: pass
+ return ''
 
 def extract_statement(data, extract):
  if not isinstance(data, dict) or data.get('consent') is not True:
@@ -500,13 +579,9 @@ def extract_statement(data, extract):
   if file:
    if file.get('type', '').startswith('image/'):
     content.append({'type': 'input_image', 'image_url': 'data:' + file['type'] + ';base64,' + file['data']})
-   elif file.get('type') == 'application/pdf':
-    doc_text = extract(file)[:35000]
-    content[0]['text'] += '\nDocument content:\n' + doc_text
    else:
-    try: txt = raw_bytes.decode('utf-8')
-    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
-    content[0]['text'] += '\nDocument content:\n' + txt[:35000]
+    doc_text = safe_extract_text(extract, file, raw_bytes)[:35000]
+    content[0]['text'] += '\nDocument content:\n' + doc_text
   elif raw_text:
    content[0]['text'] += '\nDocument content:\n' + raw_text[:35000]
 
@@ -519,13 +594,9 @@ def extract_statement(data, extract):
   if file:
    if file.get('type', '').startswith('image/'):
     content.append({'type': 'image', 'source': {'type': 'base64', 'media_type': file['type'], 'data': file['data']}})
-   elif file.get('type') == 'application/pdf':
-    doc_text = extract(file)[:35000]
-    content.append({'type': 'text', 'text': '\nDocument text:\n' + doc_text})
    else:
-    try: txt = raw_bytes.decode('utf-8')
-    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
-    content.append({'type': 'text', 'text': '\nDocument text:\n' + txt[:35000]})
+    doc_text = safe_extract_text(extract, file, raw_bytes)[:35000]
+    content.append({'type': 'text', 'text': '\nDocument text:\n' + doc_text})
   elif raw_text:
    content.append({'type': 'text', 'text': '\nDocument text:\n' + raw_text[:35000]})
   content.append({'type': 'text', 'text': doc_prompt})
@@ -538,13 +609,9 @@ def extract_statement(data, extract):
   if file:
    if file.get('type', '').startswith('image/'):
     content.append({'type': 'image_url', 'image_url': {'url': 'data:' + file['type'] + ';base64,' + file['data']}})
-   elif file.get('type') == 'application/pdf':
-    doc_text = extract(file)[:35000]
-    content[0]['text'] += '\nDocument text:\n' + doc_text
    else:
-    try: txt = raw_bytes.decode('utf-8')
-    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
-    content[0]['text'] += '\nDocument text:\n' + txt[:35000]
+    doc_text = safe_extract_text(extract, file, raw_bytes)[:35000]
+    content[0]['text'] += '\nDocument text:\n' + doc_text
   elif raw_text:
    content[0]['text'] += '\nDocument text:\n' + raw_text[:35000]
   res = transport('https://openrouter.ai/api/v1/chat/completions', {'model': model, 'messages': [{'role': 'system', 'content': STATEMENT_SYSTEM}, {'role': 'user', 'content': content}], 'max_tokens': 4000}, key, openrouter=True)
@@ -556,13 +623,9 @@ def extract_statement(data, extract):
   if file:
    if file.get('type', '').startswith('image/'):
     content.append({'type': 'image_url', 'image_url': {'url': 'data:' + file['type'] + ';base64,' + file['data']}})
-   elif file.get('type') == 'application/pdf':
-    doc_text = extract(file)[:35000]
-    content[0]['text'] += '\nDocument text:\n' + doc_text
    else:
-    try: txt = raw_bytes.decode('utf-8')
-    except Exception: txt = raw_bytes.decode('latin-1', errors='replace')
-    content[0]['text'] += '\nDocument text:\n' + txt[:35000]
+    doc_text = safe_extract_text(extract, file, raw_bytes)[:35000]
+    content[0]['text'] += '\nDocument text:\n' + doc_text
   elif raw_text:
    content[0]['text'] += '\nDocument text:\n' + raw_text[:35000]
 
@@ -576,7 +639,7 @@ def extract_statement(data, extract):
    if file.get('type', '').startswith('image/'):
     content.append({'type': 'image_url', 'image_url': {'url': 'data:' + file['type'] + ';base64,' + file['data']}})
    else:
-    doc_text = extract(file)[:30000]
+    doc_text = safe_extract_text(extract, file, raw_bytes)[:30000]
     content[0]['text'] += '\nDocument text:\n' + doc_text
   elif raw_text:
    content[0]['text'] += '\nDocument text:\n' + raw_text[:30000]

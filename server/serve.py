@@ -2268,7 +2268,16 @@ class Handler(SimpleHTTPRequestHandler):
             if self.path == '/api/gdrive/fetch':
                 try:
                     url = data.get('url') or data.get('gdriveUrl')
-                    return self.send_json({'ok': True, 'file': inveys_ai.download_gdrive_file(url)})
+                    f_info = inveys_ai.download_gdrive_file(url)
+                    return self.send_json({
+                        'ok': True,
+                        'file': f_info,
+                        'name': f_info.get('name'),
+                        'type': f_info.get('type'),
+                        'data': f_info.get('data'),
+                        'size': f_info.get('size'),
+                        'fileId': f_info.get('fileId')
+                    })
                 except ValueError as error:
                     return self.send_json({'error': str(error)}, 400)
             if self.path == '/api/extract': return self.send_json({'text': extract(data)})
