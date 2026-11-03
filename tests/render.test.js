@@ -1457,6 +1457,69 @@ test('capture-gdrive-fetch supports wrapped file response structure and direct A
   assert.equal(app.state().transactions.length, countBefore + 2);
 });
 
+test('transactions page renders sort controls and supports sorting by date, amount, account, kind, and name', () => {
+  const initial = boot().state();
+  // Ensure varied dates, accounts and kinds for testing
+  initial.transactions = [
+    { id: 'tx-1', name: 'Alpha Coffee', date: '2026-11-01', kind: 'expense', amount: 2500, accountId: 'a1', category: 'Lifestyle' },
+    { id: 'tx-2', name: 'Beta Salary', date: '2026-11-03', kind: 'income', amount: 500000, accountId: 'a2', category: 'Income' },
+    { id: 'tx-3', name: 'Gamma Savings', date: '2026-11-02', kind: 'transfer', amount: 100000, accountId: 'a1', targetId: 'a2', category: 'Transfer' },
+    { id: 'tx-4', name: 'Delta Snack', date: '2026-10-25', kind: 'expense', amount: 1500, accountId: 'a2', category: 'Groceries' }
+  ];
+  const app = boot(initial);
+  app.click({ page: 'transactions' });
+
+  const html = app.html();
+  assert.match(html, /id="transaction-sort"/);
+  assert.match(html, /th-sort-btn/);
+  assert.match(html, /data-action="tx-sort:date"/);
+  assert.match(html, /data-action="tx-sort:amount"/);
+  assert.match(html, /data-action="tx-sort:account"/);
+  assert.match(html, /data-action="tx-sort:kind"/);
+  assert.match(html, /data-action="tx-sort:name"/);
+
+  const getTxNames = () => {
+    const match = app.html().match(/<tbody id="transaction-rows">([\s\S]*?)<\/tbody>/);
+    if (!match) return [];
+    return [...match[1].matchAll(/<div class="tx-cell-text"><b><span class="user-content">([^<]+)<\/span><\/b>/g)].map(m => m[1]);
+  };
+
+  // 1. Default: date descending
+  assert.deepEqual(getTxNames(), ['Beta Salary', 'Gamma Savings', 'Alpha Coffee', 'Delta Snack']);
+
+  // 2. Sort by amount descending
+  app.click({ action: 'tx-sort:amount' });
+  assert.deepEqual(getTxNames(), ['Beta Salary', 'Gamma Savings', 'Alpha Coffee', 'Delta Snack']);
+
+  // 3. Toggle amount to ascending
+  app.click({ action: 'tx-sort:amount' });
+  assert.deepEqual(getTxNames(), ['Delta Snack', 'Alpha Coffee', 'Gamma Savings', 'Beta Salary']);
+
+  // 4. Sort by date ascending via header click
+  app.click({ action: 'tx-sort:date' });
+  // Clicking date once defaults to desc, clicking again toggles to asc:
+  app.click({ action: 'tx-sort:date' });
+  assert.deepEqual(getTxNames(), ['Delta Snack', 'Alpha Coffee', 'Gamma Savings', 'Beta Salary']);
+
+  // 5. Sort by account ascending (High-Yield Savings 'a2' vs Northstar Checking 'a1')
+  app.click({ action: 'tx-sort:account' });
+  const byAcc = getTxNames();
+  assert.ok(byAcc.indexOf('Beta Salary') < byAcc.indexOf('Alpha Coffee'));
+
+  // 6. Sort by kind ascending (income -> expense -> transfer)
+  app.click({ action: 'tx-sort:kind' });
+  const byKind = getTxNames();
+  assert.equal(byKind[0], 'Beta Salary'); // income
+  assert.equal(byKind[byKind.length - 1], 'Gamma Savings'); // transfer
+
+  // 7. Sort by dropdown selector
+  app.changeField('transaction-sort', 'name-asc');
+  assert.deepEqual(getTxNames(), ['Alpha Coffee', 'Beta Salary', 'Delta Snack', 'Gamma Savings']);
+
+  app.changeField('transaction-sort', 'name-desc');
+  assert.deepEqual(getTxNames(), ['Gamma Savings', 'Delta Snack', 'Beta Salary', 'Alpha Coffee']);
+});
+
 
 
 
