@@ -1,23 +1,44 @@
 # INVEYS — v0.23.0
 
 > **Financial Operating System & Wealth Management untuk Indonesia**  
-> *Alternatif Modern Monarch Money & Copilot dengan Arsitektur Local-First, Diagram Arus Kas Sankey, AI E-Statement Extractor, dan Privasi 100% Terkendali.*
+> *Alternatif Modern Monarch Money & Copilot dengan Arsitektur Local-First, Maskot AI INVI, Diagram Arus Kas Sankey, AI E-Statement Extractor, dan Privasi 100% Terkendali.*
 
 [![Version](https://img.shields.io/badge/version-0.23.0-emerald.svg)](package.json)
 [![Architecture](https://img.shields.io/badge/architecture-local--first-blue.svg)](docs/ARCHITECTURE.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg)](docker-compose.yml)
 [![CI/CD](https://img.shields.io/badge/deploy-GitHub%20Actions%20%2B%20Watchtower-purple.svg)](.github/workflows/docker-publish.yml)
-[![Tests](https://img.shields.io/badge/tests-260%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-344%20passed%20(100%25)-success.svg)](tests/)
 
 ---
 
 ## 🌟 Sekilas Fitur Unggulan
 
-* **🏦 Ekosistem 14 Bank & Kartu Kredit Indonesia**: Mendukung BCA, Mandiri, BRI, BNI, Bank Jago, Jenius (BTPN), CIMB Niaga, Permata, Danamon, Blu by BCA Digital, SeaBank, serta berbagai kartu kredit perbankan nasional.
-* **📊 Monarch-Style Cash Flow Sankey**: Visualisasi intuitif aliran masuk pemasukan, pemisahan alokasi tabungan, fixed living cost, hingga discretionary spending multi-tier.
-* **🤖 Multimodal AI Copilot & Extractor**: Ekstraksi mutasi rekening dan e-statement PDF secara otomatis tanpa perlu menyerahkan kredensial m-Banking Anda. Mendukung **9Router Gateway**, **Google Gemini 3.8 Flash**, dan **OpenAI GPT-4.1**.
-* **📈 Portofolio Investasi & Tabungan Emas**: Pelacak portofolio multi-aset, rebalancing drift analysis, integrasi bursa kripto (CCXT), serta simulasi cicilan emas fisik Pegadaian (Galeri 24).
-* **🔒 Privasi 100% Terkendali (Local-First)**: Berkas keuangan tersimpan dalam SQLite Vault terenkripsi di perangkat atau server pribadi Anda. Tersedia **Ghost Mode** untuk menyamarkan saldo instan saat di ruang publik.
+* **🤖 Maskot AI INVI (The Intelligent Guardian / Financial Copilot)**:
+  * Maskot AI interaktif dengan bodi keramik putih gading (*Ivory White*), aksen emas sampanye, jubah *Deep Navy*, dan mata LED kuning keemasan berpendar hangat.
+  * Dilengkapi 10+ pose & ekspresi dinamis (*Happy, Thinking, Excited, Confident, Wink, Remind, Analyze, Give Insight, Celebrate, Sleep*).
+  * Fisika melayang *dual-sinusoidal* yang sangat *fluid*, pendaran napas LED emas, pelacakan pandangan mata responsif kursor, serta animasi datang (*Spring Teleport*) & pergi (*Departure Slide-Down*).
+  * Dilengkapi **Studio Karakter INVI** interaktif dengan pilihan ukuran (90px, 120px, 160px Hero 3D) dan panduan filosofi etika AI (*INVEYS Mascot Soul*).
+* **🏦 Ekosistem Perbankan & E-Wallet Indonesia**:
+  * Mendukung 14 bank nasional: BCA, Mandiri, BRI, BNI, Bank Jago, Jenius (BTPN), CIMB Niaga, Permata, Danamon, Blu by BCA Digital, SeaBank, dan kartu kredit perbankan.
+  * Dukungan penuh dompet digital: GoPay, OVO, DANA, ShopeePay sebagai aset likuid.
+* **📊 Monarch-Style Cash Flow Sankey & Calendar**:
+  * Visualisasi diagram alir kas multi-tier: memetakan pemasukan bersih ke alokasi kebutuhan pokok, tabungan masa depan, dan gaya hidup.
+  * Kalender tagihan visual (*Monarch-style grid & list view*) untuk mengelola jadwal gaji, langganan rutin, dan tanggal jatuh tempo.
+* **📄 AI E-Statement Extractor & Smart Capture**:
+  * Ekstraksi mutasi rekening dan e-statement PDF secara otomatis tanpa perlu menyerahkan kredensial m-Banking.
+  * Dukungan drag & drop batch multi-file, tautan Google Drive, dan validasi inline cerdas dengan koreksi mandiri.
+* **📈 Portofolio Multi-Aset, Kripto & Tabungan Emas**:
+  * Pelacak portofolio terpadu dengan analisis *drift rebalancing*.
+  * Integrasi konektor bursa kripto (Bybit, Binance, Tokocrypto, Indodax via CCXT).
+  * Simulasi & pencatatan cicilan emas fisik Pegadaian (Galeri 24) dengan harga spot otomatis.
+  * Generator rekap pajak SPT Tahunan DJP Online format resmi Indonesia.
+* **🔒 Privasi 100% Terkendali (Local-First)**:
+  * Berkas keuangan tersimpan dalam SQLite Vault terenkripsi di perangkat atau server pribadi Anda.
+  * Fitur **Ghost Mode** untuk menyamarkan nominal secara instan saat membuka aplikasi di ruang publik.
+  * Kunci brankas biometrik / password dengan timer *auto-lock*.
+* **🧹 Ramah Pemula & Senior**:
+  * Tombol 1-klik untuk membersihkan transaksi contoh (*clear sample data*) sehingga pengguna baru dapat memulai pencatatan dari saldo 0 atau saldo aktual.
+  * **Easy Mode** dengan tipografi besar dan kartu aksi cepat untuk kemudahan navigasi senior dan mobile.
 
 ---
 
@@ -29,6 +50,7 @@ Pilih mode yang paling sesuai dengan kebutuhan Anda:
 Cukup unduh berkas **`inveys-app.html`** dari repositori ini, lalu buka langsung di browser favorit Anda (Google Chrome, Safari, Firefox, Edge).
 * Berjalan 100% mandiri tanpa server, tanpa Node.js, dan tanpa internet.
 * Dapat disimpan di laptop atau flashdisk dan dibuka saat mode pesawat.
+* URL lokal langsung: `file:///Users/muhamadhendrafebriansyah/INVYES/inveys-app.html`
 
 ---
 
@@ -86,7 +108,6 @@ TELEGRAM_CHAT_ID=
 > **Pengaturan Kunci API Fleksibel & Mandiri di Aplikasi:**
 > Anda dapat mengatur, menguji koneksi (*live test*), dan menyimpan API Key (Google Gemini, OpenAI, 9Router, Meta AI Muse, dan Bot Telegram) secara mandiri kapan saja langsung di UI aplikasi: buka menu **Pengaturan (Settings)** ➔ **Kunci API AI & Telegram Bot** ➔ **Kelola Kunci API & Bot** (atau melalui ikon pengaturan pada Asisten AI).
 
-
 #### B. Menjalankan via Docker Compose
 Jalankan perintah berikut pada server VPS Anda:
 
@@ -107,7 +128,7 @@ Jika menggunakan antarmuka web Hostinger:
 ## 🔄 Pembaruan Otomatis 100% Hands-Free (CI/CD)
 
 Proyek ini telah dilengkapi pipeline otomasi penuh:
-1. **GitHub Actions**: Setiap ada perubahan kode yang di-push ke branch `main`, GitHub Actions secara otomatis menjalankan seluruh 260 unit tests, meng-compile image Docker, dan mem-publish ke **GitHub Container Registry** (`ghcr.io/cilostoc/inveys:latest`).
+1. **GitHub Actions**: Setiap ada perubahan kode yang di-push ke branch `main`, GitHub Actions secara otomatis menjalankan seluruh pengujian otomatis (344 tests), meng-compile image Docker, dan mem-publish ke **GitHub Container Registry** (`ghcr.io/cilostoc/inveys:latest`).
 2. **Pembaruan 1-Klik / Zero Downtime**: Di server VPS Hostinger Anda, pembaruan versi terbaru dapat ditarik kapan saja cukup dengan menekan tombol **Update / Deploy** di panel Docker Manager, atau via perintah `docker compose pull && docker compose up -d` tanpa merusak database vault (`/data`).
 
 ---
@@ -137,7 +158,7 @@ inveys/
 │   ├── index.html            # Antarmuka SPA inti aplikasi
 │   ├── landing.html          # Kode sumber Landing Page publik
 │   ├── styles.css            # Design system & dark mode stylesheet
-│   ├── app.js                # Orkestrasi navigasi & antarmuka
+│   ├── app.js                # Orkestrasi navigasi & maskot AI INVI
 │   ├── engine.js             # Financial integer & calculation engine
 │   ├── finance.js            # Shared views & proyeksi arus kas
 │   ├── investment.js         # Portofolio aset & cicilan emas
@@ -149,7 +170,7 @@ inveys/
 │   └── inveys_crypto.py      # CCXT Crypto connector
 ├── scripts/                  # Skrip otomasi rilis & build
 │   └── build.py              # Kompiler single-file HTML mandiri
-├── tests/                    # Pengujian otomatis frontend & backend
+├── tests/                    # Pengujian otomatis frontend & backend (344 tests)
 ├── .github/workflows/        # Otomasi CI/CD GitHub Actions
 ├── Dockerfile                # Multi-stage production container image
 ├── docker-compose.yml        # Konfigurasi standar produksi & Traefik
@@ -165,17 +186,20 @@ inveys/
 
 ## 🧪 Validasi Kualitas & Pengujian Otomatis
 
-Seluruh logika finansial dan endpoint backend dilindungi oleh rangkaian pengujian ketat:
+Seluruh logika finansial dan endpoint backend dilindungi oleh rangkaian **344 pengujian otomatis (100% lulus)**:
 
 ```bash
 # Kompilasi bundel HTML mandiri
 python3 build.py
 
-# Menjalankan 260 unit test frontend (Node.js test runner)
-npm test
+# Menjalankan seluruh tes (Frontend + Calendar + Backend + AI)
+npm run test:all
 
-# Menjalankan 29 integrasi test backend (Python unittest)
-python3 tests/backend_test.py
+# Atau menjalankan secara terpisah:
+npm test                        # 287 unit test frontend
+npm run test:calendar           # 7 unit test kalender arus kas
+python3 tests/backend_test.py   # 37 test integrasi backend
+python3 tests/ai_test.py        # 13 test gateway AI
 ```
 
 ---
@@ -186,14 +210,15 @@ python3 tests/backend_test.py
 * Perspektif **seluruh keluarga**, **bersama**, dan masing-masing anggota keluarga tersedia pada Dashboard, Rekening, Transaksi, Arus Kas, Goals, Utang, Kartu Kredit, Reports, dan Forecast.
 * Pembagian (*split*) transaksi mendukung nominal pasti atau persentase presisi dengan metode *largest remainder* tanpa mengubah saldo riil akun.
 
-### 2. Laporan & Diagram Arus Kas (Reports)
+### 2. Laporan & Diagram Arus Kas (Reports & Sankey)
 * Mendukung agregasi bulanan, kuartalan, dan tahunan tanpa mencampur transfer internal.
 * Diagram alir kas Sankey multi-tier memetakan pemasukan bersih ke alokasi kebutuhan pokok, tabungan masa depan, dan gaya hidup.
+* Kalender tagihan bulanan untuk memastikan tidak ada denda keterlambatan pembayaran.
 * Ekspor visual tersedia dalam format SVG vektor tajam dan CSV terstruktur.
 
 ### 3. Forecast Terpadu & Monte Carlo
 * Proyeksi kekayaan masa depan hingga horizon 40 tahun dengan memperhitungkan inflasi, pertumbuhan riil aset, amortisasi utang, serta *life events* (pembelian rumah, jeda karier, kelahiran anak, pensiun).
-* Simulasi Monte Carlo menjalankan 100–1.000 jalur probabilitas untuk menguji ketahanan portofolio terhadap guncangan pasar.
+* Simulasi Monte Carlo menjalankan 1.000–5.000 jalur probabilitas untuk menguji ketahanan portofolio terhadap guncangan pasar.
 
 ---
 
