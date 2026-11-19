@@ -1600,6 +1600,32 @@ test('calendar page renders anomaly HUD and handles hike update, add-sub, and di
   assert.equal(app.state().dismissedAnomalies[sampleKey], true);
 });
 
+test('INVI financial copilot renders interactive action cards and navigation executes properly', () => {
+  const app = boot();
+  app.click({ page: 'copilot' });
+
+  // 1. Trigger question using prompt button
+  app.click({ question: 'Which debt has the highest interest rate?' });
+
+  // Verify action cards are parsed and rendered into HTML
+  const chatHtml = app.elements.get('#chat-messages').innerHTML;
+  assert.match(chatHtml, /invi-action-card/);
+  assert.match(chatHtml, /invi-action-card-btn/);
+
+  // 2. Click action card button with nav:debt
+  app.click({ action: 'nav:debt' });
+  assert.match(app.html(), /DEBT MANAGEMENT|Debt management/i);
+
+  // 3. Click action card with nav:goals
+  app.click({ action: 'nav:goals' });
+  assert.match(app.html(), /GOALS & PLANS|Goals/i);
+
+  // 4. Click action card with nav:calendar
+  app.click({ action: 'nav:calendar' });
+  assert.match(app.html(), /KALENDER|CALENDAR/i);
+});
+
+
 
 
 

@@ -933,16 +933,26 @@
       if(!viewState().debts.length){
         text='You have no debt records. Add a liability to compare repayment projections.';
       } else if(!activeDebts.length){
-        text='🎉 <b>Congratulations! You are completely debt-free (0 balance on all debts & loans).</b> You have no ongoing debt commitments or interest charges right now. You can channel your cash flow toward emergency reserves or future investments.';
+        text='🎉 <b>Congratulations! You are completely debt-free (0 balance on all debts & loans).</b> You have no ongoing debt commitments or interest charges right now. You can channel your cash flow toward emergency reserves or future investments.\n\n[[action:nav:goals|Set Up Savings Goals|Channel surplus cash into goals|🏆]]';
       } else {
         const d=activeDebts.slice().sort((a,b)=>b.apr-a.apr)[0];
-        text=`Your highest recorded APR is <b>${d.apr}%</b> on <b>${user(d.name)}</b>, with a balance of ${money(d.balance,false,d.currency)}. Its minimum monthly payment is ${money(d.minimum,false,d.currency)}. Compare extra payments in Debt management, then check the liquidity impact in Scenarios. Higher-interest repayment may reduce modeled interest costs, but fees, promotional terms, and your cash needs matter.`;
+        text=`Your highest recorded APR is <b>${d.apr}%</b> on <b>${user(d.name)}</b>, with a balance of ${money(d.balance,false,d.currency)}. Its minimum monthly payment is ${money(d.minimum,false,d.currency)}. Compare extra payments in Debt management, then check the liquidity impact in Scenarios. Higher-interest repayment may reduce modeled interest costs, but fees, promotional terms, and your cash needs matter.\n\n[[action:nav:debt|Manage Debts & Payoff|Compare payoff schedules and interest savings|📊]]`;
       }
     }
-    else if (/emergency|reserve|darurat|cadangan/.test(lower)) text=`Your recorded liquid funds are <b>${money(p.liquid)}</b>. Planned monthly expenses and minimum debt payments total <b>${money(p.outflows)}</b>, giving ${p.reserveMonths===null?'no calculable coverage ratio because planned outflows are zero':`approximately <b>${p.reserveMonths.toFixed(1)} months</b> of coverage`}. This includes all liquid accounts, including funds designated for other goals. It is not the same as a dedicated emergency fund.`;
-    else if (/goal|progress|tujuan|perkembangan/.test(lower)) text=state.goals.length?viewState().goals.map(g=>`<p><b>${user(g.name)}</b>: ${money(g.saved,false,g.currency)} of ${money(g.target,false,g.currency)} (${percent(g)}% funded), with ${money(g.monthly,false,g.currency)} per month planned.</p>`).join('')+'Allocations are designations within your current balances, not new assets.': 'You have no goals yet. Create one in Goals & plans.';
-    else if (/afford|allocat|cash|income|month|spend|surplus|alokasi|bulan|arus|pendapatan/.test(lower)) text=`Your recurring plan includes <b>${money(p.income)}</b> in monthly income, <b>${money(p.outflows)}</b> in expenses and minimum debt payments, and <b>${money(p.goalCommitments)}</b> in goal contributions. That leaves <b>${money(p.available)}</b> of projected monthly capacity. This assumes the recorded flows repeat as entered. Unrecorded expenses, taxes, irregular income, and timing can change the result. Use Scenarios to test a purchase.`;
-    else if (/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower)) text=`Your recorded net worth is <b>${money(p.netWorth)}</b>: <b>${money(p.assets)}</b> in assets less <b>${money(p.liabilities)}</b> in liabilities. Your liquid funds total ${money(p.liquid)}. These are manual balance snapshots, not bank-verified records. Review the dates in Accounts before making a consequential decision.`;
+    else if (/emergency|reserve|darurat|cadangan/.test(lower)) {
+      const g = viewState().goals.find(g => /emergency|darurat|reserve/i.test(g.name)) || viewState().goals[0];
+      const actionCard = g ? `\n\n[[action:fund:${g.id}|Fund Emergency Reserve|Allocate liquid savings toward this reserve|🎯]]` : `\n\n[[action:goal-new|Create Emergency Reserve Goal|Set a target for unexpected expenses|🎯]]`;
+      text=`Your recorded liquid funds are <b>${money(p.liquid)}</b>. Planned monthly expenses and minimum debt payments total <b>${money(p.outflows)}</b>, giving ${p.reserveMonths===null?'no calculable coverage ratio because planned outflows are zero':`approximately <b>${p.reserveMonths.toFixed(1)} months</b> of coverage`}. This includes all liquid accounts, including funds designated for other goals. It is not the same as a dedicated emergency fund.${actionCard}`;
+    }
+    else if (/goal|progress|tujuan|perkembangan/.test(lower)) {
+      text=state.goals.length?viewState().goals.map(g=>`<p><b>${user(g.name)}</b>: ${money(g.saved,false,g.currency)} of ${money(g.target,false,g.currency)} (${percent(g)}% funded), with ${money(g.monthly,false,g.currency)} per month planned.</p>`).join('')+'Allocations are designations within your current balances, not new assets.\n\n[[action:nav:goals|View Goals & Plans|Track progress across all your financial goals|🏆]]': 'You have no goals yet. Create one in Goals & plans.\n\n[[action:goal-new|Create Your First Goal|Define your milestone and monthly savings target|🎯]]';
+    }
+    else if (/afford|allocat|cash|income|month|spend|surplus|alokasi|bulan|arus|pendapatan/.test(lower)) {
+      text=`Your recurring plan includes <b>${money(p.income)}</b> in monthly income, <b>${money(p.outflows)}</b> in expenses and minimum debt payments, and <b>${money(p.goalCommitments)}</b> in goal contributions. That leaves <b>${money(p.available)}</b> of projected monthly capacity. This assumes the recorded flows repeat as entered. Unrecorded expenses, taxes, irregular income, and timing can change the result. Use Scenarios to test a purchase.\n\n[[action:open-scenario|Explore Scenario|Test the impact of a purchase or commitment|🔬]]\n[[action:nav:cashflow|View Cash Flow Sankey|Inspect income and expense pillars|🌊]]`;
+    }
+    else if (/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower)) {
+      text=`Your recorded net worth is <b>${money(p.netWorth)}</b>: <b>${money(p.assets)}</b> in assets less <b>${money(p.liabilities)}</b> in liabilities. Your liquid funds total ${money(p.liquid)}. These are manual balance snapshots, not bank-verified records. Review the dates in Accounts before making a consequential decision.\n\n[[action:nav:accounts|View All Accounts|Review balances and asset breakdown|🏦]]\n[[action:nav:calendar|View Bills & Calendar|Check upcoming subscriptions and paydays|📅]]`;
+    }
     else text='I can explain your financial position, monthly cash-flow plan, reserve coverage, goal progress, or debt records. Choose one of the suggested questions. I cannot answer this reliably from the supported local calculations.';
     if(state.language==='id')return answerIndonesian(q,p);
     return text + '<p class="invi-signature-footer"><small>✨ <em>Stay informed. Stay intentional. Keep growing.</em></small></p>';
@@ -992,16 +1002,26 @@
       if(!viewState().debts.length){
         text='Belum ada catatan utang. Tambahkan liabilitas untuk membandingkan proyeksi pembayaran.';
       } else if(!activeDebts.length){
-        text='🎉 <b>Selamat! Anda bebas dari beban utang (semua saldo utang & pinjaman adalah Rp 0 / Lunas).</b> Tidak ada kewajiban cicilan bunga bulanan saat ini. Anda dapat mengoptimalkan kapasitas kas untuk memperkuat dana darurat atau investasi masa depan.';
+        text='🎉 <b>Selamat! Anda bebas dari beban utang (semua saldo utang & pinjaman adalah Rp 0 / Lunas).</b> Tidak ada kewajiban cicilan bunga bulanan saat ini. Anda dapat mengoptimalkan kapasitas kas untuk memperkuat dana darurat atau investasi masa depan.\n\n[[action:nav:goals|Kelola Sasaran Tabungan|Salurkan surplus kas bebas ke target finansial|🏆]]';
       } else {
         const d=activeDebts.slice().sort((a,b)=>b.apr-a.apr)[0];
-        text=`APR tertinggi tercatat adalah <b>${d.apr}%</b> pada ${user(d.name)}, dengan saldo ${money(d.balance,false,d.currency)} dan pembayaran minimum ${money(d.minimum,false,d.currency)} per bulan. Bandingkan pembayaran tambahan di Pengelolaan utang dan dampak likuiditasnya di Skenario. Biaya, perubahan bunga, dan kebutuhan kas dapat mengubah hasil.`;
+        text=`APR tertinggi tercatat adalah <b>${d.apr}%</b> pada ${user(d.name)}, dengan saldo ${money(d.balance,false,d.currency)} dan pembayaran minimum ${money(d.minimum,false,d.currency)} per bulan. Bandingkan pembayaran tambahan di Pengelolaan utang dan dampak likuiditasnya di Skenario. Biaya, perubahan bunga, dan kebutuhan kas dapat mengubah hasil.\n\n[[action:nav:debt|Buka Pengelolaan Utang|Bandingkan simulasi pelunasan dan penghematan bunga|📊]]`;
       }
     }
-    else if(/emergency|reserve|darurat|cadangan/.test(lower))text=`Dana likuid tercatat sebesar <b>${money(p.liquid)}</b>. Pengeluaran dan pembayaran minimum bulanan adalah <b>${money(p.outflows)}</b>. Rasio cakupan ${p.reserveMonths===null?'belum dapat dihitung karena pengeluaran nol':`sekitar <b>${p.reserveMonths.toFixed(1)} bulan</b>`}. Ini mencakup seluruh rekening likuid, termasuk dana untuk tujuan lain; bukan hanya dana darurat khusus.`;
-    else if(/goal|progress|tujuan|perkembangan/.test(lower))text=viewState().goals.map(g=>`<p>${user(g.name)}: ${money(g.saved,false,g.currency)} dari ${money(g.target,false,g.currency)} (${percent(g)}%), dengan rencana ${money(g.monthly,false,g.currency)} per bulan.</p>`).join('')+'Alokasi merupakan pencadangan saldo yang sudah ada, bukan aset baru.';
-    else if(/afford|allocat|cash|income|month|spend|surplus|alokasi|bulan|arus|pendapatan/.test(lower))text=`Rencana bulanan: pendapatan <b>${money(p.income)}</b>, pengeluaran termasuk minimum utang <b>${money(p.outflows)}</b>, dan kontribusi tujuan <b>${money(p.goalCommitments)}</b>. Kapasitas tersisa <b>${money(p.available)}</b>. Perhitungan memakai kurs tersimpan dan mengasumsikan arus rutin berulang; biaya yang belum tercatat serta waktu pembayaran dapat mengubah hasil.`;
-    else if(/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower))text=`Kekayaan bersih tercatat <b>${money(p.netWorth)}</b>: aset <b>${money(p.assets)}</b> dikurangi liabilitas <b>${money(p.liabilities)}</b>. Dana likuid ${money(p.liquid)}. Saldo merupakan catatan manual, bukan verifikasi bank. Kurs: ${user(state.fx.source)} (${state.fx.date}). Tinjau data sebelum mengambil keputusan.`;
+    else if(/emergency|reserve|darurat|cadangan/.test(lower)) {
+      const g = viewState().goals.find(g => /emergency|darurat|reserve/i.test(g.name)) || viewState().goals[0];
+      const actionCard = g ? `\n\n[[action:fund:${g.id}|Alokasikan ke Dana Darurat|Tambahkan pencadangan dari dana likuid Anda|🎯]]` : `\n\n[[action:goal-new|Buat Target Dana Darurat|Tentukan sasaran cadangan untuk kebutuhan darurat|🎯]]`;
+      text=`Dana likuid tercatat sebesar <b>${money(p.liquid)}</b>. Pengeluaran dan pembayaran minimum bulanan adalah <b>${money(p.outflows)}</b>. Rasio cakupan ${p.reserveMonths===null?'belum dapat dihitung karena pengeluaran nol':`sekitar <b>${p.reserveMonths.toFixed(1)} bulan</b>`}. Ini mencakup seluruh rekening likuid, termasuk dana untuk tujuan lain; bukan hanya dana darurat khusus.${actionCard}`;
+    }
+    else if(/goal|progress|tujuan|perkembangan/.test(lower)) {
+      text=viewState().goals.map(g=>`<p>${user(g.name)}: ${money(g.saved,false,g.currency)} dari ${money(g.target,false,g.currency)} (${percent(g)}%), dengan rencana ${money(g.monthly,false,g.currency)} per bulan.</p>`).join('')+'Alokasi merupakan pencadangan saldo yang sudah ada, bukan aset baru.\n\n[[action:nav:goals|Kelola Sasaran & Rencana|Tinjau perkembangan seluruh target finansial|🏆]]';
+    }
+    else if(/afford|allocat|cash|income|month|spend|surplus|alokasi|bulan|arus|pendapatan/.test(lower)) {
+      text=`Rencana bulanan: pendapatan <b>${money(p.income)}</b>, pengeluaran termasuk minimum utang <b>${money(p.outflows)}</b>, dan kontribusi tujuan <b>${money(p.goalCommitments)}</b>. Kapasitas tersisa <b>${money(p.available)}</b>. Perhitungan memakai kurs tersimpan dan mengasumsikan arus rutin berulang; biaya yang belum tercatat serta waktu pembayaran dapat mengubah hasil.\n\n[[action:open-scenario|Uji Skenario Finansial|Simulasikan pembelian besar atau komitmen baru|🔬]]\n[[action:nav:cashflow|Lihat Arus Kas Sankey|Visualisasi aliran uang masuk dan keluar|🌊]]`;
+    }
+    else if(/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower)) {
+      text=`Kekayaan bersih tercatat <b>${money(p.netWorth)}</b>: aset <b>${money(p.assets)}</b> dikurangi liabilitas <b>${money(p.liabilities)}</b>. Dana likuid ${money(p.liquid)}. Saldo merupakan catatan manual, bukan verifikasi bank. Kurs: ${user(state.fx.source)} (${state.fx.date}). Tinjau data sebelum mengambil keputusan.\n\n[[action:nav:accounts|Buka Daftar Rekening & Aset|Tinjau saldo dan rincian kepemilikan|🏦]]\n[[action:nav:calendar|Buka Kalender Tagihan|Cek jatuh tempo tagihan rutin dan langganan|📅]]`;
+    }
     else text='Saya dapat menjelaskan posisi keuangan, arus kas bulanan, cakupan dana likuid, tujuan, dan utang. Pilih pertanyaan yang disediakan. Saya tidak memiliki data yang memadai untuk menjawab topik lain secara andal.';
     return text + '<p class="invi-signature-footer"><small>✨ <em>Tetap cermat. Tetap terarah. Terus bertumbuh.</em></small></p>';
   }
@@ -4039,12 +4059,31 @@
   const aiProviderName=id=>({local:L('Lokal (Kalkulator)','Local (Calculator)'),openai:'OpenAI (ChatGPT / GPT-4o)',gemini:'Google Gemini',claude:'Anthropic Claude',openrouter:'OpenRouter',muse:'Meta AI (Muse Spark)','9router':'9Router Gateway'})[id]||id;
   const aiProviderBadge=id=>({gemini:'✨ Google Gemini',openai:'⚡ GPT-4o Mini',claude:'🎭 Claude',openrouter:'🌐 OpenRouter','9router':'🚀 9Router',muse:'✧ Meta AI',local:'🔢 Local'})[id]||id;
   function aiRichText(value){
-    let s=escape(value);
+    let s=String(value||'');
+    const actionCards=[];
+    s=s.replace(/\[\[action:([^|\]]+)\|([^|\]]+)(?:\|([^|\]]+))?(?:\|([^|\]]+))?\]\]/g, (match, act, title, subtitle, emoji) => {
+      const idx=actionCards.length;
+      actionCards.push({
+        action: act.trim(),
+        title: title.trim(),
+        subtitle: (subtitle || '').trim(),
+        emoji: (emoji || '⚡').trim()
+      });
+      return `__ACTION_CARD_${idx}__`;
+    });
+
+    s=escape(s);
     s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
     s=s.replace(/^#{1,3} (.+)$/gm,'<strong class="ai-head">$1</strong>');
     s=s.replace(/^[-*] /gm,'<span class="ai-bullet">•</span> ');
     s=s.replace(/`([^`\n]+)`/g,'<code class="ai-inline-code">$1</code>');
     s=s.replace(/\b(Rp\s*[\d.,]+|IDR\s*[\d.,]+)\b/g,'<span class="ai-money-chip">$1</span>');
+
+    s=s.replace(/__ACTION_CARD_(\d+)__/g, (_, idxStr) => {
+      const card = actionCards[parseInt(idxStr, 10)];
+      if (!card) return '';
+      return `<div class="invi-action-card"><div class="invi-action-card-info"><span class="invi-action-card-emoji">${escape(card.emoji)}</span><div><b>${escape(card.title)}</b>${card.subtitle ? `<small>${escape(card.subtitle)}</small>` : ''}</div></div><button type="button" class="btn btn-sm btn-primary invi-action-card-btn" data-action="${escape(card.action)}">${escape(card.title)} &rarr;</button></div>`;
+    });
     return s;
   }
   const timerSet=typeof window!=='undefined'&&typeof window.setInterval==='function'?window.setInterval.bind(window):(typeof setInterval==='function'?setInterval:null);
@@ -10591,7 +10630,7 @@
   }
   function importFile(file){if(!file)return;handleBackupFile(file);}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
-  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='tx-sort'){toggleTransactionSort(id);return;}if(name.startsWith('anomaly-')){anomalyAction(name,id,extra,parts[3]);return;}if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('vey-')||name.startsWith('invi-')){inviAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id,extra);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='tx-sort'){toggleTransactionSort(id);return;}if(name==='nav'){navigate(id);return;}if(name.startsWith('anomaly-')){anomalyAction(name,id,extra,parts[3]);return;}if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('vey-')||name.startsWith('invi-')){inviAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id,extra);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'tax-djp-modal':openDjpTaxModal(id);break;
     case 'pwa-install':triggerPwaInstall();break;
     case 'lock-vault-now':lockVault();break;
