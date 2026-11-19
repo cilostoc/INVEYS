@@ -1520,6 +1520,45 @@ test('transactions page renders sort controls and supports sorting by date, amou
   assert.deepEqual(getTxNames(), ['Gamma Savings', 'Delta Snack', 'Beta Salary', 'Alpha Coffee']);
 });
 
+test('capture page renders smart diff HUD and supports filtering, select new, and duplicate resolution', () => {
+  const app = boot();
+  // 1. Save a transaction so we have an existing journal record
+  app.click({ page: 'capture' });
+  app.input('capture-text', '2026-10-03 Coffee 25 DR');
+  app.click({ action: 'capture-parse' });
+  app.click({ action: 'capture-save' });
+
+  // 2. Parse two drafts: one duplicate ('2026-10-03 Coffee 25 DR') and one new ('2026-10-04 Book 10 DR')
+  app.click({ page: 'capture' });
+  app.input('capture-text', '2026-10-03 Coffee 25 DR\n2026-10-04 Book 10 DR');
+  app.click({ action: 'capture-parse' });
+
+  const html = app.html();
+  assert.match(html, /draft-diff-hud/);
+  assert.match(html, /Smart Diff/);
+  assert.match(html, /draft-diff-inspector/);
+
+  // Filter to new only
+  app.click({ action: 'capture-filter:new' });
+  assert.match(app.html(), /Book/);
+
+  // Filter to duplicates
+  app.click({ action: 'capture-filter:dup' });
+
+  // Filter back to all
+  app.click({ action: 'capture-filter:all' });
+
+  // Click quick select new
+  app.click({ action: 'capture-select-new' });
+
+  // Test duplicate resolution skip action
+  app.click({ action: 'capture-resolve-dup:0:skip' });
+
+  // Test duplicate resolution force save action
+  app.click({ action: 'capture-resolve-dup:0:force' });
+});
+
+
 
 
 

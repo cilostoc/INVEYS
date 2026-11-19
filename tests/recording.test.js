@@ -385,3 +385,46 @@ test('Indonesian E-Wallet statement detection and parsing for GoPay, OVO, DANA, 
   assert.equal(R.detectBankStatement(spayText).type, 'shopeepay');
 });
 
+test('diffReconciliation categorizes exact matches, potential duplicates, transfers and new transactions with sums', () => {
+  const existingTx = [
+    { id: 'tx-1', name: 'Gaji Bulanan', date: '2026-10-25', accountId: 'acc-bri', currency: 'IDR', amount: 1000000000, kind: 'income', category: 'Income' },
+    { id: 'tx-2', name: 'Kopi Kenangan', date: '2026-10-24', accountId: 'acc-bri', currency: 'IDR', amount: 2500000, kind: 'expense', category: 'Dining Out' },
+    { id: 'tx-3', name: 'Transfer ke Mandiri', date: '2026-10-23', accountId: 'acc-bri', toAccountId: 'acc-mandiri', currency: 'IDR', amount: 50000000, kind: 'transfer' },
+  ];
+  const state = { transactions: existingTx };
+
+  const drafts = [
+    // 1. Exact match (same account, same date, same amount, same name)
+    { id: 'd-1', name: 'Gaji Bulanan', date: '2026-10-25', accountId: 'acc-bri', currency: 'IDR', amount: 1000000000, kind: 'income' },
+    // 2. Potential duplicate (same amount and near date +/-2 days, slightly different name or date)
+    { id: 'd-2', name: 'Kopi Kenangan Rest Area', date: '2026-10-23', accountId: 'acc-bri', currency: 'IDR', amount: 2500000, kind: 'expense' },
+    // 3. Transfer match
+    { id: 'd-3', name: 'Trf Mandiri', date: '2026-10-23', accountId: 'acc-bri', toAccountId: 'acc-mandiri', currency: 'IDR', amount: 50000000, kind: 'transfer' },
+    // 4. Brand new transaction (income)
+    { id: 'd-4', name: 'Cashback Promo', date: '2026-10-26', accountId: 'acc-bri', currency: 'IDR', amount: 5000000, kind: 'income' },
+    // 5. Brand new transaction (expense)
+    { id: 'd-5', name: 'Listrik PLN', date: '2026-10-26', accountId: 'acc-bri', currency: 'IDR', amount: 20000000, kind: 'expense' }
+  ];
+
+  const diff = R.diffReconciliation(state, drafts, 'acc-bri');
+  assert.equal(diff.total, 5);
+  assert.equal(diff.exactMatchCount, 1);
+  assert.equal(diff.potentialDuplicateCount, 1);
+  assert.equal(diff.transferPairCount, 1);
+  assert.equal(diff.newCount, 2);
+  assert.equal(diff.newIncomeSum, 5000000);
+  assert.equal(diff.newExpenseSum, 20000000);
+  assert.equal(diff.netNewChange, -15000000);
+  assert.equal(diff.dupIncomeSum, 1000000000);
+  assert.equal(diff.dupExpenseSum, 2500000);
+
+  // Check item flags
+  assert.equal(diff.items[0].status, 'exact_match');
+  assert.equal(diff.items[0].isExact, true);
+  assert.equal(diff.items[1].status, 'potential_duplicate');
+  assert.equal(diff.items[2].status, 'transfer_counterpart');
+  assert.equal(diff.items[3].status, 'new');
+  assert.equal(diff.items[4].status, 'new');
+});
+
+

@@ -617,11 +617,15 @@ function duplicates(state,row){
   if(isNaN(tDate)||isNaN(rDate))continue;
   if(Math.abs(tDate-rDate)>2*86400000)continue;
 
+  const txMeta={id:t.id,name:t.name,date:t.date,amount:t.amount,kind:t.kind,category:t.category,accountId:t.accountId};
+
   // 1. Same account match (Exact or nearby)
   if(t.accountId===rAcc&&t.currency===rCurr&&t.amount===rAmt&&t.kind===rKind){
    const tName=String(t.name||'').toLowerCase().trim();
    const isExact=t.date===row.date&&tName===rName;
-   list.push({id:t.id,type:'same_account',reason:isExact?'Exact match':'Same account, amount and nearby date'});
+   const isTransfer = t.kind === 'transfer';
+   const type = isTransfer ? (isExact ? 'transfer_exact' : 'transfer_counterpart') : 'same_account';
+   list.push({id:t.id,type,isExact,reason:isExact?'Exact match':'Same account, amount and nearby date',tx:txMeta});
    continue;
   }
 
@@ -631,7 +635,7 @@ function duplicates(state,row){
    const matchAmt=(t.targetAmount!==undefined?t.targetAmount:t.amount)===rAmt;
    if(matchAmt){
     const srcName=state.accounts?.find(a=>a.id===t.accountId)?.name||'akun lain';
-    list.push({id:t.id,type:'transfer_counterpart',reason:`Transfer counterpart: sudah tercatat sebagai transfer masuk dari ${srcName}`});
+    list.push({id:t.id,type:'transfer_counterpart',isExact:t.date===row.date,reason:`Transfer counterpart: sudah tercatat sebagai transfer masuk dari ${srcName}`,tx:txMeta});
     continue;
    }
   }
@@ -639,27 +643,109 @@ function duplicates(state,row){
   // If row is expense on Account A, and t is a transfer from Account A -> Account B
   if(rKind==='expense'&&t.kind==='transfer'&&t.accountId===rAcc&&t.amount===rAmt){
    const dstName=state.accounts?.find(a=>a.id===t.targetId)?.name||'akun lain';
-   list.push({id:t.id,type:'transfer_counterpart',reason:`Transfer counterpart: sudah tercatat sebagai transfer keluar ke ${dstName}`});
+   list.push({id:t.id,type:'transfer_counterpart',isExact:t.date===row.date,reason:`Transfer counterpart: sudah tercatat sebagai transfer keluar ke ${dstName}`,tx:txMeta});
    continue;
   }
 
   // If row is transfer from A -> B
   if(rKind==='transfer'){
    if(t.kind==='transfer'&&t.accountId===rAcc&&t.targetId===row.targetId&&t.amount===rAmt){
-    list.push({id:t.id,type:'transfer_exact',reason:'Exact transfer match'});
+    list.push({id:t.id,type:'transfer_exact',isExact:true,reason:'Exact transfer match',tx:txMeta});
     continue;
    }
    if(t.kind==='expense'&&t.accountId===rAcc&&t.amount===rAmt){
-    list.push({id:t.id,type:'transfer_counterpart',reason:'Potential duplicate with standalone expense on source account'});
+    list.push({id:t.id,type:'transfer_counterpart',isExact:t.date===row.date,reason:'Potential duplicate with standalone expense on source account',tx:txMeta});
     continue;
    }
    if(t.kind==='income'&&t.accountId===row.targetId&&(t.targetAmount||t.amount)===rAmt){
-    list.push({id:t.id,type:'transfer_counterpart',reason:'Potential duplicate with standalone income on destination account'});
+    list.push({id:t.id,type:'transfer_counterpart',isExact:t.date===row.date,reason:'Potential duplicate with standalone income on destination account',tx:txMeta});
     continue;
    }
   }
  }
  return list;
+}
+
+function diffReconciliation(state, draftRows = [], targetAccountId = null) {
+ const rows = Array.isArray(draftRows) ? draftRows : [];
+ let newCount = 0;
+ let exactMatchCount = 0;
+ let potentialDuplicateCount = 0;
+ let transferPairCount = 0;
+ let newIncomeSum = 0;
+ let newExpenseSum = 0;
+ let dupIncomeSum = 0;
+ let dupExpenseSum = 0;
+
+ const items = rows.map((d, index) => {
+  const dups = duplicates(state, d);
+  const hasTransferMatch = dups.some(m => m.type === 'transfer_counterpart' || m.type === 'transfer_exact');
+  const isExact = dups.some(m => m.isExact || m.reason === 'Exact match' || m.type === 'transfer_exact');
+  const isDuplicate = dups.length > 0;
+
+  let status = 'new';
+  let statusLabel = 'Baru (Belum Tercatat)';
+  let badgeClass = 'green';
+  let badgeIcon = '🟢';
+
+  if (hasTransferMatch) {
+   status = 'transfer_counterpart';
+   statusLabel = 'Pasangan Transfer';
+   badgeClass = 'blue';
+   badgeIcon = '⇄';
+   transferPairCount++;
+  } else if (isExact) {
+   status = 'exact_match';
+   statusLabel = 'Sudah Tercatat (Klop)';
+   badgeClass = 'red';
+   badgeIcon = '🛑';
+   exactMatchCount++;
+  } else if (isDuplicate) {
+   status = 'potential_duplicate';
+   statusLabel = 'Potensi Duplikat';
+   badgeClass = 'orange';
+   badgeIcon = '🟡';
+   potentialDuplicateCount++;
+  } else {
+   newCount++;
+  }
+
+  if (status === 'new') {
+   if (d.kind === 'income') newIncomeSum += (d.amount || 0);
+   else if (d.kind === 'expense') newExpenseSum += (d.amount || 0);
+  } else {
+   if (d.kind === 'income') dupIncomeSum += (d.amount || 0);
+   else if (d.kind === 'expense') dupExpenseSum += (d.amount || 0);
+  }
+
+  return {
+   index,
+   draft: d,
+   status,
+   statusLabel,
+   badgeClass,
+   badgeIcon,
+   isExact,
+   isDuplicate,
+   duplicates: dups,
+   recommendedSelected: status === 'new'
+  };
+ });
+
+ return {
+  total: rows.length,
+  newCount,
+  duplicateCount: exactMatchCount + potentialDuplicateCount + transferPairCount,
+  exactMatchCount,
+  potentialDuplicateCount,
+  transferPairCount,
+  newIncomeSum,
+  newExpenseSum,
+  netNewChange: newIncomeSum - newExpenseSum,
+  dupIncomeSum,
+  dupExpenseSum,
+  items
+ };
 }
 
 function pairTransferDrafts(draftList,accounts=[]){
@@ -783,5 +869,5 @@ function quickRecord(text,account,today,accounts=[]){
  if(currency!==account.currency)throw Error('Mata uang pesan harus sama dengan akun / Message currency must match the account');
  return {name:String(text).trim().slice(0,120),date:today,amount,currency,accountId:account.id,kind:/\b(gajian|gaji|terima|pemasukan|pendapatan|salary|income|received)\b/i.test(text)?'income':'expense'};
 }
-const api={number,parse,parseReceipt,duplicates,pairTransferDrafts,rates,quickIntent,quickRecord,cleanMerchant,suggestCategory,detectBankStatement,parseJagoStatement,parseGopayStatement,parseOvoStatement,parseDanaStatement,parseShopeePayStatement};if(typeof module!=='undefined')module.exports=api;else root.InveysRecording=api;
+const api={number,parse,parseReceipt,duplicates,diffReconciliation,pairTransferDrafts,rates,quickIntent,quickRecord,cleanMerchant,suggestCategory,detectBankStatement,parseJagoStatement,parseGopayStatement,parseOvoStatement,parseDanaStatement,parseShopeePayStatement};if(typeof module!=='undefined')module.exports=api;else root.InveysRecording=api;
 })(typeof window!=='undefined'?window:globalThis);
