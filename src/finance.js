@@ -702,5 +702,237 @@ function detectRecurringAnomalies(state) {
   };
 }
 
-const api={detectRecurringAnomalies,categoryCatalog,categoryIcon,monarchCashFlowSankey,buildDjpTaxAssetsReport,deleteTransaction,editTransaction,cashFlowGraph,reported,reportParts,apportion,splitPercent,snapshot,history,migrate,validate,matchOwner,matches,scope,transactionOwner,visibleAmount,scopedTransactions,validateView,validateSplits,setTransactionOwnership,defaultFilter,validateReportFilter,reports,baseline,loanPayment,validatePlan,forecast,monteCarlo};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysFinance=api;
+const PTKP_TABLE = {
+  'TK/0': { amount: 54000000, ter: 'A', name: 'Tidak Kawin / Tanpa Tanggungan' },
+  'TK/1': { amount: 58500000, ter: 'A', name: 'Tidak Kawin / 1 Tanggungan' },
+  'K/0':  { amount: 58500000, ter: 'A', name: 'Kawin / Tanpa Tanggungan' },
+  'TK/2': { amount: 63000000, ter: 'B', name: 'Tidak Kawin / 2 Tanggungan' },
+  'K/1':  { amount: 63000000, ter: 'B', name: 'Kawin / 1 Tanggungan' },
+  'TK/3': { amount: 67500000, ter: 'B', name: 'Tidak Kawin / 3 Tanggungan' },
+  'K/2':  { amount: 67500000, ter: 'B', name: 'Kawin / 2 Tanggungan' },
+  'K/3':  { amount: 72000000, ter: 'C', name: 'Kawin / 3 Tanggungan' }
+};
+
+const TER_A_BRACKETS = [
+  [5400000, 0], [5650000, 0.0025], [5950000, 0.005], [6300000, 0.0075],
+  [6750000, 0.01], [7500000, 0.0125], [8550000, 0.015], [9650000, 0.0175],
+  [10050000, 0.02], [10350000, 0.0225], [10700000, 0.025], [11050000, 0.03],
+  [11600000, 0.035], [12500000, 0.04], [13750000, 0.05], [15100000, 0.06],
+  [16950000, 0.07], [19750000, 0.08], [24100000, 0.09], [26450000, 0.10],
+  [28000000, 0.11], [30050000, 0.12], [32400000, 0.13], [35400000, 0.14],
+  [39100000, 0.15], [43850000, 0.16], [47800000, 0.17], [51400000, 0.18],
+  [56300000, 0.19], [62200000, 0.20], [68600000, 0.21], [77500000, 0.22],
+  [89000000, 0.23], [101900000, 0.24], [120200000, 0.25], [147700000, 0.26],
+  [188700000, 0.27], [250000000, 0.28], [334400000, 0.29], [470500000, 0.30],
+  [707000000, 0.31], [1077000000, 0.32], [1400000000, 0.33], [Infinity, 0.34]
+];
+
+const TER_B_BRACKETS = [
+  [6200000, 0], [6500000, 0.0025], [6850000, 0.005], [7300000, 0.0075],
+  [9200000, 0.01], [10750000, 0.015], [11250000, 0.02], [11600000, 0.025],
+  [12600000, 0.03], [13600000, 0.04], [14950000, 0.05], [16400000, 0.06],
+  [18450000, 0.07], [21850000, 0.08], [26000000, 0.09], [27700000, 0.10],
+  [29350000, 0.11], [31450000, 0.12], [33950000, 0.13], [37100000, 0.14],
+  [41100000, 0.15], [45800000, 0.16], [49500000, 0.17], [53800000, 0.18],
+  [58500000, 0.19], [64000000, 0.20], [71000000, 0.21], [80000000, 0.22],
+  [93000000, 0.23], [109000000, 0.24], [129000000, 0.25], [163000000, 0.26],
+  [211000000, 0.27], [274000000, 0.28], [345000000, 0.29], [454000000, 0.30],
+  [681000000, 0.31], [1036000000, 0.32], [1400000000, 0.33], [Infinity, 0.34]
+];
+
+const TER_C_BRACKETS = [
+  [6600000, 0], [6950000, 0.0025], [7350000, 0.005], [7800000, 0.0075],
+  [8850000, 0.01], [9800000, 0.0125], [10950000, 0.015], [11200000, 0.0175],
+  [12050000, 0.02], [12950000, 0.03], [14150000, 0.04], [15550000, 0.05],
+  [17050000, 0.06], [19500000, 0.07], [22700000, 0.08], [26600000, 0.09],
+  [28100000, 0.10], [30100000, 0.11], [32600000, 0.12], [35400000, 0.13],
+  [38900000, 0.14], [43000000, 0.15], [47400000, 0.16], [51200000, 0.17],
+  [55800000, 0.18], [60400000, 0.19], [66700000, 0.20], [74500000, 0.21],
+  [83200000, 0.22], [95600000, 0.23], [110000000, 0.24], [134000000, 0.25],
+  [169000000, 0.26], [221000000, 0.27], [290000000, 0.28], [363000000, 0.29],
+  [500000000, 0.30], [752000000, 0.31], [1100000000, 0.32], [1400000000, 0.33],
+  [Infinity, 0.34]
+];
+
+function getTerRate(terCategory, monthlyGross) {
+  const brackets = terCategory === 'C' ? TER_C_BRACKETS : terCategory === 'B' ? TER_B_BRACKETS : TER_A_BRACKETS;
+  for (const [limit, rate] of brackets) {
+    if (monthlyGross <= limit) return rate;
+  }
+  return 0.34;
+}
+
+function calculatePph21Ter(options = {}) {
+  const monthlyGross = Math.max(0, Math.round(options.monthlyGross || 0));
+  const ptkpStatus = options.ptkpStatus || 'TK/0';
+  const ptkpInfo = PTKP_TABLE[ptkpStatus] || PTKP_TABLE['TK/0'];
+  const terCategory = ptkpInfo.ter;
+  const ptkpAmount = ptkpInfo.amount;
+  const terRate = getTerRate(terCategory, monthlyGross);
+  const monthlyTaxWithholding = Math.round(monthlyGross * terRate);
+
+  const annualGross = options.annualGross ? Math.max(0, Math.round(options.annualGross)) : (monthlyGross * 12);
+  const monthlyPensionFee = Math.max(0, Math.round(options.monthlyPensionFee || 0));
+  const annualPensionFee = monthlyPensionFee * 12;
+
+  // Biaya jabatan: 5% dari penghasilan bruto setahun, maksimal Rp 6.000.000 (Rp 500.000/bulan)
+  const annualBiayaJabatan = Math.min(6000000, Math.round(annualGross * 0.05));
+  const netAnnualIncome = Math.max(0, annualGross - annualBiayaJabatan - annualPensionFee);
+  const pkp = Math.max(0, netAnnualIncome - ptkpAmount);
+
+  let remainingPkp = pkp;
+  let annualTaxPasal17 = 0;
+  const bracketsPasal17 = [
+    { limit: 60000000, rate: 0.05 },
+    { limit: 190000000, rate: 0.15 },
+    { limit: 250000000, rate: 0.25 },
+    { limit: 4500000000, rate: 0.30 },
+    { limit: Infinity, rate: 0.35 }
+  ];
+
+  const breakdownPasal17 = [];
+  for (const b of bracketsPasal17) {
+    if (remainingPkp <= 0) break;
+    const taxableInBracket = Math.min(remainingPkp, b.limit);
+    const taxInBracket = Math.round(taxableInBracket * b.rate);
+    annualTaxPasal17 += taxInBracket;
+    breakdownPasal17.push({ rate: b.rate, taxableAmount: taxableInBracket, taxAmount: taxInBracket });
+    remainingPkp -= taxableInBracket;
+  }
+
+  const janToNovTotal = monthlyTaxWithholding * 11;
+  const decemberTax = Math.max(0, annualTaxPasal17 - janToNovTotal);
+  const difference = annualTaxPasal17 - (monthlyTaxWithholding * 12);
+
+  return {
+    ptkpStatus,
+    terCategory,
+    ptkpAmount,
+    monthlyGross,
+    terRate,
+    monthlyTaxWithholding,
+    takeHomePayMonthly: monthlyGross - monthlyTaxWithholding - monthlyPensionFee,
+    annualGross,
+    annualBiayaJabatan,
+    annualPensionFee,
+    netAnnualIncome,
+    pkp,
+    annualTaxPasal17,
+    breakdownPasal17,
+    janToNovTotal,
+    decemberTax,
+    annualTotalTax: annualTaxPasal17,
+    difference,
+    effectiveRate: annualGross > 0 ? (annualTaxPasal17 / annualGross) : 0
+  };
+}
+
+function calculateUmkmFinalTax(options = {}) {
+  const annualGross = Math.max(0, Math.round(options.annualGross || 0));
+  const isCorporate = Boolean(options.isCorporate);
+  // PP 55/2022: Orang Pribadi dapat pembebasan omzet tidak kena pajak sampai Rp 500 Juta setahun
+  const threshold = isCorporate ? 0 : 500000000;
+  const taxableRevenue = Math.max(0, annualGross - threshold);
+  const taxRate = 0.005; // 0.5%
+  const annualTax = Math.round(taxableRevenue * taxRate);
+  const monthlyTax = Math.round(annualTax / 12);
+  const exemptRevenue = Math.min(annualGross, threshold);
+
+  return {
+    annualGross,
+    isCorporate,
+    threshold,
+    exemptRevenue,
+    taxableRevenue,
+    taxRate,
+    annualTax,
+    monthlyTax,
+    effectiveRate: annualGross > 0 ? (annualTax / annualGross) : 0
+  };
+}
+
+function calculateZakatMaal(state, options = {}) {
+  const goldPricePerGram = Math.max(1, Math.round(options.goldPricePerGram || 1450000));
+  const nisabAnnual = 85 * goldPricePerGram;
+  const nisabMonthly = Math.round(nisabAnnual / 12);
+
+  let cashAndEquivalents = 0;
+  let goldAndPrecious = 0;
+  let investments = 0;
+  let shortTermLiabilities = 0;
+
+  if (state && Array.isArray(state.accounts)) {
+    for (const a of state.accounts) {
+      const balIdr = Math.max(0, Math.round(E.convert(state, a.balance, a.currency || state.currency, 'IDR') / 100));
+      if (a.type === 'Investment') {
+        investments += balIdr;
+      } else if (a.type === 'Property') {
+        // Excluded from Zakat Maal (personal property)
+      } else {
+        cashAndEquivalents += balIdr;
+      }
+    }
+  }
+
+  if (state && Array.isArray(state.holdings)) {
+    for (const h of state.holdings) {
+      const qty = h.quantity ?? h.shares ?? 0;
+      const price = h.price ?? h.currentPrice ?? 0;
+      const valCents = h.value ?? Math.round(qty * price * 100);
+      const valIdr = Math.max(0, Math.round(E.convert(state, valCents, h.currency || 'IDR', 'IDR') / 100));
+      const lower = (h.name + ' ' + (h.symbol || '')).toLowerCase();
+      const aType = (h.assetClass || h.assetType || h.type || '').toLowerCase();
+      if (aType === 'gold' || /\b(emas|gold|galeri24|antam)\b/i.test(lower)) {
+        goldAndPrecious += valIdr;
+      } else {
+        investments += valIdr;
+      }
+    }
+  }
+
+  if (state && Array.isArray(state.debts)) {
+    for (const d of state.debts) {
+      const balIdr = Math.max(0, Math.round(E.convert(state, d.balance, d.currency || state.currency, 'IDR') / 100));
+      shortTermLiabilities += balIdr;
+    }
+  }
+
+  const customAssets = Math.max(0, Math.round(options.customAssets || 0));
+  const totalAssets = cashAndEquivalents + goldAndPrecious + investments + customAssets;
+  const netZakatableWealth = Math.max(0, totalAssets - shortTermLiabilities);
+  const isMaalNisabMet = netZakatableWealth >= nisabAnnual;
+  const zakatMaalDue = isMaalNisabMet ? Math.round(netZakatableWealth * 0.025) : 0;
+
+  // Monthly income zakat (Zakat Profesi)
+  let monthlyIncome = Math.max(0, Math.round(options.monthlyIncome || 0));
+  if (!monthlyIncome && state && Array.isArray(state.flows)) {
+    const incomeFlows = state.flows.filter(f => f.kind === 'income' && f.amount > 0);
+    const totalFlowIncome = incomeFlows.reduce((sum, f) => sum + Math.round(E.convert(state, f.amount, f.currency || state.currency, 'IDR') / 100), 0);
+    if (totalFlowIncome > 0) monthlyIncome = totalFlowIncome;
+  }
+
+  const isIncomeNisabMet = monthlyIncome >= nisabMonthly;
+  const zakatIncomeDue = isIncomeNisabMet ? Math.round(monthlyIncome * 0.025) : 0;
+
+  return {
+    goldPricePerGram,
+    nisabAnnual,
+    nisabMonthly,
+    cashAndEquivalents,
+    goldAndPrecious,
+    investments,
+    shortTermLiabilities,
+    totalAssets,
+    netZakatableWealth,
+    isMaalNisabMet,
+    zakatMaalDue,
+    zakatAmountIdr: zakatMaalDue,
+    monthlyIncome,
+    isIncomeNisabMet,
+    zakatIncomeDue,
+    zakatProfesiMonthlyIdr: zakatIncomeDue
+  };
+}
+
+const api={PTKP_TABLE,TER_A_BRACKETS,TER_B_BRACKETS,TER_C_BRACKETS,getTerRate,calculatePph21Ter,calculateUmkmFinalTax,calculateZakatMaal,detectRecurringAnomalies,categoryCatalog,categoryIcon,monarchCashFlowSankey,buildDjpTaxAssetsReport,deleteTransaction,editTransaction,cashFlowGraph,reported,reportParts,apportion,splitPercent,snapshot,history,migrate,validate,matchOwner,matches,scope,transactionOwner,visibleAmount,scopedTransactions,validateView,validateSplits,setTransactionOwnership,defaultFilter,validateReportFilter,reports,baseline,loanPayment,validatePlan,forecast,monteCarlo};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysFinance=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

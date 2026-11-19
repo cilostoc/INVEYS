@@ -1625,6 +1625,60 @@ test('INVI financial copilot renders interactive action cards and navigation exe
   assert.match(app.html(), /KALENDER|CALENDAR/i);
 });
 
+test('DJP Tax & Zakat Hub renders tabs for PPh 21 TER, UMKM 0.5%, Zakat Maal, and handles INVI action cards', () => {
+  const app = boot();
+
+  // 1. Open DJP Tax Hub
+  app.click({ action: 'tax-djp-modal' });
+  let modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /tax-hub-tabs/);
+  assert.match(modalBody, /Lampiran Harta \(SPT 1770\)|Asset Registry \(SPT 1770\)/);
+  assert.match(modalBody, /PPh 21 TER/);
+  assert.match(modalBody, /PPh UMKM|UMKM/);
+  assert.match(modalBody, /Zakat Maal/);
+
+  // 2. Open PPh 21 TER tab via direct action
+  app.click({ action: 'open-tax-pph21' });
+  modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /tax-pph-gross-input/);
+  assert.match(modalBody, /tax-pph-ptkp-select/);
+  assert.match(modalBody, /Kategori TER & Tarif|TER Category & Rate/);
+  assert.match(modalBody, /Take[- ]Home Pay/);
+  assert.match(modalBody, /Penyesuaian Pajak Masa Desember|December Tax Adjustment/);
+  assert.match(modalBody, /Pasal 17 UU HPP|Article 17/);
+
+  // 3. Open UMKM tab via direct action
+  app.click({ action: 'open-tax-umkm' });
+  modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /tax-umkm-gross-input/);
+  assert.match(modalBody, /tax-umkm-entity-select/);
+  assert.match(modalBody, /Omzet Bebas Pajak|Tax-Free Turnover/);
+  assert.match(modalBody, /411128/); // KAP
+  assert.match(modalBody, /420/); // KJS
+
+  // 4. Open Zakat Maal tab via direct action
+  app.click({ action: 'open-tax-zakat' });
+  modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /tax-zakat-gold-input/);
+  assert.match(modalBody, /Nisab 85g/);
+  assert.match(modalBody, /Zakat Maal/);
+  assert.match(modalBody, /tax-zakat-record-btn/);
+
+  // 5. Test INVI Copilot prompts for tax & zakat return action cards
+  app.click({ page: 'copilot' });
+  app.click({ question: 'Berapa potongan PPh 21 saya?' });
+  let chatHtml = app.elements.get('#chat-messages').innerHTML;
+  assert.match(chatHtml, /open-tax-pph21/);
+
+  app.click({ question: 'Berapa zakat maal saya?' });
+  chatHtml = app.elements.get('#chat-messages').innerHTML;
+  assert.match(chatHtml, /open-tax-zakat/);
+
+  app.click({ question: 'Bagaimana aturan pajak UMKM 0.5%?' });
+  chatHtml = app.elements.get('#chat-messages').innerHTML;
+  assert.match(chatHtml, /open-tax-umkm/);
+});
+
 
 
 

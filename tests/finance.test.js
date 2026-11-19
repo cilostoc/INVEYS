@@ -275,6 +275,105 @@ test('detectRecurringAnomalies detects price hikes, unregistered recurring bills
   assert.equal(resDismissed.spikes.length, 0);
 });
 
+test('Indonesian PPh 21 TER 2024 and Pasal 17 reconciliation calculation', () => {
+  // 1. Employee with 10jt gross monthly, TK/0 (Category A)
+  const res1 = F.calculatePph21Ter({ monthlyGross: 10000000, ptkpStatus: 'TK/0' });
+  assert.equal(res1.terCategory, 'A');
+  assert.equal(res1.terRate, 0.02); // 2%
+  assert.equal(res1.monthlyTaxWithholding, 200000);
+  assert.equal(res1.takeHomePayMonthly, 9800000);
+  assert.equal(res1.annualGross, 120000000);
+  assert.equal(res1.annualBiayaJabatan, 6000000); // 5% of 120jt capped at 6jt
+  assert.equal(res1.netAnnualIncome, 114000000);
+  assert.equal(res1.ptkpAmount, 54000000);
+  assert.equal(res1.pkp, 60000000);
+  assert.equal(res1.annualTaxPasal17, 3000000); // 5% of 60jt
+  assert.equal(res1.janToNovTotal, 2200000); // 11 x 200k
+  assert.equal(res1.decemberTax, 800000); // 3M - 2.2M
+
+  // 2. Employee with low income below 5.4jt threshold (monthly TER rate is 0%)
+  const resLow = F.calculatePph21Ter({ monthlyGross: 5000000, ptkpStatus: 'TK/0' });
+  assert.equal(resLow.terRate, 0);
+  assert.equal(resLow.monthlyTaxWithholding, 0);
+  // Annual gross 60M - 3M (biaya jabatan) = 57M net; 57M - 54M PTKP = 3M PKP; 5% * 3M = 150.000
+  assert.equal(resLow.annualTaxPasal17, 150000);
+  assert.equal(resLow.decemberTax, 150000);
+
+  // 3. Employee with 4.5jt gross (below PTKP after biaya jabatan, PKP = 0)
+  const resZero = F.calculatePph21Ter({ monthlyGross: 4500000, ptkpStatus: 'TK/0' });
+  assert.equal(resZero.terRate, 0);
+  assert.equal(resZero.monthlyTaxWithholding, 0);
+  assert.equal(resZero.annualTaxPasal17, 0);
+  assert.equal(resZero.decemberTax, 0);
+
+  // 3. Employee with K/2 status (Category B) with 25jt gross
+  const resB = F.calculatePph21Ter({ monthlyGross: 25000000, ptkpStatus: 'K/2' });
+  assert.equal(resB.terCategory, 'B');
+  assert.equal(resB.terRate, 0.09); // 9% for 21.85jt - 26jt in TER B
+  assert.equal(resB.monthlyTaxWithholding, 2250000);
+});
+
+test('Indonesian UMKM 0.5% PP 55/2022 calculation', () => {
+  // 1. Individual entrepreneur (Orang Pribadi) with 600jt annual gross
+  const resOp = F.calculateUmkmFinalTax({ annualGross: 600000000, isCorporate: false });
+  assert.equal(resOp.threshold, 500000000);
+  assert.equal(resOp.exemptRevenue, 500000000);
+  assert.equal(resOp.taxableRevenue, 100000000);
+  assert.equal(resOp.taxRate, 0.005);
+  assert.equal(resOp.annualTax, 500000); // 0.5% of 100jt
+  assert.equal(resOp.monthlyTax, 41667);
+
+  // 2. Individual entrepreneur with 400jt gross (below 500jt threshold)
+  const resOpExempt = F.calculateUmkmFinalTax({ annualGross: 400000000, isCorporate: false });
+  assert.equal(resOpExempt.taxableRevenue, 0);
+  assert.equal(resOpExempt.annualTax, 0);
+  assert.equal(resOpExempt.monthlyTax, 0);
+
+  // 3. Corporate entity (Badan Usaha CV/PT) with 600jt gross (no 500jt exemption)
+  const resCorp = F.calculateUmkmFinalTax({ annualGross: 600000000, isCorporate: true });
+  assert.equal(resCorp.threshold, 0);
+  assert.equal(resCorp.taxableRevenue, 600000000);
+  assert.equal(resCorp.annualTax, 3000000); // 0.5% of 600jt
+});
+
+test('Indonesian Zakat Maal and Zakat Profesi calculation', () => {
+  const state = {
+    currency: 'IDR',
+    accounts: [
+      { id: 'a1', name: 'BCA Tabungan', type: 'Checking', balance: 10000000000, currency: 'IDR' }, // Rp 100 Juta
+      { id: 'a2', name: 'Rumah Pribadi', type: 'Property', balance: 50000000000, currency: 'IDR' } // Property excluded
+    ],
+    holdings: [
+      { id: 'h1', name: 'Antam 25 gram', assetClass: 'gold', quantity: 25, price: 1450000, currency: 'IDR' }, // Rp 36.25 Juta
+      { id: 'h2', name: 'BBCA Stock', assetClass: 'stock', quantity: 1000, price: 10000, currency: 'IDR' } // Rp 10 Juta
+    ],
+    debts: [
+      { id: 'd1', name: 'Kartu Kredit Mandiri', balance: 1500000000, currency: 'IDR' } // -Rp 15 Juta
+    ],
+    flows: [
+      { id: 'f1', name: 'Salary', kind: 'income', amount: 2000000000, currency: 'IDR' } // Rp 20 Juta / bulan
+    ]
+  };
+
+  const res = F.calculateZakatMaal(state, { goldPricePerGram: 1450000 });
+  // Nisab 85g gold @ 1.45jt = 123.250.000
+  assert.equal(res.nisabAnnual, 123250000);
+  assert.equal(res.cashAndEquivalents, 100000000);
+  assert.equal(res.goldAndPrecious, 36250000);
+  assert.equal(res.investments, 10000000);
+  assert.equal(res.shortTermLiabilities, 15000000);
+  // Total zakatable net wealth = 100jt + 36.25jt + 10jt - 15jt = 131.250.000
+  assert.equal(res.netZakatableWealth, 131250000);
+  assert.equal(res.isMaalNisabMet, true);
+  // Zakat maal due (2.5% of 131.250.000) = 3.281.250
+  assert.equal(res.zakatAmountIdr, 3281250);
+
+  // Zakat Profesi: income 20jt, monthly nisab = 123.250.000 / 12 = 10.270.833
+  assert.equal(res.monthlyIncome, 20000000);
+  assert.equal(res.isIncomeNisabMet, true);
+  assert.equal(res.zakatProfesiMonthlyIdr, 500000); // 2.5% of 20jt
+});
+
 
 
 

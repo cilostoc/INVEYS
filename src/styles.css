@@ -6947,6 +6947,120 @@ textarea.field-invalid {
   color: var(--lime);
 }
 
+/* Indonesian Fiscal & Tax Hub (DJP SPT 1770, PPh 21 TER 2024, UMKM 0.5%, Zakat Maal) */
+.tax-hub-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 880px;
+  margin: 0 auto;
+}
+.tax-hub-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-hover, #f1f5f9);
+  padding: 4px;
+  border-radius: 12px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+.tax-hub-tab-btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+.tax-hub-tab-btn:hover {
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.04);
+}
+.tax-hub-tab-btn.active {
+  background: var(--card, #ffffff);
+  color: var(--accent, #34d399);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+[data-theme=dark] .tax-hub-tab-btn.active {
+  background: var(--card-subtle, #1e293b);
+  color: #38bdf8;
+}
+.tax-calc-card {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.tax-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+.tax-metric-box {
+  background: var(--bg-hover, #f8fafc);
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+.tax-metric-box span {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  display: block;
+}
+.tax-metric-box b {
+  font-size: 17px;
+  display: block;
+  margin-top: 4px;
+  color: var(--ink);
+}
+.tax-breakdown-table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.tax-breakdown-table th {
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--bg-hover, #f1f5f9);
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--line);
+}
+.tax-breakdown-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.zakat-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+.zakat-status-banner.wajib {
+  background: rgba(52, 211, 153, 0.08);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+.zakat-status-banner.belum {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+
 
 
 

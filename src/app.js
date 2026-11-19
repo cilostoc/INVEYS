@@ -953,6 +953,15 @@
     else if (/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower)) {
       text=`Your recorded net worth is <b>${money(p.netWorth)}</b>: <b>${money(p.assets)}</b> in assets less <b>${money(p.liabilities)}</b> in liabilities. Your liquid funds total ${money(p.liquid)}. These are manual balance snapshots, not bank-verified records. Review the dates in Accounts before making a consequential decision.\n\n[[action:nav:accounts|View All Accounts|Review balances and asset breakdown|🏦]]\n[[action:nav:calendar|View Bills & Calendar|Check upcoming subscriptions and paydays|📅]]`;
     }
+    else if (/tax|pph|pph21|ter|spt|djp/.test(lower)) {
+      text=`Indonesian employee income tax uses the <b>TER (Average Effective Rate) PP 58/2023</b> framework for monthly withholding (Jan–Nov) and Article 17 UU HPP progressive recalculation in December. You can also export your year-end assets & debts to official DJP Online tax codes.\n\n[[action:open-tax-pph21|PPh 21 TER 2024 Calculator|Simulate monthly withholding and December adjustment|🧮]]\n[[action:open-tax-djp|DJP Online Asset Recap|Copy asset & liability tables for e-Form|📑]]`;
+    }
+    else if (/umkm|business tax|0\.5%|pp55/.test(lower)) {
+      text=`Under <b>PP 55/2022</b>, Indonesian individual entrepreneurs enjoy a <b>tax-free revenue threshold up to Rp 500 Million/year</b>. Gross revenue exceeding Rp 500 Million is subject to 0.5% Final Tax.\n\n[[action:open-tax-umkm|UMKM Final Tax 0.5%|Simulate business tax obligations and DJP billing code|🏪]]`;
+    }
+    else if (/zakat|mal|maal|charity|nisab/.test(lower)) {
+      text=`Zakat Maal is mandatory at <b>2.5%</b> when net zakatable wealth (cash, gold, investments minus short-term debts) reaches the <b>Nisab threshold of 85 grams of gold</b> and has been held for one lunar year (haul).\n\n[[action:open-tax-zakat|Zakat Maal & Income Calculator|Verify nisab qualification and compute 2.5% zakat|🪙]]`;
+    }
     else text='I can explain your financial position, monthly cash-flow plan, reserve coverage, goal progress, or debt records. Choose one of the suggested questions. I cannot answer this reliably from the supported local calculations.';
     if(state.language==='id')return answerIndonesian(q,p);
     return text + '<p class="invi-signature-footer"><small>✨ <em>Stay informed. Stay intentional. Keep growing.</em></small></p>';
@@ -1021,6 +1030,15 @@
     }
     else if(/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower)) {
       text=`Kekayaan bersih tercatat <b>${money(p.netWorth)}</b>: aset <b>${money(p.assets)}</b> dikurangi liabilitas <b>${money(p.liabilities)}</b>. Dana likuid ${money(p.liquid)}. Saldo merupakan catatan manual, bukan verifikasi bank. Kurs: ${user(state.fx.source)} (${state.fx.date}). Tinjau data sebelum mengambil keputusan.\n\n[[action:nav:accounts|Buka Daftar Rekening & Aset|Tinjau saldo dan rincian kepemilikan|🏦]]\n[[action:nav:calendar|Buka Kalender Tagihan|Cek jatuh tempo tagihan rutin dan langganan|📅]]`;
+    }
+    else if(/tax|pajak|pph|pph21|ter|spt|djp/.test(lower)) {
+      text=`Pajak penghasilan karyawan kini menggunakan skema <b>TER (Tarif Efektif Rata-rata) PP 58/2023</b> untuk masa pajak Januari–November dan perhitungan ulang Pasal 17 UU HPP pada masa Desember. Anda juga dapat mengekspor rekapitulasi harta & utang ke kode resmi DJP Online (SPT 1770 / 1770 S).\n\n[[action:open-tax-pph21|Kalkulator PPh 21 TER 2024|Simulasi potongan gaji bulanan & penyesuaian Desember|🧮]]\n[[action:open-tax-djp|Rekap Harta SPT DJP Online|Salin tabel aset & utang langsung ke e-Form|📑]]`;
+    }
+    else if(/umkm|bisnis|0\.5%|pp55/.test(lower)) {
+      text=`Berdasarkan <b>PP 55 Tahun 2022</b>, Wajib Pajak Orang Pribadi UMKM menikmati fasilitas <b>omzet bebas pajak hingga Rp 500 Juta setahun</b>. Peredaran bruto di atas Rp 500 Juta dikenakan PPh Final 0,5%.\n\n[[action:open-tax-umkm|Kalkulator PPh Final UMKM|Simulasi kewajiban pajak usaha & kode billing DJP|🏪]]`;
+    }
+    else if(/zakat|mal|maal|profesi|nisab/.test(lower)) {
+      text=`Zakat Maal wajib dikeluarkan sebesar <b>2,5%</b> apabila harta simpanan likuid (kas, emas, investasi) setelah dikurangi utang lancar telah mencapai <b>Nisab 85 gram emas</b> dan tersimpan selama 1 tahun (haul).\n\n[[action:open-tax-zakat|Kalkulator Zakat Maal & Profesi|Periksa ketercapaian nisab & hitung zakat 2,5%|🪙]]`;
     }
     else text='Saya dapat menjelaskan posisi keuangan, arus kas bulanan, cakupan dana likuid, tujuan, dan utang. Pilih pertanyaan yang disediakan. Saya tidak memiliki data yang memadai untuk menjawab topik lain secara andal.';
     return text + '<p class="invi-signature-footer"><small>✨ <em>Tetap cermat. Tetap terarah. Terus bertumbuh.</em></small></p>';
@@ -7049,150 +7067,445 @@
     </div>`;
   }
 
-  function openDjpTaxModal(selectedYear, selectedOwnerId) {
+  function openDjpTaxModal(selectedYear, selectedOwnerId, initialTab = 'assets') {
     const curYear = new Date().toISOString().slice(0, 4);
-    const yr = selectedYear || curYear;
-    const own = selectedOwnerId || 'all';
+    let yr = selectedYear || curYear;
+    let own = selectedOwnerId || 'all';
+    let currentTab = initialTab || 'assets';
 
-    const rep = F.buildDjpTaxAssetsReport(state, { year: yr, ownerId: own });
+    const formatIdr = n => 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
 
-    const yearsList = [curYear, String(Number(curYear) - 1), String(Number(curYear) - 2)];
-    const yearOpts = yearsList.map(y => `<option value="${y}" ${y === String(yr) ? 'selected' : ''}>Tahun Pajak ${y} ${y === curYear ? '(' + L('Berjalan', 'Current') + ')' : ''}</option>`).join('');
+    let pphGross = 15000000;
+    if (Array.isArray(state.flows)) {
+      const inc = state.flows.filter(f => f.kind === 'income' && f.amount > 0);
+      const tot = inc.reduce((s, f) => s + Math.round(E.convert(state, f.amount, f.currency || state.currency, 'IDR') / 100), 0);
+      if (tot > 0) pphGross = tot;
+    }
+    let pphPtkp = 'TK/0';
+    let pphPension = 0;
 
-    const membersList = [{ id: 'all', name: L('Seluruh Keluarga (Gabungan)', 'Whole Household (Combined)') }, ...(state.members || [])];
-    const ownerOpts = membersList.map(m => `<option value="${m.id}" ${m.id === own ? 'selected' : ''}>${escape(m.name)}</option>`).join('');
+    let umkmGross = 600000000;
+    let umkmCorporate = false;
 
-    const formatIdr = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+    let zakatGoldPrice = 1450000;
 
-    const assetRows = rep.assets.map(a => `
-      <tr>
-        <td style="font-family:ui-monospace,SFMono-Regular,monospace;font-weight:700;color:var(--accent,#34d399);">${escape(a.code)}</td>
-        <td><b>${escape(a.name)}</b></td>
-        <td><small class="badge">${escape(a.codeName)}</small></td>
-        <td style="text-align:center;">${escape(a.year)}</td>
-        <td style="text-align:right;font-weight:600;">${formatIdr(a.valueIdr)}</td>
-        <td><small style="color:var(--muted);">${escape(a.desc)}</small></td>
-      </tr>
-    `).join('') || `<tr><td colspan="6" class="empty">${L('Tidak ada harta tercatat', 'No assets recorded')}</td></tr>`;
+    function renderModalContent() {
+      const rep = F.buildDjpTaxAssetsReport(state, { year: yr, ownerId: own });
 
-    const liabRows = rep.liabilities.map(l => `
-      <tr>
-        <td style="font-family:ui-monospace,SFMono-Regular,monospace;font-weight:700;color:#ef4444;">${escape(l.code)}</td>
-        <td><b>${escape(l.name)}</b></td>
-        <td><small class="badge">${escape(l.codeName)}</small></td>
-        <td style="text-align:center;">${escape(l.year)}</td>
-        <td style="text-align:right;font-weight:600;color:#ef4444;">${formatIdr(l.valueIdr)}</td>
-        <td><small style="color:var(--muted);">${escape(l.desc)}</small></td>
-      </tr>
-    `).join('') || `<tr><td colspan="6" class="empty">${L('Tidak ada utang tercatat', 'No debts recorded')}</td></tr>`;
+      const yearsList = [curYear, String(Number(curYear) - 1), String(Number(curYear) - 2)];
+      const yearOpts = yearsList.map(y => `<option value="${y}" ${y === String(yr) ? 'selected' : ''}>Tahun Pajak ${y} ${y === curYear ? '(' + L('Berjalan', 'Current') + ')' : ''}</option>`).join('');
 
-    const bodyHtml = `
-      <div class="tax-djp-modal-wrap" style="max-width:880px;margin:0 auto;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="font-size:24px;">🇮🇩</span>
-          <div>
-            <b style="font-size:15px;display:block;">${L('Formulir SPT 1770 / 1770 S · DJP Online', 'Indonesian Tax Return (SPT 1770 / 1770 S)')}</b>
-            <small style="color:var(--muted);">${L('Rekapitulasi resmi daftar harta & utang akhir tahun pajak dengan Kode Harta DJP.', 'Official end-of-year tax assets & liabilities recap matching DJP tax codes.')}</small>
+      const membersList = [{ id: 'all', name: L('Seluruh Keluarga (Gabungan)', 'Whole Household (Combined)') }, ...(state.members || [])];
+      const ownerOpts = membersList.map(m => `<option value="${m.id}" ${m.id === own ? 'selected' : ''}>${escape(m.name)}</option>`).join('');
+
+      let tabBody = '';
+
+      if (currentTab === 'assets') {
+        const assetRows = rep.assets.map(a => `
+          <tr>
+            <td style="font-family:ui-monospace,SFMono-Regular,monospace;font-weight:700;color:var(--accent,#34d399);">${escape(a.code)}</td>
+            <td><b>${escape(a.name)}</b></td>
+            <td><small class="badge">${escape(a.codeName)}</small></td>
+            <td style="text-align:center;">${escape(a.year)}</td>
+            <td style="text-align:right;font-weight:600;">${formatIdr(a.valueIdr)}</td>
+            <td><small style="color:var(--muted);">${escape(a.desc)}</small></td>
+          </tr>
+        `).join('') || `<tr><td colspan="6" class="empty">${L('Tidak ada harta tercatat', 'No assets recorded')}</td></tr>`;
+
+        const liabRows = rep.liabilities.map(l => `
+          <tr>
+            <td style="font-family:ui-monospace,SFMono-Regular,monospace;font-weight:700;color:#ef4444;">${escape(l.code)}</td>
+            <td><b>${escape(l.name)}</b></td>
+            <td><small class="badge">${escape(l.codeName)}</small></td>
+            <td style="text-align:center;">${escape(l.year)}</td>
+            <td style="text-align:right;font-weight:600;color:#ef4444;">${formatIdr(l.valueIdr)}</td>
+            <td><small style="color:var(--muted);">${escape(l.desc)}</small></td>
+          </tr>
+        `).join('') || `<tr><td colspan="6" class="empty">${L('Tidak ada utang tercatat', 'No debts recorded')}</td></tr>`;
+
+        tabBody = `
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <span style="font-size:24px;">🇮🇩</span>
+            <div>
+              <b style="font-size:15px;display:block;">${L('Formulir SPT 1770 / 1770 S · DJP Online', 'Indonesian Tax Return (SPT 1770 / 1770 S)')}</b>
+              <small style="color:var(--muted);">${L('Rekapitulasi resmi daftar harta & utang akhir tahun pajak dengan Kode Harta DJP.', 'Official end-of-year tax assets & liabilities recap matching DJP tax codes.')}</small>
+            </div>
           </div>
-        </div>
 
-        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;background:var(--bg-hover,#f8fafc);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
-          <div style="flex:1;min-width:180px;">
-            <label for="tax-djp-year-select" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Tahun Pajak', 'Tax Year')}</label>
-            <select id="tax-djp-year-select" style="width:100%;">${yearOpts}</select>
+          <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;background:var(--bg-hover,#f8fafc);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+            <div style="flex:1;min-width:180px;">
+              <label for="tax-djp-year-select" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Tahun Pajak', 'Tax Year')}</label>
+              <select id="tax-djp-year-select" style="width:100%;">${yearOpts}</select>
+            </div>
+            <div style="flex:1;min-width:180px;">
+              <label for="tax-djp-owner-select" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Wajib Pajak / Pemilik', 'Taxpayer / Owner')}</label>
+              <select id="tax-djp-owner-select" style="width:100%;">${ownerOpts}</select>
+            </div>
           </div>
-          <div style="flex:1;min-width:180px;">
-            <label for="tax-djp-owner-select" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Wajib Pajak / Pemilik', 'Taxpayer / Owner')}</label>
-            <select id="tax-djp-owner-select" style="width:100%;">${ownerOpts}</select>
-          </div>
-        </div>
 
-        <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:18px;">
-          <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
-            <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Total Harta (Aset)', 'Total Assets')}</span>
-            <b style="font-size:18px;display:block;color:var(--accent,#34d399);margin-top:4px;">${formatIdr(rep.totalAssetsIdr)}</b>
-            <small style="color:var(--muted);font-size:11px;">${rep.assets.length} ${L('item harta', 'asset items')}</small>
+          <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:18px;">
+            <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
+              <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Total Harta (Aset)', 'Total Assets')}</span>
+              <b style="font-size:18px;display:block;color:var(--accent,#34d399);margin-top:4px;">${formatIdr(rep.totalAssetsIdr)}</b>
+              <small style="color:var(--muted);font-size:11px;">${rep.assets.length} ${L('item harta', 'asset items')}</small>
+            </div>
+            <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
+              <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Total Utang (Kewajiban)', 'Total Liabilities')}</span>
+              <b style="font-size:18px;display:block;color:#ef4444;margin-top:4px;">${formatIdr(rep.totalLiabilitiesIdr)}</b>
+              <small style="color:var(--muted);font-size:11px;">${rep.liabilities.length} ${L('item utang', 'debt items')}</small>
+            </div>
+            <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
+              <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Kekayaan Bersih Fiskal', 'Fiscal Net Wealth')}</span>
+              <b style="font-size:18px;display:block;color:var(--ink);margin-top:4px;">${formatIdr(rep.netWealthIdr)}</b>
+              <small style="color:var(--muted);font-size:11px;">${L('Harta dikurangi Utang', 'Assets minus Liabilities')}</small>
+            </div>
           </div>
-          <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
-            <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Total Utang (Kewajiban)', 'Total Liabilities')}</span>
-            <b style="font-size:18px;display:block;color:#ef4444;margin-top:4px;">${formatIdr(rep.totalLiabilitiesIdr)}</b>
-            <small style="color:var(--muted);font-size:11px;">${rep.liabilities.length} ${L('item utang', 'debt items')}</small>
-          </div>
-          <div class="metric" style="background:var(--card,#ffffff);border:1px solid var(--line);padding:12px 16px;border-radius:12px;">
-            <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Kekayaan Bersih Fiskal', 'Fiscal Net Wealth')}</span>
-            <b style="font-size:18px;display:block;color:var(--ink);margin-top:4px;">${formatIdr(rep.netWealthIdr)}</b>
-            <small style="color:var(--muted);font-size:11px;">${L('Harta dikurangi Utang', 'Assets minus Liabilities')}</small>
-          </div>
-        </div>
 
-        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:center;">
-          <b style="font-size:13px;">📋 ${L('Bagian B: Daftar Harta Akhir Tahun', 'Part B: Year-End Asset Registry')} (${rep.assets.length})</b>
-          <div style="display:flex;gap:8px;">
-            <button type="button" class="btn primary" id="tax-djp-copy-btn" title="${L('Salin format tabel untuk di-paste langsung di DJP Online atau Excel', 'Copy table to paste directly into DJP Online or Excel')}">
-              📋 ${L('Salin Format Tabel DJP', 'Copy DJP Table')}
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:center;">
+            <b style="font-size:13px;">📋 ${L('Bagian B: Daftar Harta Akhir Tahun', 'Part B: Year-End Asset Registry')} (${rep.assets.length})</b>
+            <div style="display:flex;gap:8px;">
+              <button type="button" class="btn primary" id="tax-djp-copy-btn" title="${L('Salin format tabel untuk di-paste langsung di DJP Online atau Excel', 'Copy table to paste directly into DJP Online or Excel')}">
+                📋 ${L('Salin Format Tabel DJP', 'Copy DJP Table')}
+              </button>
+              <button type="button" class="btn" id="tax-djp-csv-btn" title="${L('Unduh file CSV format DJP', 'Download CSV in DJP format')}">
+                📥 ${L('Unduh CSV', 'Download CSV')}
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:20px;">
+            <table style="width:100%;font-size:12px;">
+              <thead>
+                <tr style="position:sticky;top:0;background:var(--card-subtle,#f1f5f9);z-index:1;">
+                  <th style="width:70px;">${L('Kode', 'Code')}</th>
+                  <th>${L('Nama Harta', 'Asset Name')}</th>
+                  <th>${L('Kategori DJP', 'Category')}</th>
+                  <th style="text-align:center;width:70px;">${L('Tahun', 'Year')}</th>
+                  <th style="text-align:right;width:130px;">${L('Nilai (IDR)', 'Value (IDR)')}</th>
+                  <th>${L('Keterangan', 'Note')}</th>
+                </tr>
+              </thead>
+              <tbody>${assetRows}</tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:center;">
+            <b style="font-size:13px;">💳 ${L('Bagian C: Daftar Kewajiban / Utang Akhir Tahun', 'Part C: Year-End Liabilities Registry')} (${rep.liabilities.length})</b>
+          </div>
+
+          <div class="table-wrap" style="max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:18px;">
+            <table style="width:100%;font-size:12px;">
+              <thead>
+                <tr style="position:sticky;top:0;background:var(--card-subtle,#f1f5f9);z-index:1;">
+                  <th style="width:70px;">${L('Kode', 'Code')}</th>
+                  <th>${L('Nama Pemberi Pinjaman', 'Lender Name')}</th>
+                  <th>${L('Kategori DJP', 'Category')}</th>
+                  <th style="text-align:center;width:70px;">${L('Tahun', 'Year')}</th>
+                  <th style="text-align:right;width:130px;">${L('Sisa Utang (IDR)', 'Balance (IDR)')}</th>
+                  <th>${L('Keterangan', 'Note')}</th>
+                </tr>
+              </thead>
+              <tbody>${liabRows}</tbody>
+            </table>
+          </div>
+
+          <p class="note" style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.5;">
+            ${L('💡 <b>Tips DJP Online:</b> Klik tombol <b>"Salin Format Tabel DJP"</b> di atas, lalu buka portal DJP Online atau lembar kerja e-Form, dan langsung tekan <b>Paste (Ctrl+V / Cmd+V)</b>. Seluruh kolom Kode, Nama, Tahun, dan Nilai akan terisi secara otomatis.', '💡 <b>DJP Online Tip:</b> Click <b>"Copy DJP Table"</b> above, then open DJP Online portal or e-Form spreadsheet, and press <b>Paste (Ctrl+V / Cmd+V)</b>. All code, name, year, and value columns will be populated automatically.')}
+          </p>
+        `;
+      } else if (currentTab === 'pph21') {
+        const pphRes = F.calculatePph21Ter({ monthlyGross: pphGross, ptkpStatus: pphPtkp, monthlyPensionFee: pphPension });
+        const ptkpOpts = Object.keys(F.PTKP_TABLE).map(k => `<option value="${k}" ${k === pphPtkp ? 'selected' : ''}>${k} · ${F.PTKP_TABLE[k].name} (${formatIdr(F.PTKP_TABLE[k].amount)}/th)</option>`).join('');
+
+        tabBody = `
+          <div class="tax-calc-card">
+            <b style="display:block;margin-bottom:12px;font-size:14px;">🧮 ${L('Parameter Gaji & Status PTKP Karyawan', 'Salary & PTKP Status Parameters')}</b>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+              <div style="flex:1;min-width:180px;">
+                <label for="tax-pph-gross-input" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Gaji Pokok & Tunjangan / Bulan (IDR)', 'Gross Monthly Salary & Allowances (IDR)')}</label>
+                <input type="number" id="tax-pph-gross-input" value="${pphGross}" min="0" step="100000" style="width:100%;font-size:13px;font-weight:600;">
+              </div>
+              <div style="flex:1;min-width:200px;">
+                <label for="tax-pph-ptkp-select" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Status PTKP (Tanggungan)', 'PTKP Status (Exemption)')}</label>
+                <select id="tax-pph-ptkp-select" style="width:100%;">${ptkpOpts}</select>
+              </div>
+              <div style="flex:1;min-width:160px;">
+                <label for="tax-pph-pension-input" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Iuran Pensiun / BPJS TK / Bulan', 'Monthly Pension / BPJS Fee')}</label>
+                <input type="number" id="tax-pph-pension-input" value="${pphPension}" min="0" step="10000" style="width:100%;font-size:13px;">
+              </div>
+            </div>
+
+            <div class="tax-calc-grid" style="margin-top:14px;">
+              <div class="tax-metric-box">
+                <span>${L('Kategori TER & Tarif Pemotongan', 'TER Category & Rate')}</span>
+                <b style="color:var(--accent,#34d399);">${pphRes.terCategory} · ${(pphRes.terRate * 100).toFixed(2)}%</b>
+                <small style="color:var(--muted);font-size:10px;">PP 58/2023 Pasal 2 ayat (1)</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Potongan PPh 21 / Bulan (Jan–Nov)', 'Monthly Withholding (Jan–Nov)')}</span>
+                <b style="color:#ef4444;">${formatIdr(pphRes.monthlyTaxWithholding)}</b>
+                <small style="color:var(--muted);font-size:10px;">Total Jan-Nov: ${formatIdr(pphRes.janToNovTotal)}</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Take Home Pay Bersih / Bulan', 'Net Take-Home Pay / Month')}</span>
+                <b style="color:var(--ink);">${formatIdr(pphRes.takeHomePayMonthly)}</b>
+                <small style="color:var(--muted);font-size:10px;">${L('Setelah pajak & iuran', 'After tax & fees')}</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Penyesuaian Pajak Masa Desember', 'December Tax Adjustment')}</span>
+                <b style="color:#f59e0b;">${formatIdr(pphRes.decemberTax)}</b>
+                <small style="color:var(--muted);font-size:10px;">${L('Hitung ulang Pasal 17 UU HPP', 'Article 17 HPP Recalculation')}</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="tax-calc-card">
+            <b style="display:block;margin-bottom:10px;font-size:13px;">📊 ${L('Rincian Perhitungan Pajak Setahun (Pasal 17 UU HPP)', 'Annual Tax Calculation Breakdown (Article 17 UU HPP)')}</b>
+            <table class="tax-breakdown-table">
+              <tbody>
+                <tr>
+                  <td><b>${L('Penghasilan Bruto Setahun (12x Gaji)', 'Annual Gross Income (12x)')}</b></td>
+                  <td style="text-align:right;font-weight:600;">${formatIdr(pphRes.annualGross)}</td>
+                </tr>
+                <tr>
+                  <td style="color:var(--muted);">${L('Biaya Jabatan (5% maks Rp 6.000.000 / tahun)', 'Occupational Fee (5% max Rp 6M/year)')}</td>
+                  <td style="text-align:right;color:#ef4444;">− ${formatIdr(pphRes.annualBiayaJabatan)}</td>
+                </tr>
+                ${pphRes.annualPensionFee > 0 ? `
+                <tr>
+                  <td style="color:var(--muted);">${L('Iuran Pensiun / BPJS Setahun', 'Annual Pension / BPJS')}</td>
+                  <td style="text-align:right;color:#ef4444;">− ${formatIdr(pphRes.annualPensionFee)}</td>
+                </tr>` : ''}
+                <tr>
+                  <td><b>${L('Penghasilan Neto Setahun', 'Annual Net Income')}</b></td>
+                  <td style="text-align:right;font-weight:600;">${formatIdr(pphRes.netAnnualIncome)}</td>
+                </tr>
+                <tr>
+                  <td style="color:var(--muted);">${L('Penghasilan Tidak Kena Pajak (PTKP)', 'Tax-Free Income (PTKP)')} (${escape(pphRes.ptkpStatus)})</td>
+                  <td style="text-align:right;color:#ef4444;">− ${formatIdr(pphRes.ptkpAmount)}</td>
+                </tr>
+                <tr style="background:var(--bg-hover,#f8fafc);font-weight:700;">
+                  <td>${L('Penghasilan Kena Pajak (PKP)', 'Taxable Income (PKP)')}</td>
+                  <td style="text-align:right;color:var(--accent,#34d399);">${formatIdr(pphRes.pkp)}</td>
+                </tr>
+                <tr>
+                  <td><b>${L('Total PPh 21 Terutang Setahun (Pasal 17)', 'Total Annual Tax Due (Article 17)')}</b></td>
+                  <td style="text-align:right;font-weight:700;color:#ef4444;">${formatIdr(pphRes.annualTaxPasal17)}</td>
+                </tr>
+                <tr>
+                  <td style="color:var(--muted);">${L('Total Pemotongan Jan – Nov (11 Bulan TER)', 'Total Jan–Nov Withholding (11x TER)')}</td>
+                  <td style="text-align:right;">${formatIdr(pphRes.janToNovTotal)}</td>
+                </tr>
+                <tr style="background:rgba(245, 158, 11, 0.08);font-weight:700;">
+                  <td style="color:#b45309;">${L('Sisa PPh 21 Dipotong di Masa Desember', 'Remaining PPh 21 Withheld in December')}</td>
+                  <td style="text-align:right;color:#b45309;">${formatIdr(pphRes.decemberTax)}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="note" style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.5;">
+              ${L('💡 <b>Sistem TER 2024:</b> Mulai 1 Januari 2024, perusahaan memotong pajak bulan Januari–November memakai tabel TER (Tarif Efektif Rata-rata PP 58/2023) tanpa perlu menghitung biaya jabatan dan PTKP setiap bulan. Pada bulan Desember, perusahaan menghitung total pajak setahun memakai tarif progresif Pasal 17 UU HPP, lalu dikurangi pemotongan Jan–Nov.', '💡 <b>TER 2024 Mechanism:</b> Starting Jan 1, 2024, employers withhold taxes for Jan–Nov using TER brackets without monthly PTKP calculations. In December, employers reconcile annual taxes using progressive Article 17 rates less Jan–Nov withholdings.')}
+            </p>
+          </div>
+        `;
+      } else if (currentTab === 'umkm') {
+        const umkmRes = F.calculateUmkmFinalTax({ annualGross: umkmGross, isCorporate: umkmCorporate });
+
+        tabBody = `
+          <div class="tax-calc-card">
+            <b style="display:block;margin-bottom:12px;font-size:14px;">🏪 ${L('PPh Final UMKM 0,5% (PP 55 Tahun 2022)', 'UMKM Final Tax 0.5% (Govt Reg 55/2022)')}</b>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+              <div style="flex:2;min-width:200px;">
+                <label for="tax-umkm-gross-input" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Total Peredaran Bruto / Omzet Setahun (IDR)', 'Total Annual Gross Revenue / Turnover (IDR)')}</label>
+                <input type="number" id="tax-umkm-gross-input" value="${umkmGross}" min="0" step="1000000" style="width:100%;font-size:13px;font-weight:600;">
+              </div>
+              <div style="flex:1;min-width:180px;">
+                <label for="tax-umkm-entity-select" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">${L('Bentuk Wajib Pajak', 'Taxpayer Entity Type')}</label>
+                <select id="tax-umkm-entity-select" style="width:100%;">
+                  <option value="op" ${!umkmCorporate ? 'selected' : ''}>${L('Orang Pribadi (Bebas s.d Rp 500 Jt)', 'Individual (Exempt up to Rp 500M)')}</option>
+                  <option value="badan" ${umkmCorporate ? 'selected' : ''}>${L('Badan Usaha CV / PT (Langsung 0.5%)', 'Corporate CV / PT (Flat 0.5%)')}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="tax-calc-grid" style="margin-top:14px;">
+              <div class="tax-metric-box">
+                <span>${L('Omzet Bebas Pajak (Fasilitas PP 55)', 'Tax-Free Turnover (PP 55)')}</span>
+                <b style="color:var(--accent,#34d399);">${formatIdr(umkmRes.exemptRevenue)}</b>
+                <small style="color:var(--muted);font-size:10px;">${umkmCorporate ? L('Tidak berlaku untuk Badan', 'Not applicable for Corp') : L('Bebas s.d. Rp 500 Juta', 'Exempt up to Rp 500M')}</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Omzet Kena Pajak', 'Taxable Turnover')}</span>
+                <b style="color:var(--ink);">${formatIdr(umkmRes.taxableRevenue)}</b>
+                <small style="color:var(--muted);font-size:10px;">${L('Dasar pengenaan pajak', 'Tax base')}</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Total PPh Final Setahun (0,5%)', 'Annual Final Tax (0.5%)')}</span>
+                <b style="color:#ef4444;">${formatIdr(umkmRes.annualTax)}</b>
+                <small style="color:var(--muted);font-size:10px;">Tarif efektif: ${(umkmRes.effectiveRate * 100).toFixed(2)}%</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Estimasi Setoran per Bulan', 'Estimated Monthly Payment')}</span>
+                <b style="color:var(--ink);">${formatIdr(umkmRes.monthlyTax)}</b>
+                <small style="color:var(--muted);font-size:10px;">${L('Disetor via e-Billing DJP', 'Paid via DJP e-Billing')}</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="tax-calc-card">
+            <b style="display:block;margin-bottom:10px;font-size:13px;">📋 ${L('Panduan Kode Billing & Setoran DJP Online', 'DJP Online Billing Code & Payment Guide')}</b>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:12px;">
+              <div style="background:var(--bg-hover,#f8fafc);padding:10px 12px;border-radius:8px;border:1px solid var(--line);">
+                <small style="color:var(--muted);display:block;font-size:10px;">KODE AKUN PAJAK (KAP)</small>
+                <b style="font-size:16px;font-family:ui-monospace,SFMono-Regular,monospace;color:var(--accent,#34d399);">411128</b>
+                <small style="color:var(--muted);display:block;font-size:10px;">PPh Final</small>
+              </div>
+              <div style="background:var(--bg-hover,#f8fafc);padding:10px 12px;border-radius:8px;border:1px solid var(--line);">
+                <small style="color:var(--muted);display:block;font-size:10px;">KODE JENIS SETORAN (KJS)</small>
+                <b style="font-size:16px;font-family:ui-monospace,SFMono-Regular,monospace;color:var(--accent,#34d399);">420</b>
+                <small style="color:var(--muted);display:block;font-size:10px;">PPh Final UMKM PP 55/2022</small>
+              </div>
+              <div style="background:var(--bg-hover,#f8fafc);padding:10px 12px;border-radius:8px;border:1px solid var(--line);">
+                <small style="color:var(--muted);display:block;font-size:10px;">BATAS WAKTU SETOR</small>
+                <b style="font-size:15px;color:var(--ink);">Tgl 15</b>
+                <small style="color:var(--muted);display:block;font-size:10px;">Bulan kalender berikutnya</small>
+              </div>
+            </div>
+            <p class="note" style="font-size:11px;color:var(--muted);line-height:1.5;">
+              ${L('💡 <b>Ketentuan PP 55/2022:</b> Pengusaha Orang Pribadi dengan omzet tidak lebih dari Rp 4,8 Miliar per tahun dapat memanfaatkan skema PPh Final 0,5% selama maksimal 7 tahun. Bagian omzet sampai dengan Rp 500 Juta dalam satu tahun pajak tidak dikenai pajak sama sekali.', '💡 <b>PP 55/2022 Rules:</b> Individual entrepreneurs with annual gross revenue up to Rp 4.8 Billion can use the 0.5% final tax scheme for up to 7 years. The first Rp 500 Million of revenue is completely tax-exempt.')}
+            </p>
+          </div>
+        `;
+      } else if (currentTab === 'zakat') {
+        const zakatRes = F.calculateZakatMaal(state, { goldPricePerGram: zakatGoldPrice });
+
+        tabBody = `
+          <div class="tax-calc-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+              <b style="font-size:14px;">🪙 ${L('Kalkulator Zakat Maal & Zakat Profesi (BAZNAS)', 'Zakat Maal & Income Calculator (BAZNAS)')}</b>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <label for="tax-zakat-gold-input" style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;">${L('Harga Emas / Gram:', 'Gold Price / Gram:')}</label>
+                <input type="number" id="tax-zakat-gold-input" value="${zakatGoldPrice}" min="100000" step="10000" style="width:130px;font-size:12px;font-weight:600;text-align:right;">
+              </div>
+            </div>
+
+            <div class="zakat-status-banner ${zakatRes.isMaalNisabMet ? 'wajib' : 'belum'}">
+              <div>
+                <b style="font-size:14px;color:${zakatRes.isMaalNisabMet ? 'var(--accent,#34d399)' : 'var(--muted)'};display:block;">
+                  ${zakatRes.isMaalNisabMet ? '🟢 ' + L('Wajib Membayar Zakat Maal (Mencapai Nisab 85g Emas)', 'Zakat Maal Obligatory (Nisab Reached)') : '⚪ ' + L('Belum Wajib Zakat Maal (Harta Bersih di Bawah Nisab)', 'Zakat Maal Not Due Yet (Below Nisab)')}
+                </b>
+                <small style="color:var(--muted);font-size:11px;">
+                  ${L('Nisab 85g Emas', 'Nisab 85g Gold')}: <b>${formatIdr(zakatRes.nisabAnnual)}</b> · ${L('Harta Bersih Anda', 'Your Net Wealth')}: <b>${formatIdr(zakatRes.netZakatableWealth)}</b>
+                </small>
+              </div>
+              <div style="text-align:right;">
+                <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Zakat Maal Terutang (2,5%)', 'Zakat Maal Due (2.5%)')}</span>
+                <b style="font-size:20px;display:block;color:${zakatRes.isMaalNisabMet ? 'var(--accent,#34d399)' : 'var(--muted)'};">${formatIdr(zakatRes.zakatAmountIdr)}</b>
+              </div>
+            </div>
+
+            <div class="tax-calc-grid">
+              <div class="tax-metric-box">
+                <span>${L('Kas & Setara Kas (Tabungan/Giro)', 'Cash & Bank Balances')}</span>
+                <b>${formatIdr(zakatRes.cashAndEquivalents)}</b>
+                <small style="color:var(--muted);font-size:10px;">${L('Terdeteksi dari akun likuid', 'Detected from liquid accounts')}</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Emas Batangan & Logam Mulia', 'Gold & Precious Metals')}</span>
+                <b>${formatIdr(zakatRes.goldAndPrecious)}</b>
+                <small style="color:var(--muted);font-size:10px;">${L('Simpanan emas & koin', 'Gold holdings & bullion')}</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Investasi Pasar Modal (Saham/RD)', 'Market Securities (Stocks/Funds)')}</span>
+                <b>${formatIdr(zakatRes.investments)}</b>
+                <small style="color:var(--muted);font-size:10px;">${L('Surat berharga likuid', 'Liquid investment assets')}</small>
+              </div>
+              <div class="tax-metric-box">
+                <span>${L('Utang Jatuh Tempo / Utang Lancar', 'Short-Term Liabilities')}</span>
+                <b style="color:#ef4444;">− ${formatIdr(zakatRes.shortTermLiabilities)}</b>
+                <small style="color:var(--muted);font-size:10px;">${L('Pengurang harta zakat', 'Zakat wealth deduction')}</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="tax-calc-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+              <div>
+                <b style="font-size:13px;display:block;">💼 ${L('Zakat Penghasilan / Profesi Bulanan', 'Monthly Income / Professional Zakat')}</b>
+                <small style="color:var(--muted);font-size:11px;">
+                  ${L('Nisab Bulanan (85g emas / 12)', 'Monthly Nisab (85g gold / 12)')}: <b>${formatIdr(zakatRes.nisabMonthly)}</b> · ${L('Pemasukan Bulanan', 'Monthly Income')}: <b>${formatIdr(zakatRes.monthlyIncome)}</b>
+                </small>
+              </div>
+              <div style="text-align:right;">
+                <span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${L('Zakat Profesi (2,5%)', 'Income Zakat (2.5%)')}</span>
+                <b style="font-size:18px;display:block;color:${zakatRes.isIncomeNisabMet ? 'var(--accent,#34d399)' : 'var(--muted)'};">${formatIdr(zakatRes.zakatProfesiMonthlyIdr)} / bln</b>
+              </div>
+            </div>
+            <p class="note" style="font-size:11px;color:var(--muted);line-height:1.5;">
+              ${L('💡 <b>Ketentuan Zakat BAZNAS:</b> Sesuai Keputusan Ketua BAZNAS, nishab zakat pendapatan/profesi setara dengan nilai 85 gram emas per tahun (atau 7,08 gram emas per bulan). Zakat dikeluarkan sebesar 2,5% dari penghasilan bruto atau neto sebelum kebutuhan pokok sekunder.', '💡 <b>BAZNAS Zakat Guidance:</b> By BAZNAS decree, the nisab for income zakat equals 85 grams of gold per year (or ~7.08 grams per month). Zakat rate is 2.5% of income once the nisab is met.')}
+            </p>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+            <button type="button" class="btn primary" id="tax-zakat-record-btn" style="display:flex;align-items:center;gap:6px;">
+              <span>🪙</span>
+              <span>${L('Catat Pembayaran Zakat ke Jurnal', 'Record Zakat Payment to Journal')}</span>
             </button>
-            <button type="button" class="btn" id="tax-djp-csv-btn" title="${L('Unduh file CSV format DJP', 'Download CSV in DJP format')}">
-              📥 ${L('Unduh CSV', 'Download CSV')}
-            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="tax-hub-wrap tax-djp-modal-wrap">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <span style="font-size:24px;">🇮🇩</span>
+            <div>
+              <b style="font-size:15px;display:block;">${L('Pajak DJP Online & Zakat Hub', 'Indonesian Tax & Zakat Hub')}</b>
+              <small style="color:var(--muted);">${L('Kepatuhan resmi SPT 1770, kalkulator PPh 21 TER 2024, PPh Final UMKM 0,5%, dan Zakat Maal BAZNAS.', 'Official SPT 1770 recap, PPh 21 TER 2024 calculator, UMKM 0.5% tax, and BAZNAS Zakat Maal.')}</small>
+            </div>
+          </div>
+
+          <div class="tax-hub-tabs" role="tablist">
+            <button type="button" class="tax-hub-tab-btn ${currentTab === 'assets' ? 'active' : ''}" data-tab="assets">📑 ${L('Lampiran Harta (SPT 1770)', 'Asset Registry (SPT 1770)')}</button>
+            <button type="button" class="tax-hub-tab-btn ${currentTab === 'pph21' ? 'active' : ''}" data-tab="pph21">🧮 ${L('PPh 21 TER 2024', 'PPh 21 TER 2024')}</button>
+            <button type="button" class="tax-hub-tab-btn ${currentTab === 'umkm' ? 'active' : ''}" data-tab="umkm">🏪 ${L('PPh UMKM 0.5%', 'UMKM Final Tax 0.5%')}</button>
+            <button type="button" class="tax-hub-tab-btn ${currentTab === 'zakat' ? 'active' : ''}" data-tab="zakat">🪙 ${L('Zakat Maal & Profesi', 'Zakat Maal & Income')}</button>
+          </div>
+
+          <div id="tax-hub-tab-content">
+            ${tabBody}
+          </div>
+
+          <div class="form-actions" style="margin-top:16px;">
+            <button type="button" class="btn" data-action="modal-close">${L('Tutup', 'Close')}</button>
           </div>
         </div>
+      `;
+    }
 
-        <div class="table-wrap" style="max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:20px;">
-          <table style="width:100%;font-size:12px;">
-            <thead>
-              <tr style="position:sticky;top:0;background:var(--card-subtle,#f1f5f9);z-index:1;">
-                <th style="width:70px;">${L('Kode', 'Code')}</th>
-                <th>${L('Nama Harta', 'Asset Name')}</th>
-                <th>${L('Kategori DJP', 'Category')}</th>
-                <th style="text-align:center;width:70px;">${L('Tahun', 'Year')}</th>
-                <th style="text-align:right;width:130px;">${L('Nilai (IDR)', 'Value (IDR)')}</th>
-                <th>${L('Keterangan', 'Note')}</th>
-              </tr>
-            </thead>
-            <tbody>${assetRows}</tbody>
-          </table>
-        </div>
+    function wireEvents() {
+      const modalEl = $('#modal-body');
+      if (!modalEl) return;
 
-        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:center;">
-          <b style="font-size:13px;">💳 ${L('Bagian C: Daftar Kewajiban / Utang Akhir Tahun', 'Part C: Year-End Liabilities Registry')} (${rep.liabilities.length})</b>
-        </div>
+      modalEl.querySelectorAll('.tax-hub-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentTab = btn.dataset.tab;
+          modalEl.innerHTML = renderModalContent();
+          wireEvents();
+        });
+      });
 
-        <div class="table-wrap" style="max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:18px;">
-          <table style="width:100%;font-size:12px;">
-            <thead>
-              <tr style="position:sticky;top:0;background:var(--card-subtle,#f1f5f9);z-index:1;">
-                <th style="width:70px;">${L('Kode', 'Code')}</th>
-                <th>${L('Nama Pemberi Pinjaman', 'Lender Name')}</th>
-                <th>${L('Kategori DJP', 'Category')}</th>
-                <th style="text-align:center;width:70px;">${L('Tahun', 'Year')}</th>
-                <th style="text-align:right;width:130px;">${L('Sisa Utang (IDR)', 'Balance (IDR)')}</th>
-                <th>${L('Keterangan', 'Note')}</th>
-              </tr>
-            </thead>
-            <tbody>${liabRows}</tbody>
-          </table>
-        </div>
-
-        <p class="note" style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.5;">
-          ${L('💡 <b>Tips DJP Online:</b> Klik tombol <b>"Salin Format Tabel DJP"</b> di atas, lalu buka portal DJP Online atau lembar kerja e-Form, dan langsung tekan <b>Paste (Ctrl+V / Cmd+V)</b>. Seluruh kolom Kode, Nama, Tahun, dan Nilai akan terisi secara otomatis.', '💡 <b>DJP Online Tip:</b> Click <b>"Copy DJP Table"</b> above, then open DJP Online portal or e-Form spreadsheet, and press <b>Paste (Ctrl+V / Cmd+V)</b>. All code, name, year, and value columns will be populated automatically.')}
-        </p>
-
-        <div class="form-actions" style="margin-top:16px;">
-          <button type="button" class="btn" data-action="modal-close">${L('Tutup', 'Close')}</button>
-        </div>
-      </div>
-    `;
-
-    openModal(L('🇮🇩 Rekap Harta SPT Tahunan DJP Online', '🇮🇩 DJP Online Tax Assets Recap'), bodyHtml);
-
-    setTimeout(() => {
       $('#tax-djp-year-select')?.addEventListener('change', e => {
-        openDjpTaxModal(e.target.value, $('#tax-djp-owner-select')?.value || own);
+        yr = e.target.value;
+        modalEl.innerHTML = renderModalContent();
+        wireEvents();
       });
       $('#tax-djp-owner-select')?.addEventListener('change', e => {
-        openDjpTaxModal($('#tax-djp-year-select')?.value || yr, e.target.value);
+        own = e.target.value;
+        modalEl.innerHTML = renderModalContent();
+        wireEvents();
       });
       $('#tax-djp-copy-btn')?.addEventListener('click', () => {
+        const rep = F.buildDjpTaxAssetsReport(state, { year: yr, ownerId: own });
         if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(rep.tsvText).then(() => {
             toast('📋 ' + L('Format tabel DJP berhasil disalin! Silakan paste langsung ke portal DJP Online atau Excel.', 'DJP table copied! Paste directly into DJP Online or Excel.'));
@@ -7204,10 +7517,58 @@
         }
       });
       $('#tax-djp-csv-btn')?.addEventListener('click', () => {
+        const rep = F.buildDjpTaxAssetsReport(state, { year: yr, ownerId: own });
         download(`rekap-harta-spt-djp-${rep.year}.csv`, rep.csvText, 'text/csv');
         toast('📥 ' + L('File CSV SPT Pajak DJP berhasil diunduh.', 'DJP Tax CSV downloaded.'));
       });
-    }, 40);
+
+      $('#tax-pph-gross-input')?.addEventListener('input', e => {
+        pphGross = Math.max(0, Number(e.target.value) || 0);
+        modalEl.innerHTML = renderModalContent();
+        wireEvents();
+      });
+      $('#tax-pph-ptkp-select')?.addEventListener('change', e => {
+        pphPtkp = e.target.value;
+        modalEl.innerHTML = renderModalContent();
+        wireEvents();
+      });
+      $('#tax-pph-pension-input')?.addEventListener('input', e => {
+        pphPension = Math.max(0, Number(e.target.value) || 0);
+        modalEl.innerHTML = renderModalContent();
+        wireEvents();
+      });
+
+      $('#tax-umkm-gross-input')?.addEventListener('input', e => {
+        umkmGross = Math.max(0, Number(e.target.value) || 0);
+        modalEl.innerHTML = renderModalContent();
+        wireEvents();
+      });
+      $('#tax-umkm-entity-select')?.addEventListener('change', e => {
+        umkmCorporate = e.target.value === 'badan';
+        modalEl.innerHTML = renderModalContent();
+        wireEvents();
+      });
+
+      $('#tax-zakat-gold-input')?.addEventListener('input', e => {
+        zakatGoldPrice = Math.max(1, Number(e.target.value) || 1450000);
+        modalEl.innerHTML = renderModalContent();
+        wireEvents();
+      });
+      $('#tax-zakat-record-btn')?.addEventListener('click', () => {
+        const zakatRes = F.calculateZakatMaal(state, { goldPricePerGram: zakatGoldPrice });
+        const dueAmount = zakatRes.zakatMaalDue > 0 ? zakatRes.zakatMaalDue : zakatRes.zakatIncomeDue;
+        closeModal();
+        addTransaction('expense', {
+          name: L('Pembayaran Zakat Maal (BAZNAS)', 'Zakat Maal Payment (BAZNAS)'),
+          amount: dueAmount > 0 ? dueAmount * 100 : 10000000,
+          category: 'Charity',
+          notes: L(`Nisab 85g Emas (Rp ${zakatGoldPrice.toLocaleString('id-ID')}/gr)`, `Nisab 85g Gold (Rp ${zakatGoldPrice.toLocaleString('id-ID')}/gr)`)
+        });
+      });
+    }
+
+    openModal(L('🇮🇩 Rekap Harta SPT Tahunan DJP Online', '🇮🇩 DJP Online Tax Assets Recap'), renderModalContent());
+    setTimeout(wireEvents, 40);
   }
 
   function reports(){
@@ -9973,13 +10334,18 @@
       });
     }
   }
-  function addTransaction(initialKind = 'expense'){
+  function addTransaction(initialKind = 'expense', prefill = {}){
+    if(typeof initialKind === 'object' && initialKind !== null) {
+      prefill = initialKind;
+      initialKind = prefill.kind || 'expense';
+    }
+    prefill = prefill || {};
     if(!state.accounts.length){toast(L('Tambahkan akun terlebih dahulu.','Add an account first.'));return;}
     const defaultAcc=state.accounts[0];
     const sym=getCurrencySymbol(defaultAcc?.currency||state.currency);
     const accountOptions=state.accounts.map(a=>`<option value="${a.id}" data-curr="${a.currency}">${escape(a.name)} (${a.currency}) · ${native(a,'balance')}</option>`).join('');
     const goalOptions=`<option value="">${L('Tidak ada target khusus','None / Not linked')}</option>`+state.goals.map(g=>`<option value="${g.id}">${escape(g.emoji)} ${escape(g.name)} (${native(g,'saved')} / ${native(g,'target')})</option>`).join('');
-    const defaultCategory=initialKind==='income'?'Salary':'Dining';
+    const defaultCategory=prefill.category||(initialKind==='income'?'Salary':'Dining');
     const defaultIcon=F.categoryIcon(defaultCategory);
 
     const formHtml=`
@@ -10005,14 +10371,14 @@
         <label for="monarch-amount">${L('Nominal','Amount')}</label>
         <div class="monarch-amount-input-wrap">
           <span class="monarch-curr-symbol" id="monarch-curr-sym">${escape(sym)}</span>
-          <input type="number" id="monarch-amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required autofocus>
+          <input type="number" id="monarch-amount" name="amount" step="0.01" min="0.01" placeholder="0.00" value="${prefill.amount != null ? (prefill.amount / 100).toFixed(2) : ''}" required autofocus>
         </div>
       </div>
 
       <div class="monarch-field">
         <label for="monarch-tx-name">${L('Pedagang / Deskripsi','Merchant')}</label>
         <div class="monarch-input-wrap">
-          <input type="text" id="monarch-tx-name" name="name" placeholder="${L('Nama pedagang / toko','Merchant name')}" required maxlength="120" list="merchant-datalist" autocomplete="off">
+          <input type="text" id="monarch-tx-name" name="name" placeholder="${L('Nama pedagang / toko','Merchant name')}" value="${escape(prefill.name || '')}" required maxlength="120" list="merchant-datalist" autocomplete="off">
           <datalist id="merchant-datalist">
             ${[...new Set(state.transactions.map(t=>t.name))].slice(0,15).map(n=>`<option value="${escape(n)}"></option>`).join('')}
           </datalist>
@@ -10074,7 +10440,7 @@
 
       <div class="monarch-field">
         <label for="monarch-tx-notes">${L('Catatan','Notes')}</label>
-        <input type="text" id="monarch-tx-notes" name="notes" placeholder="${L('Catatan ringkas...','Brief note...')}" maxlength="250">
+        <input type="text" id="monarch-tx-notes" name="notes" placeholder="${L('Catatan ringkas...','Brief note...')}" value="${escape(prefill.notes || '')}" maxlength="250">
       </div>
 
       <div class="monarch-field">
@@ -10138,6 +10504,11 @@
     });
 
     initMonarchTransactionForm();
+    if(prefill.amount != null) {
+      const val = prefill.amount / 100;
+      const adjEl = $('#monarch-adjust-amount');
+      if(adjEl) adjEl.textContent = `${sym} ${val.toLocaleString(locale(), {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
   }
   function addTask(){openModal('A clear next step',form(field('Task','name','','text','required maxlength="120"')+field('Responsible person','owner','Me','text','required maxlength="80"')+field('Review date','due',date(),'date'),'Create task'),d=>{state.tasks.push({id:uid(),name:requireText(d.name),owner:requireText(d.owner),due:d.due,done:false});toast('Task created.');});}
   function confirmAction(title,description,handler,label='Confirm'){openModal(title,`<p class="dialog-copy">${description}</p><form><p id="form-error" class="form-error"></p><div class="form-actions"><button type="button" class="btn" data-action="modal-close">Cancel</button><button type="submit" class="btn primary">${label}</button></div></form>`,handler);}
@@ -10632,6 +11003,10 @@
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
   function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='tx-sort'){toggleTransactionSort(id);return;}if(name==='nav'){navigate(id);return;}if(name.startsWith('anomaly-')){anomalyAction(name,id,extra,parts[3]);return;}if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('vey-')||name.startsWith('invi-')){inviAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id,extra);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'tax-djp-modal':openDjpTaxModal(id);break;
+    case 'open-tax-djp':openDjpTaxModal(null,null,'assets');break;
+    case 'open-tax-pph21':openDjpTaxModal(null,null,'pph21');break;
+    case 'open-tax-umkm':openDjpTaxModal(null,null,'umkm');break;
+    case 'open-tax-zakat':openDjpTaxModal(null,null,'zakat');break;
     case 'pwa-install':triggerPwaInstall();break;
     case 'lock-vault-now':lockVault();break;
     case 'setup-biometric':toggleBiometricSetup();break;
