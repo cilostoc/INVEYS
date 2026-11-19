@@ -217,5 +217,64 @@ test('E-Wallet accounts map to DJP code 015 and are projected as cash in forecas
   assert.equal(ewInForecast.balance, 750000);
 });
 
+test('detectRecurringAnomalies detects price hikes, unregistered recurring bills, and spikes', () => {
+  const state = {
+    currency: 'IDR',
+    subscriptions: [
+      { id: 'sub-netflix', name: 'Netflix', amount: 18600000, currency: 'IDR', day: 15, cadence: 'monthly' }
+    ],
+    flows: [
+      { id: 'f-vps', name: 'Cloud VPS Hosting', amount: 15000000, currency: 'IDR', kind: 'expense', day: 1 }
+    ],
+    transactions: [
+      // 1. Netflix price hike: registered was 186.000, latest is 216.000 (+16.1%)
+      { id: 'tx-n1', name: 'Netflix.com', date: '2026-10-15', amount: 18600000, currency: 'IDR', kind: 'expense' },
+      { id: 'tx-n2', name: 'Netflix.com', date: '2026-11-15', amount: 21600000, currency: 'IDR', kind: 'expense' },
+
+      // 2. Unregistered recurring subscription: Spotify Family seen in 2 consecutive months around 86.900
+      { id: 'tx-s1', name: 'Spotify Family', date: '2026-09-22', amount: 8690000, currency: 'IDR', kind: 'expense' },
+      { id: 'tx-s2', name: 'Spotify Family', date: '2026-10-22', amount: 8690000, currency: 'IDR', kind: 'expense' },
+
+      // 3. Utility spike: PLN average ~1.000.000, latest spikes to 1.550.000 (+55%)
+      { id: 'tx-p1', name: 'PLN Listrik', date: '2026-08-10', amount: 100000000, currency: 'IDR', kind: 'expense' },
+      { id: 'tx-p2', name: 'PLN Listrik', date: '2026-09-10', amount: 102000000, currency: 'IDR', kind: 'expense' },
+      { id: 'tx-p3', name: 'PLN Listrik', date: '2026-10-10', amount: 98000000, currency: 'IDR', kind: 'expense' },
+      { id: 'tx-p4', name: 'PLN Listrik', date: '2026-11-10', amount: 155000000, currency: 'IDR', kind: 'expense' }
+    ]
+  };
+
+  const res = F.detectRecurringAnomalies(state);
+  assert.equal(res.hikes.length, 1);
+  assert.equal(res.hikes[0].name, 'Netflix');
+  assert.equal(res.hikes[0].registeredAmount, 18600000);
+  assert.equal(res.hikes[0].newAmount, 21600000);
+  assert.equal(res.hikes[0].percent, 16.1);
+  assert.equal(res.hikes[0].diff, 3000000);
+
+  assert.equal(res.unregistered.length, 1);
+  assert.equal(res.unregistered[0].vendor, 'spotify family');
+  assert.equal(res.unregistered[0].estimatedAmount, 8690000);
+  assert.equal(res.unregistered[0].day, 22);
+
+  assert.equal(res.spikes.length, 1);
+  assert.equal(res.spikes[0].percent, 55);
+  assert.equal(res.spikes[0].diff, 55000000);
+
+  // Test dismissal
+  const stateWithDismissed = {
+    ...state,
+    dismissedAnomalies: {
+      [res.hikes[0].key]: true,
+      [res.unregistered[0].key]: true,
+      [res.spikes[0].key]: true
+    }
+  };
+  const resDismissed = F.detectRecurringAnomalies(stateWithDismissed);
+  assert.equal(resDismissed.hikes.length, 0);
+  assert.equal(resDismissed.unregistered.length, 0);
+  assert.equal(resDismissed.spikes.length, 0);
+});
+
+
 
 

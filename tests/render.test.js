@@ -1558,6 +1558,49 @@ test('capture page renders smart diff HUD and supports filtering, select new, an
   app.click({ action: 'capture-resolve-dup:0:force' });
 });
 
+test('calendar page renders anomaly HUD and handles hike update, add-sub, and dismissal', () => {
+  const base = boot().state();
+  base.subscriptions = [
+    { id: 'sub-test-1', name: 'Netflix', amount: 18600000, currency: 'USD', day: 15, cadence: 'monthly', owner: 'Me' }
+  ];
+  base.transactions.push(
+    { id: 'tx-hike', name: 'Netflix', category: 'Subscriptions', amount: 21600000, currency: 'USD', date: '2026-11-15', kind: 'expense', accountId: 'a1' },
+    { id: 'tx-unreg-1', name: 'Spotify Music', category: 'Subscriptions', amount: 9990000, currency: 'USD', date: '2026-10-20', kind: 'expense', accountId: 'a1' },
+    { id: 'tx-unreg-2', name: 'Spotify Music', category: 'Subscriptions', amount: 9990000, currency: 'USD', date: '2026-11-20', kind: 'expense', accountId: 'a1' }
+  );
+  const app = boot(base);
+
+  // 1. Check Home / Overview renders the price hike banner
+  app.click({ page: 'home' });
+  assert.match(app.html(), /home-anomaly-banner/);
+  assert.match(app.html(), /Netflix/);
+
+  // 2. Open Calendar page
+  app.click({ page: 'calendar' });
+  const html = app.html();
+  assert.match(html, /calendar-anomaly-hud/);
+  assert.match(html, /hike-card/);
+  assert.match(html, /unreg-card/);
+  assert.match(html, /Sesuaikan Rencana|Update Plan/);
+
+  // 3. Test anomaly-apply-hike: update Netflix planned amount from 186.000 to 216.000
+  app.click({ action: 'anomaly-apply-hike:sub-test-1:21600000' });
+  assert.equal(app.state().subscriptions.find(sub => sub.id === 'sub-test-1').amount, 21600000);
+
+  // 4. Test anomaly-add-sub: convert unregistered Spotify bill to a subscription
+  app.click({ action: 'anomaly-add-sub:Spotify%20Music:9990000:20' });
+  const newSub = app.state().subscriptions.find(sub => sub.name === 'Spotify Music');
+  assert.ok(newSub);
+  assert.equal(newSub.amount, 9990000);
+  assert.equal(newSub.day, 20);
+
+  // 5. Test anomaly-dismiss action
+  const sampleKey = 'test-dismiss-key';
+  app.click({ action: 'anomaly-dismiss:' + sampleKey });
+  assert.equal(app.state().dismissedAnomalies[sampleKey], true);
+});
+
+
 
 
 

@@ -399,8 +399,22 @@
       : (viewState().debts.length > 0 && activeDebts.length === 0
         ? (state.language === 'id' ? '🎉 Seluruh utang & pinjaman Anda berstatus lunas (Saldo 0). Pertahankan arus kas positif Anda!' : '🎉 All your debts and loans are fully paid off (0 balance). Keep up your financial momentum!')
         : (state.language === 'id' ? 'Tinjau rencana bulanan Anda dan bandingkan langkah finansial selanjutnya dengan target Anda.' : 'Review your monthly plan and compare your next financial move with your goals.'));
+    const anomalies = F.detectRecurringAnomalies(state);
+    const hikeNotice = anomalies.hikes.length > 0 ? `
+      <div class="home-anomaly-banner" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">🚨</span>
+          <div>
+            <b style="color:var(--red,#ef4444);font-size:13px">${L('Kenaikan Harga Langganan Terdeteksi','Subscription Price Hike Detected')}</b>
+            <p style="margin:2px 0 0;font-size:11.5px;color:var(--muted)">${escape(anomalies.hikes[0].name)} ${L('naik menjadi','increased to')} ${amount(anomalies.hikes[0].newAmount, anomalies.hikes[0].currency)} (+${anomalies.hikes[0].percent}%). ${L('Buka kalender untuk menyesuaikan rencana.','Open calendar to update plan.')}</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm" data-page="calendar" style="white-space:nowrap">${L('Buka Kalender','View Calendar')} &rarr;</button>
+      </div>
+    ` : '';
     return header(`${state.language==='id'?'Halo':'Hello'}, ${user((state.members[0]?.name||'Me').split(' ')[0])} <span style="font-size:24px">✳</span>`,'A little clarity today. More possibility tomorrow.',`<span class="date-button">${icon('calendar')}${new Date().toLocaleDateString(locale(),{month:'short',day:'numeric',year:'numeric'})}</span>${button('Add account','account-new','primary','plus')}`)+
     quickActionsHero()+
+    hikeNotice+
     (easyMode ? seniorSummaryCards(p) : '')+
     metrics()+
     `<div class="middle-grid"><section class="panel panel-pad"><div class="panel-head"><div><h2 class="panel-title">Your financial picture</h2><p>A whole-life view of what you own and owe.</p></div><button class="icon-button" data-action="privacy" aria-label="${hideMoney?'Show':'Hide'} amounts">${icon('eye')}</button></div><div class="chart-top"><div><div class="big-number">${tickerAmount(p.netWorth)}</div><div class="number-sub"><span class="positive">${state.demo?'↑ '+money(p.netWorth-h.values[0])+' across sample history':'Current recorded position'}</span><span>${state.demo?'Illustrative demo snapshots':''}</span></div></div><div class="segmented" aria-label="History period"><button data-action="period:6" class="${period===6?'active':''}" aria-pressed="${period===6}">6M</button><button data-action="period:12" class="${period===12?'active':''}" aria-pressed="${period===12}">1Y</button></div></div><div class="chart-container">${lineChart(h.values,h.labels)}</div><div class="chart-note"><span></span>${state.demo?'Sample history · Latest point reflects your current records':'Manual position · Historical tracking will begin with your records'}</div></section>
@@ -1186,6 +1200,65 @@
     return results.sort((a,b) => a.day - b.day || a.name.localeCompare(b.name));
   }
 
+  function anomalyAction(name, id, extra, optParam) {
+    switch (name) {
+      case 'anomaly-apply-hike': {
+        const newAmt = Number(extra);
+        if (!newAmt || newAmt <= 0) return;
+        if (id.startsWith('flow-')) {
+          const flowId = id.slice(5);
+          const flow = (state.flows || []).find(f => f.id === flowId);
+          if (flow) {
+            flow.amount = newAmt;
+            save();
+            render();
+            successToast(L('Nominal rencana arus kas diperbarui ke harga baru! Kalender dan proyeksi kini sinkron.', 'Cash flow plan updated to new price! Calendar and forecast are now synchronized.'));
+          }
+        } else {
+          const sub = (state.subscriptions || []).find(s => s.id === id);
+          if (sub) {
+            sub.amount = newAmt;
+            save();
+            render();
+            successToast(L('Nominal langganan diperbarui ke harga baru! Kalender dan anggaran kini sinkron.', 'Subscription updated to new price! Calendar and budget are now synchronized.'));
+          }
+        }
+        break;
+      }
+      case 'anomaly-add-sub': {
+        const vendorName = decodeURIComponent(id || '').trim();
+        const estAmt = Number(extra) || 0;
+        const day = Math.min(31, Math.max(1, Number(optParam) || 1));
+        state.subscriptions ??= [];
+        const newSub = {
+          id: uid(),
+          name: vendorName || 'Subscription',
+          emoji: F.categoryIcon(vendorName) || '🎬',
+          amount: estAmt,
+          currency: state.currency,
+          category: 'Subscriptions',
+          day,
+          cadence: 'monthly',
+          owner: state.members[0]?.name || 'Me',
+          autoRenew: true
+        };
+        state.subscriptions.push(newSub);
+        save();
+        render();
+        successToast(L('Tagihan rutin berhasil ditambahkan ke kalender!', 'Recurring bill added to calendar!'));
+        break;
+      }
+      case 'anomaly-dismiss': {
+        state.dismissedAnomalies ??= {};
+        state.dismissedAnomalies[id] = true;
+        save();
+        render();
+        toast(L('Notifikasi anomali diabaikan.', 'Anomaly alert dismissed.'));
+        break;
+      }
+    }
+  }
+
   function calendarAction(name, id, extra){
     const monthKey = `${calendarYear}-${String(calendarMonth+1).padStart(2,'0')}`;
     switch(name){
@@ -1516,6 +1589,98 @@
       ${metric(L('Sisa tagihan','Remaining due'), amount(remainingDue), `<span class="${remainingDue>0?'expense-amount':'positive'}">${bills.filter(b=>!b.paid).length} ${L('belum lunas','unpaid')}</span><span>${totalExpected>0 ? Math.round(paidSoFar/totalExpected*100) : 0}% ${L('terbayar','paid')}</span>`, 'check')}
     </div>`;
 
+    const anomalies = F.detectRecurringAnomalies(state);
+    const anomalyHUD = anomalies.totalCount > 0 ? `
+      <div class="calendar-anomaly-hud">
+        <div class="calendar-anomaly-head">
+          <div class="calendar-anomaly-title">
+            <span class="anomaly-icon-badge">⚡</span>
+            <div>
+              <h3>${L('Radar Anomali Tagihan & Kenaikan Langganan','Bill Anomaly & Subscription Hike Radar')}</h3>
+              <small>${L('Mendeteksi kenaikan harga langganan, lonjakan pengeluaran rutin, dan tagihan tersembunyi dari mutasi jurnal Anda.','Detects subscription price increases, unusual spikes, and recurring bills from your ledger.')}</small>
+            </div>
+          </div>
+          <span class="badge ${anomalies.hikes.length ? 'red' : 'orange'}">${anomalies.totalCount} ${L('Perhatian','Alerts')}</span>
+        </div>
+        <div class="calendar-anomaly-cards">
+          ${anomalies.hikes.map(h => `
+            <div class="anomaly-card hike-card">
+              <div class="anomaly-card-top">
+                <span class="anomaly-badge red">🚨 ${L('Kenaikan Harga','Price Hike')} +${h.percent}%</span>
+                <small>${h.date}</small>
+              </div>
+              <div class="anomaly-card-main">
+                <div class="anomaly-vendor-info">
+                  <span class="anomaly-emoji">${h.emoji || '🎬'}</span>
+                  <div>
+                    <b>${escape(h.name)}</b>
+                    <p>${amount(h.registeredAmount, h.currency)} &rarr; <span class="expense-amount">${amount(h.newAmount, h.currency)}</span> (+${amount(h.diff, h.currency)})</p>
+                  </div>
+                </div>
+                <div class="anomaly-actions">
+                  <button type="button" class="btn btn-sm btn-primary" data-action="anomaly-apply-hike:${h.id}:${h.newAmount}" title="${L('Sesuaikan nominal rencana ke harga baru','Update planned amount to new price')}">
+                    ⚡ ${L('Sesuaikan Rencana','Update Plan')}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-subtle" data-action="anomaly-dismiss:${h.key}" title="${L('Abaikan notifikasi ini','Dismiss alert')}">
+                    ✕ ${L('Abaikan','Dismiss')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+
+          ${anomalies.unregistered.map(u => `
+            <div class="anomaly-card unreg-card">
+              <div class="anomaly-card-top">
+                <span class="anomaly-badge blue">💡 ${L('Langganan Terdeteksi','Detected Subscription')}</span>
+                <small>${u.monthsCount} ${L('bulan berturut-turut','consecutive months')}</small>
+              </div>
+              <div class="anomaly-card-main">
+                <div class="anomaly-vendor-info">
+                  <span class="anomaly-emoji">🔄</span>
+                  <div>
+                    <b>${escape(u.name)}</b>
+                    <p>~${amount(u.estimatedAmount, u.currency)} / ${L('bulan','mo')} · ${L('Tiap tgl','Day')} ${u.day}</p>
+                  </div>
+                </div>
+                <div class="anomaly-actions">
+                  <button type="button" class="btn btn-sm btn-primary" data-action="anomaly-add-sub:${encodeURIComponent(u.name)}:${u.estimatedAmount}:${u.day}" title="${L('Tambahkan ke kalender tagihan','Add to recurring calendar')}">
+                    ➕ ${L('Jadikan Tagihan Rutin','Track in Calendar')}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-subtle" data-action="anomaly-dismiss:${u.key}">
+                    ✕ ${L('Bukan Rutin','Dismiss')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+
+          ${anomalies.spikes.map(s => `
+            <div class="anomaly-card spike-card">
+              <div class="anomaly-card-top">
+                <span class="anomaly-badge orange">⚡ ${L('Lonjakan Biaya','Cost Spike')} +${s.percent}%</span>
+                <small>${s.date}</small>
+              </div>
+              <div class="anomaly-card-main">
+                <div class="anomaly-vendor-info">
+                  <span class="anomaly-emoji">📈</span>
+                  <div>
+                    <b>${escape(s.name)}</b>
+                    <p>${amount(s.amount, s.currency)} <small>(rata-rata normal: ${amount(s.avgPast, s.currency)})</small></p>
+                  </div>
+                </div>
+                <div class="anomaly-actions">
+                  <button type="button" class="btn btn-sm btn-subtle" data-action="anomaly-dismiss:${s.key}">
+                    ✕ ${L('Mengerti','Dismiss')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : '';
+
     const toolbarHTML = `<div class="calendar-toolbar">
       <div class="calendar-nav">
         <button class="btn" data-action="calendar-prev" aria-label="${L('Bulan sebelumnya','Previous month')}">&larr;</button>
@@ -1634,7 +1799,7 @@
       </div>`;
     }
 
-    return headerHTML + statsHTML + toolbarHTML + `<div class="calendar-view-frame">${viewContent}</div>`;
+    return headerHTML + statsHTML + anomalyHUD + toolbarHTML + `<div class="calendar-view-frame">${viewContent}</div>`;
   }
   $('#language-switch').addEventListener('change',()=>{state.language=$('#language-switch').value;messages=[];render();});
   $('#currency-switch').addEventListener('change',()=>{const old=state.currency,next=$('#currency-switch').value;if(!E.currencies.includes(next))return;for(const key of ['incomeDelta','expenseDelta','oneTime'])scenario[key]=E.convert(state,scenario[key],old,next);state.currency=next;mcConfig=null;mcResult=null;messages=[];render();});
@@ -6433,7 +6598,21 @@
   document.addEventListener('change',event=>{const target=event.target,id=target.dataset.investmentBenchmark;if(id){if(target.checked)investmentSelected=[...new Set([...investmentSelected,id])];else investmentSelected=investmentSelected.filter(x=>x!==id);render();return;}const value=target.value;switch(target.id){case 'investment-account':if(value!=='all'&&!INV.selectedAccounts(state).some(a=>a.id===value))return;investmentAccount=value;break;case 'investment-currency':if(!['IDR','USD'].includes(value))return;investmentCurrency=value;break;case 'investment-range':if(value!=='custom')INV.period(value,date());investmentRange=value;break;case 'investment-mode':if(!['auto','actual','backtest'].includes(value))return;investmentMode=value;break;case 'investment-group':if(!INV.groupKeys.includes(value))return;investmentGroup=value;break;case 'investment-style':if(!['pie','breakdown'].includes(value))return;investmentStyle=value;break;case 'investment-gain-style':if(!['line','bars'].includes(value))return;investmentGainStyle=value;break;default:return;}render();});
   document.addEventListener('submit',event=>{if(event.target.id!=='investment-filter')return;event.preventDefault();try{const d=Object.fromEntries(new FormData(event.target));if((d.from&&!E.validDate(d.from))||(d.to&&!E.validDate(d.to))||(d.from&&d.to&&d.from>d.to)||!['IDR','USD'].includes(d.currency))throw Error(L('Filter periode tidak valid','Invalid period filters'));investmentFrom=d.from;investmentTo=d.to;investmentCurrency=d.currency;investmentRange='custom';render();}catch(e){toast(e.message);}});
 
-  function dashboardV4(){const p=E.position(viewState()),h=historyData(),widgets=state.dashboardWidgets;return header(`${L('Halo','Hello')}, ${user((state.members[0]?.name||'Me').split(' ')[0])} ✳`,L('Posisi hari ini, rencana esok, dan tanggung jawab bersama.','Today’s position, tomorrow’s plan, shared responsibilities.'),button(L('Atur dashboard','Customize dashboard'),'dashboard-edit')+button(t('Add transaction'),'transaction-new','primary','plus'),'FINANCIAL OPERATING SYSTEM')+quickActionsHero()+(easyMode?seniorSummaryCards(p):'')+(widgets.includes('position')?metrics():'')+`<div class="dashboard-panels">${widgets.includes('history')?`<section class="panel panel-pad dashboard-wide"><div class="panel-head"><div><h2>${L('Gambaran keuangan Anda','Your financial picture')}</h2><p>${escape(ownerName(state.activeView.owner))} · ${L('Aset dikurangi liabilitas','Assets minus liabilities')}</p></div>${link('Forecast','forecast')}</div><div class="big-number">${tickerAmount(p.netWorth)}</div><div class="chart-container">${lineChart(h.values,h.labels)}</div><p class="note">${h.illustrative?L('Riwayat contoh; titik terbaru memakai saldo saat ini.','Illustrative sample history; latest point uses current balances.'):L('Riwayat memakai snapshot tersimpan. Tanpa snapshot, hanya posisi saat ini ditampilkan.','History uses saved snapshots. With no snapshots, only the current position is shown.')}</p><div class="button-group">${button(L('Simpan snapshot hari ini','Save today’s snapshot'),'position-snapshot')}${link(L('Buka Reports','Open Reports'),'reports')}</div></section>`:''}${widgets.includes('accounts')?`<section class="panel panel-pad"><div class="panel-head"><h2>${L('Akun Anda','Your accounts')}</h2>${link(t('View all'),'accounts')}</div>${accountRows(6)}</section>`:''}${widgets.includes('goals')?`<section class="panel panel-pad"><div class="panel-head"><h2>${L('Tujuan dalam perjalanan','Goals in motion')}</h2>${link(t('View all'),'goals')}</div>${goalRows()}</section>`:''}${widgets.includes('bills')?`<section class="panel panel-pad dashboard-wide"><div class="panel-head"><h2>${L('Komitmen mendatang','Upcoming commitments')}</h2>${link(t('Cash flow'),'cashflow')}</div>${upcomingBills().slice(0,4).map(f=>`<div class="flow-item"><div><b>${user(f.name)}</b><small>${escape(ownerName(f.ownerId))} · ${f.d.toLocaleDateString(locale())}</small></div>${native(f,'amount')}</div>`).join('')||`<p class="empty">${L('Belum ada komitmen pada tampilan ini.','No commitments in this view.')}</p>`}</section>`:''}</div>${!widgets.length?`<section class="panel empty">${L('Pilih widget melalui Atur dashboard.','Select widgets with Customize dashboard.')}</section>`:''}`;}
+  function dashboardV4(){const p=E.position(viewState()),h=historyData(),widgets=state.dashboardWidgets;
+    const anomalies = F.detectRecurringAnomalies(state);
+    const hikeNotice = anomalies.hikes.length > 0 ? `
+      <div class="home-anomaly-banner" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">🚨</span>
+          <div>
+            <b style="color:var(--red,#ef4444);font-size:13px">${L('Kenaikan Harga Langganan Terdeteksi','Subscription Price Hike Detected')}</b>
+            <p style="margin:2px 0 0;font-size:11.5px;color:var(--muted)">${escape(anomalies.hikes[0].name)} ${L('naik menjadi','increased to')} ${amount(anomalies.hikes[0].newAmount, anomalies.hikes[0].currency)} (+${anomalies.hikes[0].percent}%). ${L('Buka kalender untuk menyesuaikan rencana.','Open calendar to update plan.')}</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm" data-page="calendar" style="white-space:nowrap">${L('Buka Kalender','View Calendar')} &rarr;</button>
+      </div>
+    ` : '';
+    return header(`${L('Halo','Hello')}, ${user((state.members[0]?.name||'Me').split(' ')[0])} ✳`,L('Posisi hari ini, rencana esok, dan tanggung jawab bersama.','Today’s position, tomorrow’s plan, shared responsibilities.'),button(L('Atur dashboard','Customize dashboard'),'dashboard-edit')+button(t('Add transaction'),'transaction-new','primary','plus'),'FINANCIAL OPERATING SYSTEM')+quickActionsHero()+hikeNotice+(easyMode?seniorSummaryCards(p):'')+(widgets.includes('position')?metrics():'')+`<div class="dashboard-panels">${widgets.includes('history')?`<section class="panel panel-pad dashboard-wide"><div class="panel-head"><div><h2>${L('Gambaran keuangan Anda','Your financial picture')}</h2><p>${escape(ownerName(state.activeView.owner))} · ${L('Aset dikurangi liabilitas','Assets minus liabilities')}</p></div>${link('Forecast','forecast')}</div><div class="big-number">${tickerAmount(p.netWorth)}</div><div class="chart-container">${lineChart(h.values,h.labels)}</div><p class="note">${h.illustrative?L('Riwayat contoh; titik terbaru memakai saldo saat ini.','Illustrative sample history; latest point uses current balances.'):L('Riwayat memakai snapshot tersimpan. Tanpa snapshot, hanya posisi saat ini ditampilkan.','History uses saved snapshots. With no snapshots, only the current position is shown.')}</p><div class="button-group">${button(L('Simpan snapshot hari ini','Save today’s snapshot'),'position-snapshot')}${link(L('Buka Reports','Open Reports'),'reports')}</div></section>`:''}${widgets.includes('accounts')?`<section class="panel panel-pad"><div class="panel-head"><h2>${L('Akun Anda','Your accounts')}</h2>${link(t('View all'),'accounts')}</div>${accountRows(6)}</section>`:''}${widgets.includes('goals')?`<section class="panel panel-pad"><div class="panel-head"><h2>${L('Tujuan dalam perjalanan','Goals in motion')}</h2>${link(t('View all'),'goals')}</div>${goalRows()}</section>`:''}${widgets.includes('bills')?`<section class="panel panel-pad dashboard-wide"><div class="panel-head"><h2>${L('Komitmen mendatang','Upcoming commitments')}</h2>${link(t('Cash flow'),'cashflow')}</div>${upcomingBills().slice(0,4).map(f=>`<div class="flow-item"><div><b>${user(f.name)}</b><small>${escape(ownerName(f.ownerId))} · ${f.d.toLocaleDateString(locale())}</small></div>${native(f,'amount')}</div>`).join('')||`<p class="empty">${L('Belum ada komitmen pada tampilan ini.','No commitments in this view.')}</p>`}</section>`:''}</div>${!widgets.length?`<section class="panel empty">${L('Pilih widget melalui Atur dashboard.','Select widgets with Customize dashboard.')}</section>`:''}`;}
   function shared(){const p=E.position(viewState());return header(L('Milik saya, milik Anda, milik bersama.','Mine, yours, ours.'),L('Satu catatan keluarga, banyak perspektif. Atur kepemilikan tanpa menggandakan saldo.','One household ledger, multiple perspectives. Assign ownership without duplicating balances.'),button(L('Tambah anggota lokal','Add local member'),'member-new','primary'),'SHARED VIEWS')+sharedSwitcher('shared')+`<div class="metrics-grid">${metric(L('Kekayaan bersih tampilan','View net worth'),tickerAmount(p.netWorth),escape(ownerName(state.activeView.owner)),'shield')}${metric(L('Aset dalam tampilan','Assets in view'),tickerAmount(p.assets),L('Akun bersama dihitung sekali','Shared accounts counted once'),'bank')}${metric(L('Liabilitas tampilan','View liabilities'),tickerAmount(p.liabilities),L('Kepemilikan utang terpisah dari akun','Debt ownership is separate from accounts'),'debt')}${metric(L('Pendapatan rencana','Planned income'),tickerAmount(p.income),L('Bulanan sesuai perspektif','Monthly for this perspective'),'growth')}</div><div class="content-grid"><section class="panel panel-pad"><h2>${L('Tampilan tersimpan','Saved views')}</h2>${state.savedViews.map(v=>`<div class="saved-row"><div><b>${user(v.name)}</b><small>${escape(ownerName(v.view.owner))}${v.view.includeShared?' + '+L('Bersama','Shared'):''} · ${v.currency||state.currency}</small></div><button class="btn" data-action="view-load:${v.id}">${L('Buka','Open')}</button><button class="btn danger" data-action="view-delete:${v.id}" aria-label="${L('Hapus tampilan','Delete view')}">×</button></div>`).join('')||`<p class="empty">${L('Gunakan Simpan tampilan pada bilah perspektif.','Use Save view in the perspective bar.')}</p>`}<p class="note">${L('Tampilan ini adalah preferensi analisis, bukan kontrol privasi atau undangan akun. Login terpisah dan sinkronisasi lintas perangkat belum tersedia.','These views are analysis preferences, not privacy controls or invitations. Separate logins and cross-device sync are not available.')}</p></section><section class="panel panel-pad"><h2>${L('Anggota perencanaan','Planning members')}</h2>${state.members.map(m=>`<div class="saved-row"><span class="avatar">${escape(m.initials)}</span><div><b>${user(m.name)}</b><small>${escape(m.role)}</small></div><button class="btn" data-action="member-edit:${m.id}">${L('Edit','Edit')}</button></div>`).join('')}<p class="note">${L('ID anggota tetap ketika nama diubah. Kepemilikan lama tidak terputus.','Member IDs stay stable when names change. Existing ownership stays connected.')}</p></section></div><section class="panel panel-pad" style="margin-top:22px"><div class="panel-head"><h2>${L('Editor kepemilikan','Ownership editor')}</h2>${button(L('Edit transaksi massal','Bulk transaction ownership'),'owner-bulk')}</div><div class="table-wrap"><table><thead><tr><th>${L('Jenis','Type')}</th><th>${L('Catatan','Record')}</th><th>${L('Pemilik','Owner')}</th><th>${L('Atur','Manage')}</th></tr></thead><tbody>${['accounts','debts','goals','flows'].flatMap(key=>state[key].map(r=>`<tr><td>${escape(key)}</td><td>${user(r.name)}</td><td>${escape(ownerName(r.ownerId))}</td><td><button class="btn" data-action="ownership:${key}_${r.id}">${L('Ubah pemilik','Change owner')}</button></td></tr>`)).join('')||`<tr><td colspan="4" class="empty">${L('Tambahkan akun atau rencana terlebih dahulu.','Add accounts or plans first.')}</td></tr>`}</tbody></table></div><p class="note">${L('Transaksi dengan mode Ikuti akun mengikuti pemilik akun secara dinamis. Transaksi dengan owner eksplisit atau split tetap mempertahankan penetapannya.','Transactions in Follow account mode inherit account ownership dynamically. Explicit owners and split ownership retain their assignments.')}</p></section>`;}
   function reportLabel(key){return reportFilter.group==='owner'?ownerName(key):reportFilter.group==='account'?(getAccount(key)?.name||key):key;}
   function reportRows(r){if(reportDrill===null)return r.rows;return r.rows.flatMap(t=>{const key=reportFilter.group==='category'?t.category:reportFilter.group==='merchant'?t.name:reportFilter.group==='account'?t.accountId:reportFilter.group==='month'?t.date.slice(0,7):F.transactionOwner(state,t);if(reportFilter.group==='owner'&&t.splits?.length){const p=F.reportParts(state,t).find(p=>p.ownerId===reportDrill);return p?[{...t,amount:p.amount,reportingAmount:p.value}]:[];}return key===reportDrill?[t]:[];});}
@@ -10412,7 +10591,7 @@
   }
   function importFile(file){if(!file)return;handleBackupFile(file);}
   function searchModal(){openModal('Find your financial records',`<input class="input-search" id="global-search" style="max-width:none" placeholder="Accounts, goals, transactions…" aria-label="Search all records"><div id="global-results" class="search-results"></div>`);const results=()=>{const q=$('#global-search').value.toLowerCase();const items=[...state.accounts.map(a=>({name:a.name,type:'Account',page:'accounts'})),...(state.subscriptions||[]).map(s=>({name:s.name,type:L('Langganan','Subscription'),page:'calendar'})),...state.goals.map(g=>({name:g.name,type:'Goal',page:'goals'})),...state.debts.map(d=>({name:d.name,type:'Debt',page:'debt'})),...state.transactions.map(t=>({name:t.name,type:'Transaction',page:'transactions'})),...state.tasks.map(t=>({name:t.name,type:'Task',page:'household'}))].filter(x=>x.name.toLowerCase().includes(q)).slice(0,12);$('#global-results').innerHTML=items.map(i=>`<button class="search-result" data-page="${i.page}" data-close="true">${escape(i.name)}<small>${i.type}</small></button>`).join('')||'<div class="empty">No matching records.</div>';};$('#global-search').addEventListener('input',results);results();$('#global-search').focus();}
-  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='tx-sort'){toggleTransactionSort(id);return;}if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('vey-')||name.startsWith('invi-')){inviAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id,extra);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
+  function act(action){const parts=action.split(':'),[name,id,extra]=parts;if(name==='tx-sort'){toggleTransactionSort(id);return;}if(name.startsWith('anomaly-')){anomalyAction(name,id,extra,parts[3]);return;}if(name==='dismiss-broadcast'){if(globalBroadcast&&globalBroadcast.updatedAt){sessionStorage.setItem('dismissed_broadcast_'+globalBroadcast.updatedAt,'1');}const bEl=$('#global-broadcast-banner');if(bEl){bEl.style.opacity='0';bEl.style.transform='translateY(-10px)';setTimeout(()=>bEl.remove(),250);}return;}if(name==='admin-panel'||name.startsWith('admin-')){adminAction(name,id,extra);return;}if(name==='api-keys'||name.startsWith('api-key-')){apiKeyAction(name,id,extra);return;}if(name.startsWith('ops-')){try{operationAction(name,id);}catch(e){toast(e.message);}return;}if(['card-image','card-image-remove'].includes(name)){cardImageAction(name,id);return;}if(name.startsWith('transaction-row-')||name==='transaction-delete'){transactionRowAction(name,id);return;}if(name.startsWith('plan-')||name==='landing-open'||name==='license-activate'){planAction(name,id);return;}if(name==='forecast-mc'&&planGate('montecarlo'))return;if(name==='forecast-save'&&selectedPlan()&&state.forecastPlan.scenarios.length>=P.catalog.find(p=>p.id===state.commercial.previewTier).scenarios){navigate('plans');toast(L('Batas skenario pratinjau tercapai','Preview scenario limit reached'));return;}if(['investment-import','investment-prices','investment-holding-new','investment-holding'].includes(name)&&planGate('investment'))return;if(['muse-ask','telegram-inbox','telegram-send'].includes(name)&&planGate('integrations'))return;if(name.startsWith('investment-')||name.startsWith('gold-')){investmentAction(name,id);return;}if(name.startsWith('vey-')||name.startsWith('invi-')){inviAction(name,id);return;}if(name.startsWith('quick-')){quickAction(name,id);return;}if(v4Names.has(name)){v4Action(name,id);return;}if(v3Names.has(name)){v3Action(name,id,extra);return;}if(name==='category-new-group'){editCategory(null,id);return;}if(extensionAction(name,id,extra))return;switch(name){
     case 'tax-djp-modal':openDjpTaxModal(id);break;
     case 'pwa-install':triggerPwaInstall();break;
     case 'lock-vault-now':lockVault();break;

@@ -531,5 +531,176 @@ function buildDjpTaxAssetsReport(s, options = {}) {
   };
 }
 
-const api={categoryCatalog,categoryIcon,monarchCashFlowSankey,buildDjpTaxAssetsReport,deleteTransaction,editTransaction,cashFlowGraph,reported,reportParts,apportion,splitPercent,snapshot,history,migrate,validate,matchOwner,matches,scope,transactionOwner,visibleAmount,scopedTransactions,validateView,validateSplits,setTransactionOwnership,defaultFilter,validateReportFilter,reports,baseline,loanPayment,validatePlan,forecast,monteCarlo};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysFinance=api;
+function detectRecurringAnomalies(state) {
+  const txs = (state.transactions || []).filter(t => t.kind === 'expense' && t.date && t.amount > 0);
+  const dismissed = state.dismissedAnomalies || {};
+
+  const hikes = [];
+  const unregistered = [];
+  const spikes = [];
+
+  function cleanVendor(name) {
+    return String(name || '')
+      .toLowerCase()
+      .replace(/\b(pt|cv|inc|corp|ltd|tbk)\b/gi, '')
+      .replace(/\.(com|id|org|io|net)\b/gi, '')
+      .replace(/[*_#\-–—]/g, ' ')
+      .replace(/\b(pembayaran|tagihan|payment|bill|recurring|subscription|langganan|autodebit|debit|trf|fee)\b/gi, '')
+      .replace(/[\d]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // 1. Monitored active subscriptions and recurring expense flows
+  const monitored = [];
+  for (const s of (state.subscriptions || [])) {
+    monitored.push({
+      id: s.id,
+      name: s.name,
+      amount: s.amount,
+      currency: s.currency || state.currency,
+      day: s.day,
+      type: 'subscription',
+      emoji: s.emoji || '🎬'
+    });
+  }
+  for (const f of (state.flows || []).filter(f => f.kind === 'expense')) {
+    monitored.push({
+      id: 'flow-' + f.id,
+      flowId: f.id,
+      name: f.name,
+      amount: f.amount,
+      currency: f.currency || state.currency,
+      day: f.day,
+      type: 'flow',
+      emoji: '📄'
+    });
+  }
+
+  for (const item of monitored) {
+    const vClean = cleanVendor(item.name);
+    const matches = txs.filter(t => {
+      const tClean = cleanVendor(t.name);
+      return (
+        (vClean && tClean && (tClean.includes(vClean) || vClean.includes(tClean))) ||
+        (item.name && t.name.toLowerCase().includes(item.name.toLowerCase()))
+      );
+    });
+
+    if (matches.length > 0) {
+      const sorted = [...matches].sort((a, b) => b.date.localeCompare(a.date));
+      const latest = sorted[0];
+      const baseAmount = item.amount;
+
+      // Price hike detection: latest transaction strictly higher than registered planned amount
+      if (baseAmount > 0 && latest.amount > baseAmount && (latest.amount - baseAmount) >= Math.max(100, Math.round(baseAmount * 0.02))) {
+        const hikeKey = `hike_${item.id}_${latest.date}_${latest.amount}`;
+        if (!dismissed[hikeKey]) {
+          const diff = latest.amount - baseAmount;
+          const percent = Math.round((diff / baseAmount) * 1000) / 10;
+          hikes.push({
+            key: hikeKey,
+            id: item.id,
+            flowId: item.flowId,
+            type: item.type,
+            name: item.name,
+            emoji: item.emoji,
+            registeredAmount: baseAmount,
+            newAmount: latest.amount,
+            diff,
+            percent,
+            currency: latest.currency || item.currency,
+            date: latest.date,
+            txId: latest.id
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Detect Unregistered Recurring Subscriptions in Ledger
+  const merchantGroups = new Map();
+  for (const t of txs) {
+    const v = cleanVendor(t.name);
+    if (!v || v.length < 3) continue;
+    if (!merchantGroups.has(v)) merchantGroups.set(v, []);
+    merchantGroups.get(v).push(t);
+  }
+
+  for (const [vendor, group] of merchantGroups.entries()) {
+    if (group.length < 2) continue;
+
+    // Skip if already monitored in subscriptions or flows
+    const isMonitored = monitored.some(m => {
+      const mv = cleanVendor(m.name);
+      return mv && (mv.includes(vendor) || vendor.includes(mv));
+    });
+    if (isMonitored) continue;
+
+    const months = new Set(group.map(t => t.date.slice(0, 7)));
+    if (months.size < 2) continue;
+
+    // Check amount consistency (within 25% of median)
+    const amounts = group.map(t => t.amount).sort((a, b) => a - b);
+    const medianAmt = amounts[Math.floor(amounts.length / 2)];
+    const isConsistent = group.every(t => Math.abs(t.amount - medianAmt) <= Math.max(200000, medianAmt * 0.25));
+
+    if (isConsistent && medianAmt >= 100000) {
+      const latestTx = [...group].sort((a, b) => b.date.localeCompare(a.date))[0];
+      const day = parseInt(latestTx.date.slice(8, 10), 10) || 1;
+      const unregKey = `unreg_${vendor}_${medianAmt}`;
+      if (!dismissed[unregKey]) {
+        unregistered.push({
+          key: unregKey,
+          name: latestTx.name,
+          vendor,
+          estimatedAmount: medianAmt,
+          currency: latestTx.currency || state.currency,
+          day,
+          count: group.length,
+          monthsCount: months.size,
+          lastDate: latestTx.date,
+          category: latestTx.category || 'Subscriptions'
+        });
+      }
+    }
+  }
+
+  // 3. Detect Abnormal Spikes on Recurring/Utility Bills (>35% above 3-month average)
+  for (const [vendor, group] of merchantGroups.entries()) {
+    if (group.length >= 3) {
+      const sorted = [...group].sort((a, b) => b.date.localeCompare(a.date));
+      const latest = sorted[0];
+      const past = sorted.slice(1, 4);
+      const avgPast = past.reduce((sum, t) => sum + t.amount, 0) / past.length;
+      if (avgPast >= 200000 && latest.amount >= avgPast * 1.35 && (latest.amount - avgPast) >= 500000) {
+        const spikeKey = `spike_${vendor}_${latest.date}_${latest.amount}`;
+        const inHikes = hikes.some(h => h.txId === latest.id);
+        if (!inHikes && !dismissed[spikeKey]) {
+          const diff = latest.amount - avgPast;
+          const percent = Math.round((diff / avgPast) * 1000) / 10;
+          spikes.push({
+            key: spikeKey,
+            name: latest.name,
+            amount: latest.amount,
+            avgPast: Math.round(avgPast),
+            diff: Math.round(diff),
+            percent,
+            currency: latest.currency || state.currency,
+            date: latest.date
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    hikes,
+    unregistered,
+    spikes,
+    totalCount: hikes.length + unregistered.length + spikes.length
+  };
+}
+
+const api={detectRecurringAnomalies,categoryCatalog,categoryIcon,monarchCashFlowSankey,buildDjpTaxAssetsReport,deleteTransaction,editTransaction,cashFlowGraph,reported,reportParts,apportion,splitPercent,snapshot,history,migrate,validate,matchOwner,matches,scope,transactionOwner,visibleAmount,scopedTransactions,validateView,validateSplits,setTransactionOwnership,defaultFilter,validateReportFilter,reports,baseline,loanPayment,validatePlan,forecast,monteCarlo};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysFinance=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
