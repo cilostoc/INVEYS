@@ -934,5 +934,178 @@ function calculateZakatMaal(state, options = {}) {
   };
 }
 
-const api={PTKP_TABLE,TER_A_BRACKETS,TER_B_BRACKETS,TER_C_BRACKETS,getTerRate,calculatePph21Ter,calculateUmkmFinalTax,calculateZakatMaal,detectRecurringAnomalies,categoryCatalog,categoryIcon,monarchCashFlowSankey,buildDjpTaxAssetsReport,deleteTransaction,editTransaction,cashFlowGraph,reported,reportParts,apportion,splitPercent,snapshot,history,migrate,validate,matchOwner,matches,scope,transactionOwner,visibleAmount,scopedTransactions,validateView,validateSplits,setTransactionOwnership,defaultFilter,validateReportFilter,reports,baseline,loanPayment,validatePlan,forecast,monteCarlo};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysFinance=api;
+function runFinancialStressTest(state, options = {}) {
+  const pos = E.position(state);
+  const liquidCash = Math.max(0, pos.liquid);
+  const currency = state.currency || 'IDR';
+
+  let monthlyIncome = 0;
+  if (Array.isArray(state.flows)) {
+    const incFlows = state.flows.filter(f => f.kind === 'income' && f.amount > 0);
+    monthlyIncome = incFlows.reduce((sum, f) => sum + E.convert(state, f.amount, f.currency || currency, currency), 0);
+  }
+  if (!monthlyIncome && pos.income > 0) monthlyIncome = pos.income;
+
+  let debtMinimums = 0, totalDebt = 0;
+  if (Array.isArray(state.debts)) {
+    for (const d of state.debts) {
+      if ((d.balance || 0) > 0) {
+        totalDebt += E.convert(state, d.balance, d.currency || currency, currency);
+        debtMinimums += E.convert(state, d.minimum || 0, d.currency || currency, currency);
+      }
+    }
+  }
+
+  let recurringExpenses = 0;
+  if (Array.isArray(state.flows)) {
+    const expFlows = state.flows.filter(f => f.kind === 'expense' && f.amount > 0);
+    recurringExpenses = expFlows.reduce((sum, f) => sum + E.convert(state, f.amount, f.currency || currency, currency), 0);
+  }
+  if (Array.isArray(state.subscriptions)) {
+    for (const sub of state.subscriptions) {
+      if (sub.active !== false && sub.amount > 0) {
+        recurringExpenses += E.convert(state, sub.amount, sub.currency || currency, currency);
+      }
+    }
+  }
+
+  const baseMonthlyOutflows = debtMinimums + recurringExpenses;
+
+  const scenarioType = options.scenarioType || 'job_loss';
+  let incomeDropPct = options.incomeDropPct != null ? options.incomeDropPct : 1.0;
+  let expenseShockPct = options.expenseShockPct != null ? options.expenseShockPct : 0.0;
+  let oneTimeEmergencyCost = options.oneTimeEmergencyCost != null ? options.oneTimeEmergencyCost : 0;
+  let debtRateSpikePct = options.debtRateSpikePct != null ? options.debtRateSpikePct : 0.0;
+  let discretionaryCutPct = options.discretionaryCutPct != null ? options.discretionaryCutPct : 0.0;
+
+  if (scenarioType === 'job_loss') {
+    incomeDropPct = options.incomeDropPct != null ? options.incomeDropPct : 1.0;
+    expenseShockPct = 0.0;
+    oneTimeEmergencyCost = 0;
+    debtRateSpikePct = 0.0;
+  } else if (scenarioType === 'medical_emergency') {
+    incomeDropPct = options.incomeDropPct != null ? options.incomeDropPct : 0.2;
+    oneTimeEmergencyCost = options.oneTimeEmergencyCost != null ? options.oneTimeEmergencyCost : (currency === 'IDR' ? 5000000000 : 350000);
+    expenseShockPct = options.expenseShockPct != null ? options.expenseShockPct : 0.15;
+    debtRateSpikePct = 0.0;
+  } else if (scenarioType === 'interest_spike') {
+    incomeDropPct = options.incomeDropPct != null ? options.incomeDropPct : 0.0;
+    debtRateSpikePct = options.debtRateSpikePct != null ? options.debtRateSpikePct : 0.04;
+    expenseShockPct = options.expenseShockPct != null ? options.expenseShockPct : 0.10;
+  } else if (scenarioType === 'market_crash') {
+    incomeDropPct = options.incomeDropPct != null ? options.incomeDropPct : 0.25;
+    expenseShockPct = options.expenseShockPct != null ? options.expenseShockPct : 0.05;
+  } else if (scenarioType === 'stagflation') {
+    incomeDropPct = options.incomeDropPct != null ? options.incomeDropPct : 0.0;
+    expenseShockPct = options.expenseShockPct != null ? options.expenseShockPct : 0.25;
+  }
+
+  const shockedIncome = Math.round(monthlyIncome * (1 - incomeDropPct));
+  const extraMonthlyDebtInterest = Math.round((totalDebt * debtRateSpikePct) / 12);
+  const estimatedDiscretionary = Math.round(recurringExpenses * 0.35);
+  const discretionarySavings = Math.round(estimatedDiscretionary * discretionaryCutPct);
+  const shockedExpenses = Math.max(0, Math.round(recurringExpenses * (1 + expenseShockPct)) - discretionarySavings);
+  const shockedDebtMinimums = debtMinimums + extraMonthlyDebtInterest;
+  const shockedMonthlyOutflows = shockedExpenses + shockedDebtMinimums;
+  const monthlyNetCashBurn = Math.max(0, shockedMonthlyOutflows - shockedIncome);
+  const startingLiquidAfterEmergency = Math.max(0, liquidCash - oneTimeEmergencyCost);
+
+  let deterministicRunwayMonths = 0;
+  if (startingLiquidAfterEmergency <= 0) {
+    deterministicRunwayMonths = 0.0;
+  } else if (monthlyNetCashBurn <= 0) {
+    deterministicRunwayMonths = 999;
+  } else {
+    deterministicRunwayMonths = Math.round((startingLiquidAfterEmergency / monthlyNetCashBurn) * 10) / 10;
+  }
+
+  const simPaths = options.paths || 1000;
+  const simSeed = options.seed || 42;
+  let ruinedAt12 = 0, ruinedAt24 = 0, ruinedAt36 = 0;
+  let x = simSeed >>> 0;
+  const uniform = () => {
+    x = (x + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(x ^ (x >>> 15), 1 | x);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const normal = () => Math.sqrt(-2 * Math.log(Math.max(uniform(), Number.MIN_VALUE))) * Math.cos(2 * Math.PI * uniform());
+
+  const monthTrajectories = Array.from({ length: 37 }, () => []);
+
+  for (let p = 0; p < simPaths; p++) {
+    let bal = startingLiquidAfterEmergency;
+    let ruinedMonth = bal <= 0 ? 0 : null;
+    monthTrajectories[0].push(bal);
+
+    for (let m = 1; m <= 36; m++) {
+      if (bal <= 0) {
+        if (ruinedMonth === null) ruinedMonth = m;
+        bal = 0;
+        monthTrajectories[m].push(0);
+        continue;
+      }
+      const expenseVariance = normal() * (shockedMonthlyOutflows * 0.15);
+      const randomSpike = uniform() < 0.05 ? Math.round(shockedMonthlyOutflows * (0.5 + uniform())) : 0;
+      const actualOutflow = Math.max(0, shockedMonthlyOutflows + expenseVariance + randomSpike);
+      bal += (shockedIncome - actualOutflow);
+      if (bal <= 0) bal = 0;
+      monthTrajectories[m].push(bal);
+    }
+
+    if (ruinedMonth !== null && ruinedMonth <= 12) ruinedAt12++;
+    if (ruinedMonth !== null && ruinedMonth <= 24) ruinedAt24++;
+    if (ruinedMonth !== null && ruinedMonth <= 36) ruinedAt36++;
+  }
+
+  const q = (arr, p) => {
+    const i = (arr.length - 1) * p;
+    const lo = Math.floor(i), hi = Math.ceil(i);
+    return Math.round(arr[lo] + (arr[hi] - arr[lo]) * (i - lo));
+  };
+
+  const trajectoryBands = monthTrajectories.map((samples, month) => {
+    samples.sort((a, b) => a - b);
+    return {
+      month,
+      p10: q(samples, 0.1),
+      p50: q(samples, 0.5),
+      p90: q(samples, 0.9)
+    };
+  });
+
+  const neededBuffer6M = shockedMonthlyOutflows * 6;
+  const neededBuffer12M = shockedMonthlyOutflows * 12;
+  const reserveGap6M = Math.max(0, neededBuffer6M - liquidCash);
+  const reserveGap12M = Math.max(0, neededBuffer12M - liquidCash);
+
+  return {
+    scenarioType,
+    currency,
+    liquidCash,
+    monthlyIncome,
+    debtMinimums,
+    recurringExpenses,
+    baseMonthlyOutflows,
+    shockedIncome,
+    shockedMonthlyOutflows,
+    extraMonthlyDebtInterest,
+    estimatedDiscretionary,
+    discretionarySavings,
+    oneTimeEmergencyCost,
+    startingLiquidAfterEmergency,
+    monthlyNetCashBurn,
+    deterministicRunwayMonths,
+    ruinProb12: ruinedAt12 / simPaths,
+    ruinProb24: ruinedAt24 / simPaths,
+    ruinProb36: ruinedAt36 / simPaths,
+    trajectoryBands,
+    neededBuffer6M,
+    neededBuffer12M,
+    reserveGap6M,
+    reserveGap12M
+  };
+}
+
+const api={runFinancialStressTest,PTKP_TABLE,TER_A_BRACKETS,TER_B_BRACKETS,TER_C_BRACKETS,getTerRate,calculatePph21Ter,calculateUmkmFinalTax,calculateZakatMaal,detectRecurringAnomalies,categoryCatalog,categoryIcon,monarchCashFlowSankey,buildDjpTaxAssetsReport,deleteTransaction,editTransaction,cashFlowGraph,reported,reportParts,apportion,splitPercent,snapshot,history,migrate,validate,matchOwner,matches,scope,transactionOwner,visibleAmount,scopedTransactions,validateView,validateSplits,setTransactionOwnership,defaultFilter,validateReportFilter,reports,baseline,loanPayment,validatePlan,forecast,monteCarlo};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.InveysFinance=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

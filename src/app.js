@@ -58,6 +58,7 @@
   paths.receipt='<path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2-3-2Zm4 6h8m-8 4h8m-8 4h5"/>';
   paths.admin='<path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 5a3 3 0 0 1 6 0v3H9V7Zm3 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/>';
   paths.users='<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>';
+  paths.stresstest=paths.shield;
   const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.about}</svg>`;
   const demoTransactions = [
     {id:'t1',name:'Salary · Northstar Studio',kind:'income',amount:720000,accountId:'a1',category:'Income',date:date()},
@@ -287,7 +288,7 @@
     $$('.profile-popover-header .avatar').forEach(el=>el.textContent=initials);
     if(isServerMode&&isAuthenticated)syncToServer();
   }
-  const pages=[['operations','Operations'],['home','Overview'],['shared','Shared Views'],['reports','Reports'],['forecast','Forecast'],['accounts','Accounts'],['investment','Investment'],['calendar','Bills & Subscriptions'],['budget','Budget'],['cashflow','Cash flow'],['transactions','Transactions'],['categories','Categories'],['goals','Goals & plans'],['debt','Debt management'],['scenarios','Scenarios'],['montecarlo','Monte Carlo'],['cards','Credit cards'],['household','Household'],['copilot','Financial copilot'],['capture','Capture'],['integrations','Integrations'],['updates','Version updates'],['plans','Plans & membership'],['admin','Admin Control Panel']];
+  const pages=[['operations','Operations'],['home','Overview'],['shared','Shared Views'],['reports','Reports'],['forecast','Forecast'],['accounts','Accounts'],['investment','Investment'],['calendar','Bills & Subscriptions'],['budget','Budget'],['cashflow','Cash flow'],['transactions','Transactions'],['categories','Categories'],['goals','Goals & plans'],['debt','Debt management'],['scenarios','Scenarios'],['montecarlo','Monte Carlo'],['stresstest','Stress-Test & Runway'],['cards','Credit cards'],['household','Household'],['copilot','Financial copilot'],['capture','Capture'],['integrations','Integrations'],['updates','Version updates'],['plans','Plans & membership'],['admin','Admin Control Panel']];
   function navigate(target){page=pages.some(p=>p[0]===target)||target==='settings'?target:'home';location.hash=page;render();setSidebarOpen(false);window.scrollTo({top:0,behavior:'instant'});}
   function header(title, subtitle, actions='', eyebrow='YOUR FINANCIAL LIFE, CONNECTED') {return `<div class="page-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${subtitle}</p></div><div class="heading-actions">${actions}</div></div>`;}
   function metric(label,value,foot,ic='accounts'){return `<div class="metric metric-${ic}"><div class="metric-label"><span>${label}</span><span class="metric-icon-wrap">${icon(ic)}</span></div><div class="metric-value">${value}</div><div class="metric-foot">${foot}</div></div>`;}
@@ -887,7 +888,7 @@
     return `<div class="sim-tab-header"><button type="button" class="sim-tab-btn ${activePage==='cashflow'?'active':''}" data-page="cashflow">🌊 ${L('Sankey Arus Kas','Cash Flow Sankey')}</button><button type="button" class="sim-tab-btn ${activePage==='budget'?'active':''}" data-page="budget">📊 ${L('Anggaran Fleksibel','Flexible Budget')} <span class="badge plus">PLUS</span></button><button type="button" class="sim-tab-btn ${activePage==='calendar'?'active':''}" data-page="calendar">📅 ${L('Kalender Tagihan & Gaji','Calendar & Paydays')} <span class="badge plus">PLUS</span></button></div>`;
   }
   function planningSwitcher(activePage){
-    return `<div class="sim-tab-header"><button type="button" class="sim-tab-btn ${activePage==='forecast'?'active':''}" data-page="forecast">📈 ${L('Proyeksi Finansial','Financial Forecast')}</button><button type="button" class="sim-tab-btn ${activePage==='goals'?'active':''}" data-page="goals">🎯 ${L('Target Tabungan','Savings Goals')} <span class="badge plus">PLUS</span></button><button type="button" class="sim-tab-btn ${activePage==='scenarios'?'active':''}" data-page="scenarios">🔮 ${L('Skenario Apa-Bila','What-If Scenarios')} <span class="badge pro">PRO</span></button><button type="button" class="sim-tab-btn ${activePage==='montecarlo'?'active':''}" data-page="montecarlo">🎲 ${L('Simulasi Monte Carlo','Monte Carlo')} <span class="badge pro">PRO</span></button></div>`;
+    return `<div class="sim-tab-header"><button type="button" class="sim-tab-btn ${activePage==='forecast'?'active':''}" data-page="forecast">📈 ${L('Proyeksi Finansial','Financial Forecast')}</button><button type="button" class="sim-tab-btn ${activePage==='goals'?'active':''}" data-page="goals">🎯 ${L('Target Tabungan','Savings Goals')} <span class="badge plus">PLUS</span></button><button type="button" class="sim-tab-btn ${activePage==='scenarios'?'active':''}" data-page="scenarios">🔮 ${L('Skenario Apa-Bila','What-If Scenarios')} <span class="badge pro">PRO</span></button><button type="button" class="sim-tab-btn ${activePage==='montecarlo'?'active':''}" data-page="montecarlo">🎲 ${L('Simulasi Monte Carlo','Monte Carlo')} <span class="badge pro">PRO</span></button><button type="button" class="sim-tab-btn ${activePage==='stresstest'?'active':''}" data-page="stresstest">🛡️ ${L('Stress-Test & Runway','Stress-Test & Runway')} <span class="badge pro">PRO</span></button></div>`;
   }
   function sharedSwitcher(activePage){
     return `<div class="sim-tab-header"><button type="button" class="sim-tab-btn ${activePage==='shared'?'active':''}" data-page="shared">👥 ${L('Ringkasan Bersama','Shared Overview')}</button><button type="button" class="sim-tab-btn ${activePage==='household'?'active':''}" data-page="household">🏠 ${L('Anggota & Tanggung Jawab','Members & To-dos')}</button></div>`;
@@ -953,7 +954,7 @@
     else if (/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower)) {
       text=`Your recorded net worth is <b>${money(p.netWorth)}</b>: <b>${money(p.assets)}</b> in assets less <b>${money(p.liabilities)}</b> in liabilities. Your liquid funds total ${money(p.liquid)}. These are manual balance snapshots, not bank-verified records. Review the dates in Accounts before making a consequential decision.\n\n[[action:nav:accounts|View All Accounts|Review balances and asset breakdown|🏦]]\n[[action:nav:calendar|View Bills & Calendar|Check upcoming subscriptions and paydays|📅]]`;
     }
-    else if (/tax|pph|pph21|ter|spt|djp/.test(lower)) {
+    else if (/tax|pph|pph21|\bter\b|spt|djp/.test(lower)) {
       text=`Indonesian employee income tax uses the <b>TER (Average Effective Rate) PP 58/2023</b> framework for monthly withholding (Jan–Nov) and Article 17 UU HPP progressive recalculation in December. You can also export your year-end assets & debts to official DJP Online tax codes.\n\n[[action:open-tax-pph21|PPh 21 TER 2024 Calculator|Simulate monthly withholding and December adjustment|🧮]]\n[[action:open-tax-djp|DJP Online Asset Recap|Copy asset & liability tables for e-Form|📑]]`;
     }
     else if (/umkm|business tax|0\.5%|pp55/.test(lower)) {
@@ -961,6 +962,11 @@
     }
     else if (/zakat|mal|maal|charity|nisab/.test(lower)) {
       text=`Zakat Maal is mandatory at <b>2.5%</b> when net zakatable wealth (cash, gold, investments minus short-term debts) reaches the <b>Nisab threshold of 85 grams of gold</b> and has been held for one lunar year (haul).\n\n[[action:open-tax-zakat|Zakat Maal & Income Calculator|Verify nisab qualification and compute 2.5% zakat|🪙]]`;
+    }
+    else if (/stress|runway|ruin|crisis|emergency fund|layoff|phk|krisis/.test(lower)) {
+      const res = F.runFinancialStressTest(viewState(), {scenarioType: 'job_loss'});
+      const runwayText = res.deterministicRunwayMonths >= 999 ? 'indefinite (surplus)' : res.deterministicRunwayMonths.toFixed(1) + ' months';
+      text = `Under a simulated severe shock (e.g. 100% job loss), your liquid cash of <b>${money(res.liquidCash)}</b> provides a survival runway of approximately <b>${runwayText}</b> (net cash burn ${money(res.monthlyNetCashBurn)}/mo). Your 12-month cash ruin probability is <b>${(res.ruinProb12*100).toFixed(0)}%</b>.\n\n[[action:nav:stresstest|Open Stress-Test & Runway Simulator|Model job loss, medical emergencies, inflation and ruin risks|🛡️]]`;
     }
     else text='I can explain your financial position, monthly cash-flow plan, reserve coverage, goal progress, or debt records. Choose one of the suggested questions. I cannot answer this reliably from the supported local calculations.';
     if(state.language==='id')return answerIndonesian(q,p);
@@ -1031,7 +1037,7 @@
     else if(/worth|position|asset|financ|balance|summary|posisi|keuangan|aset|saldo/.test(lower)) {
       text=`Kekayaan bersih tercatat <b>${money(p.netWorth)}</b>: aset <b>${money(p.assets)}</b> dikurangi liabilitas <b>${money(p.liabilities)}</b>. Dana likuid ${money(p.liquid)}. Saldo merupakan catatan manual, bukan verifikasi bank. Kurs: ${user(state.fx.source)} (${state.fx.date}). Tinjau data sebelum mengambil keputusan.\n\n[[action:nav:accounts|Buka Daftar Rekening & Aset|Tinjau saldo dan rincian kepemilikan|🏦]]\n[[action:nav:calendar|Buka Kalender Tagihan|Cek jatuh tempo tagihan rutin dan langganan|📅]]`;
     }
-    else if(/tax|pajak|pph|pph21|ter|spt|djp/.test(lower)) {
+    else if(/tax|pajak|pph|pph21|\bter\b|spt|djp/.test(lower)) {
       text=`Pajak penghasilan karyawan kini menggunakan skema <b>TER (Tarif Efektif Rata-rata) PP 58/2023</b> untuk masa pajak Januari–November dan perhitungan ulang Pasal 17 UU HPP pada masa Desember. Anda juga dapat mengekspor rekapitulasi harta & utang ke kode resmi DJP Online (SPT 1770 / 1770 S).\n\n[[action:open-tax-pph21|Kalkulator PPh 21 TER 2024|Simulasi potongan gaji bulanan & penyesuaian Desember|🧮]]\n[[action:open-tax-djp|Rekap Harta SPT DJP Online|Salin tabel aset & utang langsung ke e-Form|📑]]`;
     }
     else if(/umkm|bisnis|0\.5%|pp55/.test(lower)) {
@@ -1039,6 +1045,11 @@
     }
     else if(/zakat|mal|maal|profesi|nisab/.test(lower)) {
       text=`Zakat Maal wajib dikeluarkan sebesar <b>2,5%</b> apabila harta simpanan likuid (kas, emas, investasi) setelah dikurangi utang lancar telah mencapai <b>Nisab 85 gram emas</b> dan tersimpan selama 1 tahun (haul).\n\n[[action:open-tax-zakat|Kalkulator Zakat Maal & Profesi|Periksa ketercapaian nisab & hitung zakat 2,5%|🪙]]`;
+    }
+    else if(/stress|runway|ruin|krisis|phk|darurat|kebangkrutan|bertahan/.test(lower)) {
+      const res = F.runFinancialStressTest(viewState(), {scenarioType: 'job_loss'});
+      const runwayText = res.deterministicRunwayMonths >= 999 ? 'tidak terbatas (surplus)' : res.deterministicRunwayMonths.toFixed(1) + ' bulan';
+      text = `Berdasarkan simulasi guncangan finansial ekstrem (skenario kehilangan pekerjaan / PHK), cadangan kas likuid Anda sebesar <b>${money(res.liquidCash)}</b> diproyeksikan bertahan selama <b>${runwayText}</b> (net cash burn ${money(res.monthlyNetCashBurn)}/bulan). Probabilitas kebangkrutan kas dalam 12 bulan adalah <b>${(res.ruinProb12*100).toFixed(0)}%</b>.\n\n[[action:nav:stresstest|Uji Ketahanan Finansial (Stress-Test)|Simulasi runway kas & risiko kebangkrutan saat krisis|🛡️]]`;
     }
     else text='Saya dapat menjelaskan posisi keuangan, arus kas bulanan, cakupan dana likuid, tujuan, dan utang. Pilih pertanyaan yang disediakan. Saya tidak memiliki data yang memadai untuk menjawab topik lain secara andal.';
     return text + '<p class="invi-signature-footer"><small>✨ <em>Tetap cermat. Tetap terarah. Terus bertumbuh.</em></small></p>';
@@ -1051,6 +1062,251 @@
   function mcOutput(){const r=mcResult;return `<div class="mc-metrics">${metric(t('Probability of reaching target'),(r.success*100).toFixed(1)+'%',`${r.paths.toLocaleString(locale())} ${t('Simulated paths').toLowerCase()}`,'goals')}${metric(t('Median ending value'),amount(r.ending.p50),state.language==='id'?'Daya beli hari ini':'In today’s purchasing power','scenarios')}</div><div class="chart-container" id="mc-chart">${mcChart()}</div><div class="mc-legend"><span>${t('P10–P90 range')}</span><span>— ${t('Median')}</span></div><div class="details-list"><div class="detail-line"><span>${t('10th percentile')}</span><b>${amount(r.ending.p10)}</b></div><div class="detail-line"><span>${t('90th percentile')}</span><b>${amount(r.ending.p90)}</b></div><div class="detail-line"><span>${t('Nominal principal-loss probability')}</span><b>${(r.belowPrincipal*100).toFixed(1)}%</b></div><div class="detail-line"><span>${t('Random seed')}</span><b>${r.seed}</b></div></div>`;}
   function mcChart(){if(!mcResult)return '';const bands=mcResult.bands,W=$('#mc-chart')?.clientWidth||600,H=205,L=65,R=15,T=15,B=28,maximum=Math.max(1,...bands.map(b=>b.p90))*1.08;const x=i=>L+i*(W-L-R)/(bands.length-1),y=n=>H-B-n/maximum*(H-T-B);const path=(key,arr=bands)=>arr.map((b,i)=>`${i?'L':'M'}${x(b.year).toFixed(1)},${y(b[key]).toFixed(1)}`).join(' ');const band=path('p90')+' '+bands.slice().reverse().map(b=>`L${x(b.year).toFixed(1)},${y(b.p10).toFixed(1)}`).join(' ')+' Z';const title=bands.map(b=>`${b.year}: P10 ${money(b.p10)}, P50 ${money(b.p50)}, P90 ${money(b.p90)}`).join('; ');return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escape(title)}">${Array.from({length:4},(_,i)=>{const n=maximum*i/3;return `<line x1="${L}" x2="${W-R}" y1="${y(n)}" y2="${y(n)}" stroke="var(--line)"/><text x="0" y="${y(n)+3}">${money(n,true)}</text>`;}).join('')}<path d="${band}" fill="#a9ca7d" opacity=".24"/><path d="${path('p50')}" fill="none" stroke="#8eaf65" stroke-width="2.5"/>${bands.filter(b=>b.year===0||b.year===bands.length-1||b.year%Math.max(1,Math.ceil(bands.length/5))===0).map(b=>`<text x="${x(b.year)}" y="${H-5}" text-anchor="${b.year===0?'start':b.year===bands.length-1?'end':'middle'}">${state.language==='id'?'Thn':'Yr'} ${b.year}</text>`).join('')}</svg>`;}
   function runMonteCarlo(formElement){const data=Object.fromEntries(new FormData(formElement));try{const config={initial:positive(data.initial,true),monthly:positive(data.monthly,true),years:Number(data.years),mean:Number(data.mean),volatility:Number(data.volatility),inflation:Number(data.inflation),target:positive(data.target,true),paths:Number(data.paths),seed:Number(data.seed)};mcResult=E.monteCarlo({...config,mean:config.mean/100,volatility:config.volatility/100,inflation:config.inflation/100});mcConfig=config;$('#mc-error').textContent='';$('#mc-result').innerHTML=mcOutput();$('#mc-chart').innerHTML=mcChart();localize();}catch(e){$('#mc-error').textContent=t(e.message);}}
+
+  let stressConfig = null;
+  function defaultStressConfig() {
+    return {
+      scenarioType: 'job_loss',
+      incomeDropPct: 1.0,
+      expenseShockPct: 0.0,
+      oneTimeEmergencyCost: 0,
+      debtRateSpikePct: 0.0,
+      discretionaryCutPct: 0.0
+    };
+  }
+  function selectStressPreset(type) {
+    if (!stressConfig) stressConfig = defaultStressConfig();
+    stressConfig.scenarioType = type;
+    if (type === 'job_loss') {
+      stressConfig.incomeDropPct = 1.0;
+      stressConfig.expenseShockPct = 0.0;
+      stressConfig.oneTimeEmergencyCost = 0;
+      stressConfig.debtRateSpikePct = 0.0;
+      stressConfig.discretionaryCutPct = 0.0;
+    } else if (type === 'medical_emergency') {
+      stressConfig.incomeDropPct = 0.2;
+      stressConfig.oneTimeEmergencyCost = state.currency === 'IDR' ? 5000000000 : 350000;
+      stressConfig.expenseShockPct = 0.15;
+      stressConfig.debtRateSpikePct = 0.0;
+      stressConfig.discretionaryCutPct = 0.0;
+    } else if (type === 'interest_spike') {
+      stressConfig.incomeDropPct = 0.0;
+      stressConfig.debtRateSpikePct = 0.04;
+      stressConfig.expenseShockPct = 0.10;
+      stressConfig.oneTimeEmergencyCost = 0;
+      stressConfig.discretionaryCutPct = 0.0;
+    } else if (type === 'market_crash') {
+      stressConfig.incomeDropPct = 0.25;
+      stressConfig.expenseShockPct = 0.05;
+      stressConfig.debtRateSpikePct = 0.0;
+      stressConfig.oneTimeEmergencyCost = 0;
+      stressConfig.discretionaryCutPct = 0.0;
+    } else if (type === 'stagflation') {
+      stressConfig.incomeDropPct = 0.0;
+      stressConfig.expenseShockPct = 0.25;
+      stressConfig.debtRateSpikePct = 0.02;
+      stressConfig.oneTimeEmergencyCost = 0;
+      stressConfig.discretionaryCutPct = 0.0;
+    }
+    render();
+  }
+  function stressSlider(id, label, min, max, step, val, unit, desc) {
+    return `<div class="stress-slider-field" style="margin-bottom:14px">
+      <label class="slider-label" for="${id}" style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px">
+        <span>${label}<small style="display:block;font-weight:normal;color:var(--muted);font-size:11px">${desc}</small></span>
+        <output id="val-${id}" style="font-size:13px;font-weight:700;color:var(--ink)">${val}${unit}</output>
+      </label>
+      <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" style="width:100%;accent-color:var(--accent,#34d399)">
+    </div>`;
+  }
+  function stressChart(r) {
+    if (!r || !r.trajectoryBands || !r.trajectoryBands.length) return '';
+    const bands = r.trajectoryBands;
+    const W = $('#stress-chart')?.clientWidth || 660, H = 220, padL = 70, padR = 20, padT = 20, padB = 30;
+    const maxVal = Math.max(1, ...bands.map(b => b.p90), r.liquidCash) * 1.05;
+    const x = m => padL + (m * (W - padL - padR)) / 36;
+    const y = n => H - padB - (Math.max(0, n) / maxVal) * (H - padT - padB);
+    const path = (key) => bands.map((b, i) => `${i ? 'L' : 'M'}${x(b.month).toFixed(1)},${y(b[key]).toFixed(1)}`).join(' ');
+    const bandArea = path('p90') + ' ' + bands.slice().reverse().map(b => `L${x(b.month).toFixed(1)},${y(b.p10).toFixed(1)}`).join(' ') + ' Z';
+    const yTicks = [0, 1, 2, 3].map(i => {
+      const val = (maxVal * i) / 3;
+      const yPos = y(val);
+      return `<line x1="${padL}" x2="${W - padR}" y1="${yPos}" y2="${yPos}" stroke="var(--line)" stroke-dasharray="2,2"/><text x="${padL - 8}" y="${yPos + 4}" font-size="10" fill="var(--muted)" text-anchor="end">${money(val, true)}</text>`;
+    }).join('');
+    const xTicks = [0, 6, 12, 18, 24, 30, 36].map(m => {
+      const xPos = x(m);
+      return `<line x1="${xPos}" x2="${xPos}" y1="${padT}" y2="${H - padB}" stroke="var(--line)" stroke-dasharray="2,2"/><text x="${xPos}" y="${H - padB + 16}" font-size="10" fill="var(--muted)" text-anchor="middle">${m} ${L('bln','mo')}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escape(L('Grafik Trajektori Kas Stress-Test','Stress-Test Cash Trajectory Chart'))}">
+      ${yTicks}
+      ${xTicks}
+      <polygon points="${bandArea.replace(/^[ML]/, '').replace(/ [ML]/g, ' ')}" fill="rgba(52, 211, 153, 0.15)"/>
+      <path d="${path('p90')}" fill="none" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <path d="${path('p50')}" fill="none" stroke="var(--accent, #34d399)" stroke-width="2.5"/>
+      <path d="${path('p10')}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <line x1="${padL}" x2="${W - padR}" y1="${H - padB}" y2="${H - padB}" stroke="#ef4444" stroke-width="2"/>
+      <text x="${W - padR - 110}" y="${H - padB - 6}" font-size="10" font-weight="700" fill="#ef4444">🚨 Ruin Level (${money(0)})</text>
+    </svg>`;
+  }
+  function openCreateEmergencyGoalModal(targetCents) {
+    openModal(
+      L('Buat Sasaran Tabungan Dana Darurat','Create Emergency Reserve Goal'),
+      form(
+        field(L('Nama sasaran','Goal name'),'name',L('Dana Darurat (Imunisasi Krisis)','Emergency Reserve Fund'),'text','required maxlength="120"')+
+        field(L('Simbol','Symbol'),'emoji','🛡️','select',options(['🛡️','◎','⌂','✈','◌','✦','♡'],'🛡️'))+
+        field(L('Target dana darurat','Target amount'),'target',targetCents>0?targetCents/100:10000000,'number','min="0.01" required')+
+        field(L('Alokasi saat ini','Current allocation'),'saved',0,'number','min="0" required')+
+        field(L('Rencana tabungan per bulan','Monthly contribution'),'monthly',0,'number','min="0" required')+
+        ownerField({ownerId:'shared'})+
+        currencyField({currency:state.currency}),
+        L('Simpan Sasaran Dana Darurat','Save Emergency Goal'),
+        L('Target dana darurat ini diselaraskan dengan hasil Stress-Test ketahanan kas Anda.','This emergency target is calibrated against your cash stress-test resilience.')
+      ),
+      d => {
+        const saved=positive(d.saved,true),allocated=E.sum(state.goals.map(x=>E.reporting(state,x,'saved')));
+        if(allocated+E.convert(state,saved,d.currency||state.currency)>E.position(state).liquid)throw Error(L('Alokasi dana darurat melebihi total kas likuid.','Goal allocations cannot exceed total liquid funds.'));
+        const record={id:uid(),name:requireText(d.name),emoji:d.emoji,ownerId:d.ownerId||'shared',currency:d.currency||state.currency,target:positive(d.target),saved,monthly:positive(d.monthly,true),due:''};
+        state.goals.push(record);
+        navigate('goals');
+        successToast(L('🎯 Sasaran Dana Darurat berhasil dibuat!','🎯 Emergency reserve goal created successfully!'));
+      }
+    );
+  }
+  function updateStressTestView() {
+    if (page === 'stresstest') render();
+  }
+  function stresstest() {
+    if (!stressConfig) stressConfig = defaultStressConfig();
+    const r = F.runFinancialStressTest(viewState(), stressConfig);
+    const runwayClass = r.deterministicRunwayMonths >= 12 ? 'safe' : r.deterministicRunwayMonths >= 6 ? 'warning' : 'danger';
+    const runwayDisplay = r.deterministicRunwayMonths >= 999 
+      ? L('∞ (Surplus Kas)', '∞ (Cash Surplus)') 
+      : `${r.deterministicRunwayMonths.toFixed(1)} ${L('Bulan', 'Months')}`;
+    const burnDisplay = r.monthlyNetCashBurn > 0
+      ? `<span style="color:#ef4444">−${money(r.monthlyNetCashBurn)} / ${L('bln','mo')}</span>`
+      : `<span style="color:#10b981">+${money(-r.monthlyNetCashBurn)} / ${L('bln','mo')}</span>`;
+
+    const presets = [
+      { id: 'job_loss', icon: '💼', name: L('PHK / Hilang Gaji', 'Job Loss') },
+      { id: 'medical_emergency', icon: '🏥', name: L('Darurat Medis', 'Medical Emergency') },
+      { id: 'interest_spike', icon: '📈', name: L('Lonjakan Bunga Utang', 'Interest Rate Spike') },
+      { id: 'market_crash', icon: '📉', name: L('Resesi & Penurunan Pasar', 'Market Crash & Recession') },
+      { id: 'stagflation', icon: '⚡', name: L('Stagflasi Biaya Hidup', 'Stagflation (+25% Cost)') },
+      { id: 'custom', icon: '🛠️', name: L('Kustom Slider', 'Custom Parameters') }
+    ];
+
+    const presetButtons = presets.map(p => `
+      <button type="button" class="stress-preset-btn ${stressConfig.scenarioType === p.id ? 'active' : ''}" data-action="stress-preset:${p.id}">
+        <span>${p.icon}</span> ${escape(p.name)}
+      </button>
+    `).join('');
+
+    return header(
+      L('Uji Ketahanan & Simulasi Runway Kas', 'Stress-Test & Cash Ruin Simulator'),
+      L('Simulasi daya tahan finansial saat krisis: runway kas likuid, probabilitas kebangkrutan stokastik Monte Carlo, dan rencana imunisasi buffer.', 'Financial resilience under severe shocks: liquid cash survival runway, stochastic Monte Carlo ruin probability, and buffer immunization.'),
+      button(L('Reset Asumsi', 'Reset Assumptions'), 'stress-reset', '', 'shield'),
+      'STRESS TEST & RESILIENCE'
+    ) + planningSwitcher('stresstest') + `
+      <div class="stress-presets-wrap">
+        ${presetButtons}
+      </div>
+
+      <div class="stress-runway-hero ${runwayClass}">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">
+            ${L('Estimasi Ketahanan Kas (Survival Runway)', 'Estimated Survival Runway')}
+          </div>
+          <div class="stress-runway-val">
+            ${runwayDisplay}
+          </div>
+          <div style="font-size:13px;color:var(--ink);margin-top:6px">
+            ${L('Net Cash Burn saat Guncangan:', 'Net Cash Burn Under Shock:')} <b>${burnDisplay}</b>
+            <span style="font-size:11.5px;color:var(--muted);margin-left:8px">(${L('Kas Awal:', 'Starting Liquid:')} ${money(r.liquidCash)}${r.oneTimeEmergencyCost > 0 ? ` − ${money(r.oneTimeEmergencyCost)} ${L('biaya darurat','emergency cost')}` : ''})</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px">
+            ${L('Probabilitas Kehabisan Kas (Monte Carlo Ruin Risk):', 'Cash Depletion Risk (Monte Carlo Ruin Risk):')}
+          </div>
+          <div class="stress-ruin-grid">
+            <div class="stress-ruin-box">
+              <span>${L('Dalam 12 Bulan', 'Within 12 Months')}</span>
+              <b style="color:${r.ruinProb12 > 0.3 ? '#ef4444' : r.ruinProb12 > 0.1 ? '#f59e0b' : '#10b981'}">${(r.ruinProb12 * 100).toFixed(0)}%</b>
+            </div>
+            <div class="stress-ruin-box">
+              <span>${L('Dalam 24 Bulan', 'Within 24 Months')}</span>
+              <b style="color:${r.ruinProb24 > 0.4 ? '#ef4444' : r.ruinProb24 > 0.15 ? '#f59e0b' : '#10b981'}">${(r.ruinProb24 * 100).toFixed(0)}%</b>
+            </div>
+            <div class="stress-ruin-box">
+              <span>${L('Dalam 36 Bulan', 'Within 36 Months')}</span>
+              <b style="color:${r.ruinProb36 > 0.5 ? '#ef4444' : r.ruinProb36 > 0.2 ? '#f59e0b' : '#10b981'}">${(r.ruinProb36 * 100).toFixed(0)}%</b>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <section class="panel panel-pad">
+          <div class="panel-head">
+            <div>
+              <h2>${L('Trajektori Kas 36 Bulan (Simulasi Monte Carlo)', '36-Month Cash Trajectory (Monte Carlo Simulation)')}</h2>
+              <p>${L('1.000 simulasi jalur stokastik dengan shock belanja tidak terduga.', '1,000 stochastic simulation paths with irregular expense spikes.')}</p>
+            </div>
+            <span class="badge ${runwayClass}">${runwayDisplay}</span>
+          </div>
+          <div class="chart-container" id="stress-chart">
+            ${stressChart(r)}
+          </div>
+          <div class="mc-legend" style="margin-top:10px">
+            <span><span style="color:#10b981">┄</span> ${L('P90 (Jalur Optimis)','P90 (Optimistic path)')}</span>
+            <span><span style="color:var(--accent,#34d399)">—</span> ${L('P50 (Median Trajektori)','P50 (Median trajectory)')}</span>
+            <span><span style="color:#ef4444">┄</span> ${L('P10 (Jalur Pesimis)','P10 (Pessimistic shock path)')}</span>
+          </div>
+        </section>
+
+        <section class="panel panel-pad">
+          <div class="panel-head">
+            <div>
+              <h2>${L('Parameter & Sensitivitas Guncangan', 'Shock Parameters & Sensitivity')}</h2>
+              <p>${L('Sesuaikan slider untuk menguji skenario krisis kustom.', 'Adjust sliders to stress-test custom crisis scenarios.')}</p>
+            </div>
+            <span class="badge blue">${stressConfig.scenarioType.toUpperCase()}</span>
+          </div>
+
+          <div style="margin-top:14px">
+            ${stressSlider('stress-income-drop', L('Penurunan Pendapatan (%)', 'Income Loss (%)'), 0, 100, 5, Math.round(stressConfig.incomeDropPct * 100), '%', L('Persentase gaji/pemasukan rutin yang hilang', 'Percentage of regular salary/inflows lost'))}
+            ${stressSlider('stress-expense-shock', L('Kenaikan Pengeluaran Rutin (%)', 'Expense Inflation Shock (%)'), 0, 100, 5, Math.round(stressConfig.expenseShockPct * 100), '%', L('Inflasi atau kenaikan biaya operasional keluarga', 'Living cost inflation or shock on recurring flows'))}
+            ${stressSlider('stress-emergency-cost', L('Biaya Darurat Sekaligus', 'One-Time Emergency Cost'), 0, (state.currency === 'IDR' ? 100000000 : 10000), (state.currency === 'IDR' ? 5000000 : 500), stressConfig.oneTimeEmergencyCost / 100, '', L('Biaya medis/kerusakan mendadak yang memotong kas awal', 'Immediate deductible or lump-sum emergency expense'))}
+            ${stressSlider('stress-debt-spike', L('Kenaikan Suku Bunga Utang (+% APR)', 'Debt APR Spike (+% APR)'), 0, 15, 1, Math.round(stressConfig.debtRateSpikePct * 100), '%', L('Lonjakan suku bunga mengambang pinjaman/KPR', 'Variable rate hike on outstanding liabilities'))}
+            ${stressSlider('stress-discretionary-cut', L('Pemangkasan Pengeluaran Bebas / Lifestyle (%)', 'Discretionary Spending Cut (%)'), 0, 100, 5, Math.round(stressConfig.discretionaryCutPct * 100), '%', L('Potensi hemat belanja non-pokok untuk memperpanjang runway', 'Austerity belt-tightening to extend survival runway'))}
+          </div>
+        </section>
+      </div>
+
+      <div class="stress-immunization-card">
+        <div class="panel-head">
+          <div>
+            <h2>🛡️ ${L('Rencana Imunisasi Kas (Resilience & Buffer Plan)', 'Cash Immunization Plan (Resilience & Buffer)')}</h2>
+            <p>${L('Target dana darurat yang direkomendasikan untuk menahan guncangan saat ini.', 'Recommended emergency fund reserve targets to withstand current simulated shocks.')}</p>
+          </div>
+        </div>
+        <div class="metrics-grid" style="margin-top:14px">
+          ${metric(L('Buffer Minimum 6 Bulan', '6-Month Minimum Buffer'), amount(r.neededBuffer6M), L('Kebutuhan kas tertahan saat krisis', 'Cash needed for 6 months survival'), 'vault')}
+          ${metric(L('Buffer Optimal 12 Bulan', '12-Month Optimal Buffer'), amount(r.neededBuffer12M), L('Ketahanan penuh terhadap resesi panjang', 'Full protection for prolonged recession'), 'shield')}
+          ${metric(L('Kekurangan Cadangan (Gap)', 'Reserve Gap Shortfall'), r.reserveGap6M > 0 ? `<span style="color:#ef4444">${amount(r.reserveGap6M)}</span>` : `<span style="color:#10b981">✓ ${L('Terpenuhi Aman','Fully Covered')}</span>`, r.reserveGap6M > 0 ? L('Perlu ditambahkan ke dana darurat','Needs to be accumulated') : L('Kas likuid mencukupi buffer 6 bulan','Liquid funds cover 6-month buffer'), 'bank')}
+          ${metric(L('Potensi Hemat Discretionary', 'Discretionary Cut Potential'), amount(r.discretionarySavings), L('Penghematan dari pemangkasan gaya hidup/bln', 'Monthly savings from spending belt-tightening'), 'growth')}
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" class="btn primary" data-action="stress-create-goal:${r.neededBuffer6M}">
+            🎯 ${L('Buat Sasaran Tabungan Dana Darurat (Buffer 6 Bln)', 'Create Emergency Fund Goal (6-Mo Buffer)')}
+          </button>
+          <button type="button" class="btn" data-action="stress-create-goal:${r.neededBuffer12M}">
+            🛡️ ${L('Buat Sasaran Buffer Penuh (12 Bln)', 'Create Full Buffer Goal (12-Mo Buffer)')}
+          </button>
+        </div>
+      </div>
+    `;
+  }
   let cardImageId=null,cardImageGeneration=0;
   async function normalizeCardImage(file){
     if(!file||!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size<=0||file.size>8*1024*1024)throw Error(L('Pilih PNG/JPEG/WebP maksimal 8 MB.','Choose PNG/JPEG/WebP up to 8 MB.'));
@@ -3410,11 +3666,11 @@
   function navigationV4(){
     const item=id=>{
       if(id==='scenarios'){
-        const isSimActive=page==='scenarios'||page==='montecarlo';
+        const isSimActive=page==='scenarios'||page==='montecarlo'||page==='stresstest';
         return `<button class="nav-item ${isSimActive?'active':''}" data-page="scenarios" ${isSimActive?'aria-current="page"':''} aria-label="${escape(L('Skenario & Simulasi','Scenarios & Simulation'))}" title="${escape(L('Skenario & Simulasi','Scenarios & Simulation'))}">
           ${icon('scenarios')}
           <span class="nav-text">${L('Skenario & Simulasi','Scenarios & Simulation')}</span>
-        </button><button data-page="montecarlo" class="screen-reader" tabindex="-1" aria-hidden="true" style="display:none">Monte Carlo</button>`;
+        </button><button data-page="montecarlo" class="screen-reader" tabindex="-1" aria-hidden="true" style="display:none">Monte Carlo</button><button data-page="stresstest" class="screen-reader" tabindex="-1" aria-hidden="true" style="display:none">Stress-Test & Runway</button>`;
       }
       const label=t(pages.find(p=>p[0]===id)?.[1]||id);
       return `<button class="nav-item ${page===id?'active':''}" data-page="${id}" ${page===id?'aria-current="page"':''} aria-label="${escape(label)}" title="${escape(label)}">${icon(id)}<span class="nav-text">${label}</span></button>`;
@@ -9865,10 +10121,11 @@
     });
   }
 
-  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=broadcastBanner()+viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates,admin:adminPanel}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();if(page==='capture')setupCaptureDropzone();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
+  function render(){const title=pages.find(p=>p[0]===page)?.[1]||'Settings & data';$('#navigation').innerHTML=navigationV4();$('#breadcrumb-page').textContent=title;$('#breadcrumb-icon').innerHTML=icon(page);$('#notification-button').innerHTML=icon('bell');$('#main').innerHTML=broadcastBanner()+viewBar()+({operations,home:dashboardV4,shared,reports,forecast:safeForecast,accounts,investment,calendar,budget:budgetView,cashflow,transactions,categories:categoriesPage,goals,debt,scenarios,household,copilot,settings,montecarlo,cards,capture,integrations,plans,updates,admin:adminPanel,stresstest}[page])()+quickComposer();document.body.classList.toggle('privacy-on',hideMoney);document.body.classList.toggle('quick-dock-visible',true);const quickInput=$('#quick-text');if(quickInput?.style){quickInput.style.height='auto';quickInput.style.height=Math.min(132,quickInput.scrollHeight)+'px';}refreshCharts();if(page==='reports'&&!['cashflow','spending','income'].includes(reportFilter.tab)){for(const el of $$('#report-form [name=account],#report-form [name=category],#report-form [name=group],#report-form [name=chart],#report-form [name=search]'))el.disabled=true;if(reportFilter.tab!=='networth')for(const el of $$('#report-form [name=from],#report-form [name=to]'))el.disabled=true;}if(page==='copilot')renderMessages();if(page==='capture')setupCaptureDropzone();save();syncPreferences();localize();updateRollingTickers();updateSlidingPills();}
   function refreshCharts(){
     if(page==='scenarios'){updateScenario();localize();return;}
     if(page==='montecarlo'){if(mcResult&&$('#mc-chart'))$('#mc-chart').innerHTML=mcChart();return;}
+    if(page==='stresstest'){if($('#stress-chart')){const r=F.runFinancialStressTest(viewState(),stressConfig||defaultStressConfig());$('#stress-chart').innerHTML=stressChart(r);}return;}
     const chart=$('.chart-container');if(!chart)return;
     const width=chart.clientWidth||660;
     if(page==='home'){const h=historyData();chart.innerHTML=lineChart(h.values,h.labels,{width});}
@@ -11007,6 +11264,9 @@
     case 'open-tax-pph21':openDjpTaxModal(null,null,'pph21');break;
     case 'open-tax-umkm':openDjpTaxModal(null,null,'umkm');break;
     case 'open-tax-zakat':openDjpTaxModal(null,null,'zakat');break;
+    case 'stress-preset':selectStressPreset(id);break;
+    case 'stress-reset':stressConfig=defaultStressConfig();render();toast(L('Asumsi stress-test direset','Stress-test assumptions reset'));break;
+    case 'stress-create-goal':openCreateEmergencyGoalModal(Number(id)||0);break;
     case 'pwa-install':triggerPwaInstall();break;
     case 'lock-vault-now':lockVault();break;
     case 'setup-biometric':toggleBiometricSetup();break;
@@ -11058,7 +11318,7 @@
     case 'review':navigate('accounts');toast('Start by verifying your account balances and dates.');break;
   }}
   document.addEventListener('click',event=>{const target=event.target.closest('button,[data-action]');if(!target)return;if(target.dataset.page){if(target.dataset.close)$('#modal').close();navigate(target.dataset.page);}else if(target.dataset.action)act(target.dataset.action);else if(target.dataset.question)ask(target.dataset.question);else if(target.dataset.starter){veyPlaySound('poke');const box=$('#quick-text');if(box){box.value=target.dataset.starter;quickText=target.dataset.starter;box.focus();if(box.style){box.style.height='auto';box.style.height=Math.min(132,box.scrollHeight)+'px';}}}else if(target.dataset.quickFill){veyPlaySound('poke');const box=$('#quick-text');if(box){box.value=target.dataset.quickFill;quickText=target.dataset.quickFill;box.focus();if(box.style){box.style.height='auto';box.style.height=Math.min(132,box.scrollHeight)+'px';}}}});
-  document.addEventListener('input',event=>{const el=event.target;if(el.id==='admin-search-input'){adminData.query=el.value.toLowerCase().trim();const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='forecast-preview-year'){forecastSelectedYear=Math.max(0,Math.min(selectedPlan().years,Number(el.value)||0));if(forecastResult)$('#forecast-preview').innerHTML=forecastPreview(forecastResult,selectedPlan());}if(el.id==='gold-spot-price-slider'||el.id==='gold-spot-price-input'){const val=Number(el.value);if(Number.isFinite(val)&&val>0){state.goldInstallment.customSpotPrice=val;if(state.goldInstallment.synced){const h=state.holdings.find(h=>h.id==='h-gold-galeri24');if(h){h.price=val;h.quoteDate=date();}const acc=state.accounts.find(a=>a.id==='acc-gold-pegadaian');if(acc){acc.balance=Math.round(50*val*100);acc.updated=date();}}render();}}if(el.id==='gold-paid-months-slider'){const val=Math.max(0,Math.min(60,Number(el.value)||0));state.goldInstallment.paidMonths=val;render();}if(el.id==='quick-text'){quickText=el.value;if(el.style){el.style.height='auto';el.style.height=Math.min(132,el.scrollHeight)+'px';}}if(el.dataset.scenario){scenario[el.dataset.scenario]=E.cents(el.value);$('#value-'+el.dataset.scenario).textContent=money(scenario[el.dataset.scenario]);updateScenario();}if(el.dataset.debtId){const id=el.dataset.debtId;const d=state.debts.find(d=>d.id===id);$('#extra-label-'+id).textContent=money(E.cents(el.value),false,d.currency);$('#debt-results-'+id).innerHTML=debtResult(d,E.cents(el.value));}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';}if(el.id==='transaction-search'){txQuery=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='category-manager-search'){const q=el.value.toLowerCase().trim();$$('.monarch-settings-cat-row').forEach(row=>{const text=((row.dataset.catRow||'')+' '+(row.dataset.catDisplay||'')).toLowerCase();row.style.display=!q||text.includes(q)?'flex':'none';});}});
+  document.addEventListener('input',event=>{const el=event.target;if(el.id.startsWith('stress-')){if(!stressConfig)stressConfig=defaultStressConfig();stressConfig.scenarioType='custom';if(el.id==='stress-income-drop'){stressConfig.incomeDropPct=Number(el.value)/100;const o=$('#val-stress-income-drop');if(o)o.textContent=el.value+'%';}else if(el.id==='stress-expense-shock'){stressConfig.expenseShockPct=Number(el.value)/100;const o=$('#val-stress-expense-shock');if(o)o.textContent=el.value+'%';}else if(el.id==='stress-emergency-cost'){stressConfig.oneTimeEmergencyCost=E.cents(el.value);const o=$('#val-stress-emergency-cost');if(o)o.textContent=money(stressConfig.oneTimeEmergencyCost);}else if(el.id==='stress-debt-spike'){stressConfig.debtRateSpikePct=Number(el.value)/100;const o=$('#val-stress-debt-spike');if(o)o.textContent='+'+el.value+'%';}else if(el.id==='stress-discretionary-cut'){stressConfig.discretionaryCutPct=Number(el.value)/100;const o=$('#val-stress-discretionary-cut');if(o)o.textContent=el.value+'%';}updateStressTestView();}if(el.id==='admin-search-input'){adminData.query=el.value.toLowerCase().trim();const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='forecast-preview-year'){forecastSelectedYear=Math.max(0,Math.min(selectedPlan().years,Number(el.value)||0));if(forecastResult)$('#forecast-preview').innerHTML=forecastPreview(forecastResult,selectedPlan());}if(el.id==='gold-spot-price-slider'||el.id==='gold-spot-price-input'){const val=Number(el.value);if(Number.isFinite(val)&&val>0){state.goldInstallment.customSpotPrice=val;if(state.goldInstallment.synced){const h=state.holdings.find(h=>h.id==='h-gold-galeri24');if(h){h.price=val;h.quoteDate=date();}const acc=state.accounts.find(a=>a.id==='acc-gold-pegadaian');if(acc){acc.balance=Math.round(50*val*100);acc.updated=date();}}render();}}if(el.id==='gold-paid-months-slider'){const val=Math.max(0,Math.min(60,Number(el.value)||0));state.goldInstallment.paidMonths=val;render();}if(el.id==='quick-text'){quickText=el.value;if(el.style){el.style.height='auto';el.style.height=Math.min(132,el.scrollHeight)+'px';}}if(el.dataset.scenario){scenario[el.dataset.scenario]=E.cents(el.value);$('#value-'+el.dataset.scenario).textContent=money(scenario[el.dataset.scenario]);updateScenario();}if(el.dataset.debtId){const id=el.dataset.debtId;const d=state.debts.find(d=>d.id===id);$('#extra-label-'+id).textContent=money(E.cents(el.value),false,d.currency);$('#debt-results-'+id).innerHTML=debtResult(d,E.cents(el.value));}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';}if(el.id==='transaction-search'){txQuery=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='category-manager-search'){const q=el.value.toLowerCase().trim();$$('.monarch-settings-cat-row').forEach(row=>{const text=((row.dataset.catRow||'')+' '+(row.dataset.catDisplay||'')).toLowerCase();row.style.display=!q||text.includes(q)?'flex':'none';});}});
   document.addEventListener('change',event=>{const el=event.target;if(el.id==='setting-autolock-select'||el.dataset.action==='change-autolock'){localStorage.setItem('inveys_autolock',el.value);resetAutoLockTimer();toast('🔒 '+L('Waktu kunci otomatis diperbarui','Auto-lock timer updated'));}if(['admin-role-filter','admin-plan-filter','admin-status-filter'].includes(el.id)){if(el.id==='admin-role-filter')adminData.roleFilter=el.value;if(el.id==='admin-plan-filter')adminData.planFilter=el.value;if(el.id==='admin-status-filter')adminData.statusFilter=el.value;const tb=$('#admin-user-tbody');if(tb)tb.innerHTML=adminUserRows();}if(el.id==='cashflow-sankey-month-select'){cashflowViewMonth=el.value;render();}if(el.id==='quick-account'){quickAccount=el.value;const caption=$('#quick-account-caption');if(caption)caption.innerHTML=quickAccount?user(getAccount(quickAccount)?.name||''):L('Akun melalui +','Account via +');}if(el.dataset.task){const t=state.tasks.find(t=>t.id===el.dataset.task);t.done=el.checked;render();toast(t.done?'Task completed.':'Task reopened.');}if(el.dataset.txEdit&&txEdit){txEdit.values[el.dataset.txEdit]=el.value;txEdit.error='';if(['kind','accountId'].includes(el.dataset.txEdit))render();}if(el.id==='transaction-filter'){txKind=el.value;$('#transaction-rows').innerHTML=transactionRows();}if(el.id==='transaction-sort'){txSort=el.value;try{localStorage.setItem('inveys_tx_sort',txSort);}catch(e){}render();}if(el.id==='import-file'||el.id==='backup-file-picker'){ if(el.files?.[0]) handleBackupFile(el.files[0]); }});
   document.addEventListener('submit',event=>{if(event.target.id==='quick-form'){event.preventDefault();const d=Object.fromEntries(new FormData(event.target));quickSend(d.text,d.accountId);return;}if(event.target.id==='chat-form'){event.preventDefault();ask($('#chat-question').value.trim());}});
   $('#close-modal').addEventListener('click',()=>$('#modal').close());$('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=$('#modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('#modal').close();}});

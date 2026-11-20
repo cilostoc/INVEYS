@@ -7060,6 +7060,105 @@ textarea.field-invalid {
   border-color: rgba(148, 163, 184, 0.3);
 }
 
+/* Financial Stress-Test & Cash Ruin Simulator HUD */
+.stress-presets-wrap {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 14px;
+  margin-bottom: 8px;
+}
+.stress-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--card, #ffffff);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.stress-preset-btn:hover {
+  border-color: var(--accent, #34d399);
+  color: var(--accent, #34d399);
+}
+.stress-preset-btn.active {
+  background: var(--accent, #34d399);
+  color: #ffffff;
+  border-color: var(--accent, #34d399);
+  box-shadow: 0 2px 8px rgba(52, 211, 153, 0.25);
+}
+[data-theme=dark] .stress-preset-btn.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+.stress-runway-hero {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.stress-runway-hero.safe {
+  border-left: 6px solid #10b981;
+}
+.stress-runway-hero.warning {
+  border-left: 6px solid #f59e0b;
+}
+.stress-runway-hero.danger {
+  border-left: 6px solid #ef4444;
+}
+.stress-runway-val {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.stress-ruin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.stress-ruin-box {
+  background: var(--bg-hover, #f8fafc);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+.stress-ruin-box span {
+  font-size: 11px;
+  color: var(--muted);
+  display: block;
+}
+.stress-ruin-box b {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 2px;
+  display: block;
+}
+.stress-immunization-card {
+  background: var(--card, #ffffff);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-top: 20px;
+}
+
+
 
 
 

@@ -374,6 +374,79 @@ test('Indonesian Zakat Maal and Zakat Profesi calculation', () => {
   assert.equal(res.zakatProfesiMonthlyIdr, 500000); // 2.5% of 20jt
 });
 
+test('runFinancialStressTest simulates job loss, medical emergencies, rate spikes, and immunization targets', () => {
+  const state = {
+    version: 1,
+    currency: 'IDR',
+    accounts: [
+      { id: 'a1', name: 'BCA Checking', balance: 6000000000, type: 'Checking', currency: 'IDR' } // Rp 60 Juta
+    ],
+    flows: [
+      { id: 'f1', name: 'Gaji Pokok', kind: 'income', amount: 2000000000, currency: 'IDR' }, // Rp 20 Juta / bln
+      { id: 'f2', name: 'Biaya Rumah Tangga', kind: 'expense', amount: 800000000, currency: 'IDR' } // Rp 8 Juta / bln
+    ],
+    subscriptions: [
+      { id: 's1', name: 'Gym Membership', amount: 50000000, currency: 'IDR', active: true } // Rp 500rb / bln
+    ],
+    debts: [
+      { id: 'd1', name: 'KPR Bank', balance: 30000000000, apr: 10, minimum: 150000000, currency: 'IDR' } // Rp 300 Juta debt, Rp 1.5 Juta min
+    ],
+    goals: []
+  };
+
+  // 1. Job Loss Scenario (100% income drop, baseline outflows = 8jt + 500rb + 1.5jt = 10jt / bln)
+  const jobLossRes = F.runFinancialStressTest(state, { scenarioType: 'job_loss' });
+  assert.equal(jobLossRes.liquidCash, 6000000000);
+  assert.equal(jobLossRes.shockedIncome, 0);
+  assert.equal(jobLossRes.shockedMonthlyOutflows, 1000000000); // Rp 10 Juta
+  assert.equal(jobLossRes.monthlyNetCashBurn, 1000000000);
+  // Runway = 60jt / 10jt = 6.0 months
+  assert.equal(jobLossRes.deterministicRunwayMonths, 6.0);
+  // Ruin probabilities: since runway is 6 months, within 12 months ruin probability is high
+  assert.ok(jobLossRes.ruinProb12 > 0.8);
+  assert.ok(jobLossRes.ruinProb24 > 0.8);
+  // Immunization targets: 6-month buffer = 6 * 10jt = 60jt. Gap = 60jt - 60jt = 0
+  assert.equal(jobLossRes.neededBuffer6M, 6000000000);
+  assert.equal(jobLossRes.reserveGap6M, 0);
+  // 12-month buffer = 12 * 10jt = 120jt. Gap = 120jt - 60jt = 60jt
+  assert.equal(jobLossRes.neededBuffer12M, 12000000000);
+  assert.equal(jobLossRes.reserveGap12M, 6000000000);
+
+  // 2. Discretionary Cutback extends runway
+  const austerityRes = F.runFinancialStressTest(state, {
+    scenarioType: 'job_loss',
+    discretionaryCutPct: 0.5 // 50% cut on discretionary (35% of recurring expenses = 8.5jt * 0.35 = 2.975jt -> ~1.4875jt cut)
+  });
+  assert.ok(austerityRes.monthlyNetCashBurn < jobLossRes.monthlyNetCashBurn);
+  assert.ok(austerityRes.deterministicRunwayMonths > jobLossRes.deterministicRunwayMonths);
+
+  // 3. Medical Emergency Scenario: one-time emergency cost
+  const medRes = F.runFinancialStressTest(state, {
+    scenarioType: 'medical_emergency',
+    oneTimeEmergencyCost: 2000000000 // Rp 20 Juta lump-sum
+  });
+  assert.equal(medRes.oneTimeEmergencyCost, 2000000000);
+  assert.equal(medRes.startingLiquidAfterEmergency, 4000000000); // 60jt - 20jt = 40jt
+  assert.ok(medRes.shockedMonthlyOutflows > jobLossRes.shockedMonthlyOutflows * 0.9);
+
+  // 4. Catastrophic emergency that wipes starting cash: runway must be 0.0
+  const catastrophicRes = F.runFinancialStressTest(state, {
+    scenarioType: 'medical_emergency',
+    oneTimeEmergencyCost: 7000000000 // Rp 70 Juta (exceeds Rp 60 Juta liquid cash)
+  });
+  assert.equal(catastrophicRes.startingLiquidAfterEmergency, 0);
+  assert.equal(catastrophicRes.deterministicRunwayMonths, 0.0);
+  assert.equal(catastrophicRes.ruinProb12, 1.0);
+
+  // 5. Interest Rate Spike (+4% APR on 300 Juta debt = +12 Juta/yr = +1 Juta/mo)
+  const spikeRes = F.runFinancialStressTest(state, {
+    scenarioType: 'interest_spike',
+    debtRateSpikePct: 0.04
+  });
+  assert.equal(spikeRes.extraMonthlyDebtInterest, 100000000); // Rp 1.000.000 / bln extra debt service
+  assert.ok(spikeRes.shockedMonthlyOutflows > 1000000000);
+});
+
 
 
 

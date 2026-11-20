@@ -49,7 +49,7 @@ function boot(saved, env = {}) {
 test('every app page renders with populated and empty workspaces',()=>{
   const full=boot();assert.match(full.html(),/224,370/);
   const empty={version:1,currency:'IDR',name:'Empty',demo:false,accounts:[],debts:[],goals:[],flows:[],transactions:[],tasks:[],members:[],history:[]};
-  for(const app of [full,boot(empty)])for(const page of ['accounts','cashflow','transactions','goals','debt','scenarios','household','copilot','montecarlo','cards','settings','home','reports','categories','budget','calendar','plans','integrations','capture','holdings','updates','about']){
+  for(const app of [full,boot(empty)])for(const page of ['accounts','cashflow','transactions','goals','debt','scenarios','stresstest','household','copilot','montecarlo','cards','settings','home','reports','categories','budget','calendar','plans','integrations','capture','holdings','updates','about']){
     app.click({page});assert.ok(app.html().length > 50, page);
   }
 });
@@ -1677,6 +1677,44 @@ test('DJP Tax & Zakat Hub renders tabs for PPh 21 TER, UMKM 0.5%, Zakat Maal, an
   app.click({ question: 'Bagaimana aturan pajak UMKM 0.5%?' });
   chatHtml = app.elements.get('#chat-messages').innerHTML;
   assert.match(chatHtml, /open-tax-umkm/);
+});
+
+test('financial stress-test and cash ruin simulator UI interacts properly', () => {
+  const app = boot();
+
+  // 1. Navigate to stresstest page
+  app.click({ page: 'stresstest' });
+  const html = app.html();
+  assert.match(html, /stress-runway-hero/);
+  assert.match(html, /stress-runway-val/);
+  assert.match(html, /stress-presets-wrap/);
+  assert.match(html, /stress-preset-btn/);
+  assert.match(html, /stress-chart/);
+  assert.match(html, /stress-immunization-card/);
+  assert.match(html, /stress-income-drop/);
+  assert.match(html, /stress-emergency-cost/);
+
+  // 2. Switch to Medical Emergency preset
+  app.click({ action: 'stress-preset:medical_emergency' });
+  const medHtml = app.html();
+  assert.match(medHtml, /MEDICAL_EMERGENCY/);
+
+  // 3. Reset assumptions
+  app.click({ action: 'stress-reset' });
+  const resetHtml = app.html();
+  assert.match(resetHtml, /JOB_LOSS/);
+
+  // 4. Copilot prompt for krisis / runway returns action card
+  app.click({ page: 'copilot' });
+  app.click({ question: 'Bagaimana ketahanan kas saya jika terjadi krisis atau PHK?' });
+  const chatHtml = app.elements.get('#chat-messages').innerHTML;
+  assert.match(chatHtml, /nav:stresstest/);
+
+  // 5. Test opening emergency fund goal modal from stress-test
+  app.click({ page: 'stresstest' });
+  app.click({ action: 'stress-create-goal:6000000000' });
+  const modalBody = app.elements.get('#modal-body').innerHTML;
+  assert.match(modalBody, /Dana Darurat|Emergency Reserve/);
 });
 
 
