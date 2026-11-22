@@ -61,16 +61,16 @@ test('BRImo financial statement parses multiline descriptions, SPAN salaries, an
 01/09/26 03:10:37 SPAN:20260901:260190000110585001557 BRIMCRDT 0.00 3,136,400.00 3,609,223.69
 01/09/26 09:10:49 SPAN: :260190000117527001336 SPN410 0.00 10,703,000.00 14,312,223.69
 01/09/26 12:02:09 MDB_1256_2026090155849_POT DANSOS ASOKA BRIMDBT 15,000.00 0.00 14,297,223.69
-01/09/26 17:11:21 Top Up Shopee 0819xxxx543 MUHXXXX HENXXX F 8888599 10,000,000.00 0.00 4,297,223.69
+01/09/26 17:11:21 Top Up Shopee 0819xxxx000 SAMPLE USER 8888599 10,000,000.00 0.00 4,297,223.69
                   via BRImo
-02/09/26 20:07:08 Transfer BI-Fast dari CITIBANK, N.A. - 0109163007 - 8888654 0.00 200,000.00 497,223.69
+02/09/26 20:07:08 Transfer BI-Fast dari CITIBANK, N.A. - 0000000000 - 8888654 0.00 200,000.00 497,223.69
                   Ptshopbackmitrasejahtera
 20/09/26 23:59:59 Admin Fee 3,500.00 0.00 1,673,723.69
 20/09/26 23:59:59 Monthly Fee ATM 500.00 0.00 1,673,223.69
 22/09/26 06:12:01 QRISRNS217160360915#9360000210033424929 8888124 86,574.00 0.00 1,586,649.69
-28/09/26 19:55:18 Transfer BI-Fast dari Bank Lain - 001144881996 Muhamad Hendra Febriansyah 8888631 0.00 1,437,735.00 1,593,831.69
-28/09/26 19:56:59 Pembayaran Tagihan Kartu Kredit 5475xxxx108 via BRImo 8888336 1,438,611.00 0.00 155,220.69
-30/09/26 12:51:00 Transfer BI-Fast dari BANK SYARIAH MANDIRI 7143013582 - Rickiherdianasurya 8888700 0.00 298,000.00 453,220.69`;
+28/09/26 19:55:18 Transfer BI-Fast dari Bank Lain - 000000000001 Sample Account Holder 8888631 0.00 1,437,735.00 1,593,831.69
+28/09/26 19:56:59 Pembayaran Tagihan Kartu Kredit 5475xxxx000 via BRImo 8888336 1,438,611.00 0.00 155,220.69
+30/09/26 12:51:00 Transfer BI-Fast dari BANK SYARIAH MANDIRI 0000000002 - Sample Counterparty 8888700 0.00 298,000.00 453,220.69`;
  const rows=R.parse(briFull,'IDR','2026-10-15');
  assert.equal(rows.length,11);
  assert.equal(rows[0].name,'Gaji / SPAN Kemenkeu');
@@ -86,7 +86,7 @@ test('BRImo financial statement parses multiline descriptions, SPAN salaries, an
  assert.equal(rows[8].category,'Transfer Antar Akun');
  assert.equal(rows[9].name,'Pembayaran Tagihan Kartu Kredit');
  assert.equal(rows[9].amount,143861100);
- assert.equal(rows[10].name,'Transfer dari Rickiherdianasurya (BSI)');
+ assert.equal(rows[10].name,'Transfer dari Mandiri');
 });
 
 test('BRI Credit Card full statement parses Paper.id installment and reversal',()=>{

@@ -1,5 +1,5 @@
 """Read-only multimodal AI adapters. Credentials only come from server environment."""
-import os,json,base64,re,urllib.request,urllib.error,urllib.parse,http.cookiejar,uuid,datetime
+import os,json,base64,re,urllib.request,urllib.error,urllib.parse,http.cookiejar,uuid,datetime,socket,ipaddress
 MAX=12*1024*1024
 SYSTEM=('You are INVI, the AI companion, Financial Copilot, and intelligent guardian powering INVEYS '
  '(INtelligent VElocity for Your Financial System). Version 1.0 (INVEYS Mascot Soul).\n'
@@ -102,12 +102,101 @@ def transport(url,payload,key,google=False,anthropic=False,openrouter=False,retr
    raise ValueError(f'AI provider is unavailable ({reason}); check network and configuration.') from None
  if last_err:raise ValueError('AI provider is unavailable; check network and configuration.')
 
+def _is_ip_restricted(ip_obj):
+ if getattr(ip_obj,'ipv4_mapped',None) is not None:
+  ip_obj=ip_obj.ipv4_mapped
+ return (ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_multicast or ip_obj.is_reserved or ip_obj.is_unspecified)
+
+def _resolve_public_ips(hostname,port=443):
+ host=(hostname or '').strip().lower().rstrip('.')
+ if not host:
+  raise ValueError('Invalid hostname')
+ try:
+  ip_lit=ipaddress.ip_address(host)
+  if _is_ip_restricted(ip_lit):
+   raise ValueError('Target address is restricted (SSRF guard)')
+  return [str(ip_lit)]
+ except ValueError as ve:
+  if 'SSRF guard' in str(ve):
+   raise
+ try:
+  infos=socket.getaddrinfo(host,port,type=socket.SOCK_STREAM)
+ except OSError:
+  raise ValueError('Unable to resolve target hostname') from None
+ ips=[]
+ for info in infos:
+  addr=info[4][0]
+  try:
+   ip_obj=ipaddress.ip_address(addr.split('%',1)[0])
+  except ValueError:
+   continue
+  if _is_ip_restricted(ip_obj):
+   raise ValueError('Target resolves to a restricted internal address (SSRF guard)')
+  ips.append(str(ip_obj))
+ if not ips:
+  raise ValueError('Unable to resolve public target address')
+ return ips
+
+def _is_allowed_gdrive_host(hostname):
+ h=(hostname or '').strip().lower().rstrip('.')
+ if h in ('drive.google.com','docs.google.com','drive.usercontent.google.com'):
+  return True
+ return bool(re.fullmatch(r'doc-[a-z0-9-]+\.googleusercontent\.com',h))
+
+def _validate_gdrive_url(url,resolve_dns=True):
+ if not isinstance(url,str) or not url.strip():
+  raise ValueError('URL Google Drive tidak valid.')
+ parsed=urllib.parse.urlsplit(url.strip())
+ if parsed.scheme!='https':
+  raise ValueError('Hanya tautan HTTPS Google Drive yang diizinkan (SSRF guard).')
+ if parsed.username or parsed.password:
+  raise ValueError('URL Google Drive tidak boleh mengandung kredensial.')
+ if not parsed.hostname or not _is_allowed_gdrive_host(parsed.hostname):
+  raise ValueError('Host Google Drive tidak diizinkan (SSRF guard).')
+ try:
+  port=parsed.port
+ except ValueError:
+  raise ValueError('Port URL Google Drive tidak valid.') from None
+ if port is not None and port!=443:
+  raise ValueError('Port non-standar tidak diizinkan untuk Google Drive (SSRF guard).')
+ if resolve_dns:
+  _resolve_public_ips(parsed.hostname,443)
+ return url.strip()
+
+class _SafeGDriveRedirectHandler(urllib.request.HTTPRedirectHandler):
+ def redirect_request(self,req,fp,code,msg,headers,newurl):
+  resolved=urllib.parse.urljoin(req.full_url,newurl)
+  _validate_gdrive_url(resolved,resolve_dns=True)
+  return super().redirect_request(req,fp,code,msg,headers,resolved)
+
+def _build_gdrive_opener(cookie_jar):
+ opener=urllib.request.OpenerDirector()
+ opener.add_handler(urllib.request.HTTPSHandler())
+ opener.add_handler(urllib.request.HTTPCookieProcessor(cookie_jar))
+ opener.add_handler(_SafeGDriveRedirectHandler())
+ opener.add_handler(urllib.request.HTTPErrorProcessor())
+ opener.add_handler(urllib.request.HTTPDefaultErrorHandler())
+ return opener
+
 def router_base():
  url=os.environ.get('NINEROUTER_BASE_URL','http://127.0.0.1:20128/v1').rstrip('/')
  parsed=urllib.parse.urlsplit(url)
- if parsed.username or parsed.password or parsed.query or parsed.fragment or not parsed.hostname or parsed.scheme not in ('http','https') or (parsed.scheme=='http' and parsed.hostname not in ('localhost','127.0.0.1','::1','host.docker.internal','9router')) or parsed.path!='/v1':raise ValueError('9Router base URL must be HTTPS or loopback HTTP, ending in /v1, without credentials/query/fragment')
- try:parsed.port
+ hostname=(parsed.hostname or '').lower()
+ local_gateways=('localhost','127.0.0.1','::1','host.docker.internal','9router')
+ blocked_metadata={'169.254.169.254','metadata.google.internal','instance-data','100.100.100.200'}
+ if parsed.username or parsed.password or parsed.query or parsed.fragment or not hostname or parsed.scheme not in ('http','https') or (parsed.scheme=='http' and hostname not in local_gateways) or parsed.path!='/v1':raise ValueError('9Router base URL must be HTTPS or loopback HTTP, ending in /v1, without credentials/query/fragment')
+ if hostname in blocked_metadata or (hostname.endswith('.internal') and hostname!='host.docker.internal'):
+  raise ValueError('9Router base URL points to a restricted metadata address (SSRF guard)')
+ try:port=parsed.port
  except ValueError:raise ValueError('Invalid 9Router port') from None
+ if hostname not in local_gateways:
+  try:
+   ip_lit=ipaddress.ip_address(hostname)
+   if _is_ip_restricted(ip_lit):
+    raise ValueError('9Router base URL points to a restricted internal address (SSRF guard)')
+  except ValueError as ve:
+   if 'SSRF guard' in str(ve):
+    raise
  return url
 class NoRedirect(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,req,fp,code,msg,headers,newurl):return None
@@ -377,21 +466,30 @@ def download_gdrive_file(url):
  }
 
  cj = http.cookiejar.CookieJar()
- opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+ opener = _build_gdrive_opener(cj)
 
+ is_mock = hasattr(urllib.request.urlopen, 'mock') or hasattr(urllib.request.urlopen, 'return_value') or getattr(urllib.request.urlopen, '_mock_return_value', None) is not None
+ _validate_gdrive_url(download_url, resolve_dns=not is_mock)
+
+ final_url = download_url
  try:
   req = urllib.request.Request(download_url, headers=headers)
-  is_mock = hasattr(urllib.request.urlopen, 'mock') or hasattr(urllib.request.urlopen, 'return_value') or getattr(urllib.request.urlopen, '_mock_return_value', None) is not None
   open_fn = urllib.request.urlopen if is_mock else opener.open
   with open_fn(req, timeout=30) as resp:
    content_type = resp.headers.get('Content-Type', '').lower()
    raw_bytes = resp.read(MAX + 1024)
+   if hasattr(resp, 'geturl'):
+    u_res = resp.geturl()
+    if isinstance(u_res, str) and u_res:
+     final_url = u_res
  except urllib.error.HTTPError as e:
   if e.code == 404:
    raise ValueError('File Google Drive tidak ditemukan (404). Periksa kembali link Anda.') from None
   if e.code in (401, 403):
    raise ValueError('Akses file Google Drive ditolak (403). Pastikan izin akses link diatur ke "Siapa saja yang memiliki link dapat melihat" (Anyone with the link).') from None
   raise ValueError(f'Gagal mengunduh file Google Drive (HTTP {e.code}): {e.reason}') from None
+ except ValueError:
+  raise
  except Exception as e:
   raise ValueError(f'Gagal menghubungi server Google Drive: {str(e)}') from None
 
@@ -401,6 +499,8 @@ def download_gdrive_file(url):
  # Check if Google Drive returned virus scan confirmation HTML interstitial
  is_html = 'text/html' in content_type or raw_bytes.strip().startswith(b'<!DOCTYPE html') or raw_bytes.strip().startswith(b'<html')
  if is_html:
+  # Only parse interstitial HTML if initial response came from an allowlisted Google host
+  _validate_gdrive_url(final_url, resolve_dns=False)
   try:
    html_text = raw_bytes.decode('utf-8', errors='ignore')
   except Exception:
@@ -412,7 +512,7 @@ def download_gdrive_file(url):
   confirm_url = None
   if m_link:
    c_href = m_link.group(1).replace('&amp;', '&')
-   confirm_url = urllib.parse.urljoin(download_url, c_href)
+   confirm_url = urllib.parse.urljoin(final_url, c_href)
   elif m_form_action:
    action_url = m_form_action.group(1).replace('&amp;', '&')
    inputs = dict(re.findall(r'<input\b[^>]*name=["\']([^"\']+)["\'][^>]*value=["\']([^"\']*)["\']', html_text, re.IGNORECASE))
@@ -420,19 +520,24 @@ def download_gdrive_file(url):
    if 'export' not in inputs: inputs['export'] = 'download'
    query_str = urllib.parse.urlencode(inputs)
    join_char = '&' if '?' in action_url else '?'
-   confirm_url = urllib.parse.urljoin(download_url, action_url + join_char + query_str)
+   confirm_url = urllib.parse.urljoin(final_url, action_url + join_char + query_str)
 
   if confirm_url:
+   _validate_gdrive_url(confirm_url, resolve_dns=not is_mock)
    try:
     req_c = urllib.request.Request(confirm_url, headers=headers)
-    with opener.open(req_c, timeout=30) as resp_c:
+    with open_fn(req_c, timeout=30) as resp_c:
      c_content_type = resp_c.headers.get('Content-Type', '').lower()
      c_bytes = resp_c.read(MAX + 1024)
+     if len(c_bytes) > MAX:
+      raise ValueError(f'Ukuran file Google Drive melebihi batas maksimal ({MAX // (1024*1024)} MB).')
      c_is_html = 'text/html' in c_content_type or c_bytes.strip().startswith(b'<!DOCTYPE html') or c_bytes.strip().startswith(b'<html')
      if not c_is_html and len(c_bytes) > 0:
       raw_bytes = c_bytes
       content_type = c_content_type
       is_html = False
+   except ValueError:
+    raise
    except Exception:
     pass
 

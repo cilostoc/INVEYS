@@ -7,6 +7,8 @@ via CCXT with read-only balance synchronization and automatic holding integratio
 import os
 import json
 import logging
+import socket
+import ipaddress
 import urllib.request
 import urllib.parse
 
@@ -147,6 +149,19 @@ def get_supported_exchanges():
     }
 
 
+def _is_restricted_ip(ip_obj):
+    if getattr(ip_obj, 'ipv4_mapped', None) is not None:
+        ip_obj = ip_obj.ipv4_mapped
+    return (
+        ip_obj.is_private
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_multicast
+        or ip_obj.is_reserved
+        or ip_obj.is_unspecified
+    )
+
+
 def _is_safe_proxy(proxy_str):
     if not proxy_str or not isinstance(proxy_str, str):
         return False
@@ -155,20 +170,37 @@ def _is_safe_proxy(proxy_str):
         parsed = urllib.parse.urlsplit(clean)
         if parsed.scheme not in ('http', 'https', 'socks5', 'socks5h'):
             return False
-        hostname = (parsed.hostname or '').lower()
+        hostname = (parsed.hostname or '').lower().rstrip('.')
         if not hostname:
             return False
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
         # Block cloud metadata endpoints, internal names, and loopback/localhost
-        blocked = ('169.254.169.254', 'metadata.google.internal', 'instance-data', '100.100.100.200', 'localhost')
+        blocked = (
+            '169.254.169.254',
+            'metadata.google.internal',
+            'instance-data',
+            '100.100.100.200',
+            'localhost',
+            'host.docker.internal',
+        )
         if hostname in blocked or hostname.endswith('.internal') or hostname.endswith('.local'):
             return False
-        import ipaddress
         try:
             ip = ipaddress.ip_address(hostname)
-            if ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or str(ip) == '169.254.169.254':
+            if _is_restricted_ip(ip):
                 return False
+            return True
         except ValueError:
             pass
+        # Resolve DNS and reject any private/loopback/link-local/multicast/reserved/unspecified IP
+        infos = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+        if not infos:
+            return False
+        for info in infos:
+            addr = info[4][0].split('%', 1)[0]
+            ip = ipaddress.ip_address(addr)
+            if _is_restricted_ip(ip):
+                return False
         return True
     except Exception:
         return False
@@ -241,6 +273,8 @@ def test_connection(exchange_id, api_key, api_secret, passphrase=None, proxy=Non
             'assetsCount': assets_found,
             'message': f"Koneksi terverifikasi! Berhasil membaca saldo {assets_found} koin (Read-Only valid)."
         }
+    except ValueError as ve:
+        return {'ok': False, 'error': str(ve)}
     except Exception as e:
         msg = str(e)
         err_type = type(e).__name__
@@ -251,9 +285,9 @@ def test_connection(exchange_id, api_key, api_secret, passphrase=None, proxy=Non
         elif 'Timeout' in err_type or 'timed out' in msg.lower():
             detail = "Koneksi time out. Domain API exchange mungkin diblokir oleh ISP lokal Anda. Gunakan proxy atau jalankan di VPS."
         elif 'Network' in err_type:
-            detail = f"Kesalahan jaringan ({msg[:120]}). Periksa koneksi internet atau gunakan proxy."
+            detail = "Kesalahan jaringan saat menghubungi exchange. Periksa koneksi internet atau konfigurasi proxy."
         else:
-            detail = f"Gagal menghubungkan ({err_type}): {msg[:140]}"
+            detail = "Gagal menghubungkan ke exchange. Periksa kredensial dan konfigurasi jaringan."
         return {'ok': False, 'error': detail}
 
 
@@ -436,7 +470,7 @@ def fetch_crypto_balances(exchange_id, api_key, api_secret, passphrase=None, pro
             'totalIdr': round(total_usd * fx_rate),
             'holdings': results
         }
-    except Exception as e:
-        msg = str(e)
-        err_type = type(e).__name__
-        return {'ok': False, 'error': f"Gagal menarik saldo ({err_type}): {msg[:160]}"}
+    except ValueError as ve:
+        return {'ok': False, 'error': str(ve)}
+    except Exception:
+        return {'ok': False, 'error': 'Gagal menarik saldo dari exchange. Periksa kredensial dan konfigurasi jaringan.'}

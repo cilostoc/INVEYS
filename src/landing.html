@@ -3128,6 +3128,14 @@
       document.getElementById('checkout-success').style.display = 'none';
       modal.style.display = 'flex';
     }
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
     function closeCheckout() {
       modal.style.display = 'none';
     }
@@ -3162,21 +3170,23 @@
         document.getElementById('checkout-form').style.display = 'none';
         const succEl = document.getElementById('checkout-success');
         succEl.style.display = 'block';
+        const safeOrderId = escapeHtml(data.orderId);
+        const safeVaNumber = escapeHtml(data.vaNumber);
         succEl.innerHTML = `
           <div style="font-size: 2rem; margin-bottom: 8px;">💳</div>
           <h3 style="color: var(--accent); margin-bottom: 6px;">Kode Pembayaran Diterbitkan</h3>
           <p style="font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 14px;">
-            Order ID: <strong style="color: var(--ink); font-family: monospace;">${data.orderId}</strong> · Nominal: <strong style="color: var(--accent);">Rp ${Number(data.amount).toLocaleString('id-ID')}</strong>
+            Order ID: <strong style="color: var(--ink); font-family: monospace;">${safeOrderId}</strong> · Nominal: <strong style="color: var(--accent);">Rp ${Number(data.amount).toLocaleString('id-ID')}</strong>
           </p>
           <div style="background: #fff; border-radius: 8px; padding: 12px; max-width: 180px; margin: 0 auto 14px auto; color: #000;">
             <div style="font-size: 9px; font-weight: 900; letter-spacing: 1px; margin-bottom: 4px;">QRIS NASIONAL</div>
             <div style="background: #f8fafc; border: 2px solid #000; padding: 12px; font-family: monospace; font-size: 10px; border-radius: 4px; word-break: break-all;">
-              [QR CODE: ${data.orderId}]
+              [QR CODE: ${safeOrderId}]
             </div>
             <div style="font-size: 8px; color: #64748b; margin-top: 4px;">BCA · Mandiri · GoPay · ShopeePay · OVO</div>
           </div>
           <div style="font-size: 0.8rem; color: var(--ink-subtle); margin-bottom: 16px;">
-            Virtual Account: <span style="font-family: monospace; color: var(--ink); font-weight: 700;">${data.vaNumber}</span>
+            Virtual Account: <span style="font-family: monospace; color: var(--ink); font-weight: 700;">${safeVaNumber}</span>
           </div>
           <button type="button" class="btn btn-primary" id="btn-landing-simulate" style="width: 100%; margin-bottom: 8px;">
             ⚡ Konfirmasi / Simulasikan Pembayaran Lunas
@@ -3193,19 +3203,22 @@
           try {
             const sRes = await fetch('/api/payment/simulate', {
               method: 'POST',
+              credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ order_id: data.orderId })
             });
             const sData = await sRes.json();
             if (!sRes.ok) throw new Error(sData.error || 'Simulasi gagal');
+            const safePlan = escapeHtml(String(sData.plan || '').toUpperCase());
+            const safeLicenseKey = escapeHtml(sData.licenseKey);
             succEl.innerHTML = `
               <div style="font-size: 3rem; margin-bottom: 12px;">🎉</div>
               <h3 style="color: var(--accent); margin-bottom: 10px;">Pembayaran Terkonfirmasi!</h3>
               <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 12px;">
-                Lisensi Anda untuk paket <strong>INVEYS ${sData.plan.toUpperCase()}</strong> telah aktif.
+                Lisensi Anda untuk paket <strong>INVEYS ${safePlan}</strong> telah aktif.
               </p>
               <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--accent); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 12px; color: var(--accent); margin-bottom: 16px; word-break: break-all;">
-                ${sData.licenseKey}
+                ${safeLicenseKey}
               </div>
               <a href="/app#plans" class="btn btn-primary" style="width: 100%;">
                 Buka INVEYS Vault & Mulai Eksplorasi
@@ -3240,11 +3253,16 @@
       });
     } else {
       try {
-        const token = localStorage.getItem('inveys_token');
-        if (token) {
-          const navBtn = document.getElementById('nav-app-btn');
-          if (navBtn) navBtn.innerHTML = '<span>⚡ Vault Saya</span>';
-        }
+        localStorage.removeItem('inveys_token');
+        fetch('/api/auth/status', { credentials: 'same-origin' })
+          .then(r => r.ok ? r.json() : null)
+          .then(st => {
+            if (st && st.authenticated) {
+              const navBtn = document.getElementById('nav-app-btn');
+              if (navBtn) navBtn.innerHTML = '<span>⚡ Vault Saya</span>';
+            }
+          })
+          .catch(() => {});
       } catch (e) {}
     }
   </script>

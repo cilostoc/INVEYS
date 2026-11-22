@@ -33,8 +33,11 @@ services:
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_FROM=${SMTP_FROM:-support@inveys.io}
       - SMTP_TLS=${SMTP_TLS:-true}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES:-127.0.0.1/32,::1/128,172.16.0.0/12}
+      - INVEYS_LICENSE_SECRET=${INVEYS_LICENSE_SECRET:-}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY:-}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY:-}
+      - MAYAR_WEBHOOK_SECRET=${MAYAR_WEBHOOK_SECRET:-}
     volumes:
       - inveys_data:/data
     labels:

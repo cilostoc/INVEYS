@@ -24,6 +24,19 @@ class Backend(unittest.TestCase):
         try:
             with urllib.request.urlopen(req) as r:return r.status,json.loads(r.read())
         except urllib.error.HTTPError as e:return e.code,json.loads(e.read())
+    def request_full(self,path,body=None,headers=None):
+        h={'Host':'127.0.0.1:3000',**(headers or {})}
+        req=urllib.request.Request(self.url+path,data=json.dumps(body).encode() if body is not None else None,headers=h)
+        try:
+            with urllib.request.urlopen(req) as r:return r.status,r.headers,json.loads(r.read())
+        except urllib.error.HTTPError as e:return e.code,e.headers,json.loads(e.read())
+    def session_headers(self,resp_headers,body):
+        set_cookie=resp_headers.get('Set-Cookie','')
+        cookie_pair=set_cookie.split(';',1)[0].strip() if set_cookie else ''
+        h={'Origin':'http://127.0.0.1:3000'}
+        if cookie_pair:h['Cookie']=cookie_pair
+        if isinstance(body,dict) and body.get('csrf'):h['X-INVEYS-CSRF']=body['csrf']
+        return h
     def raw_request(self,path,headers=None):
         h={'Host':'127.0.0.1:3000',**(headers or {})}
         req=urllib.request.Request(self.url+path,headers=h)
@@ -249,7 +262,7 @@ class Backend(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(segs['ok'])
         self.assertEqual(len(segs['segments']), 4)
-        segment_ids = [s['id'] for s in segs['segments']]
+        segment_ids = [seg['id'] for seg in segs['segments']]
         self.assertIn('client', segment_ids)
         self.assertIn('backend', segment_ids)
         self.assertIn('vault', segment_ids)
@@ -259,70 +272,80 @@ class Backend(unittest.TestCase):
         status, err = self.request('/api/vps/update', {})
         self.assertEqual(status, 403)
 
-        # 3. Successful POST /api/vps/update with CSRF
-        headers = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
-        status, res = self.request('/api/vps/update', {}, headers)
-        self.assertEqual(status, 200)
-        self.assertTrue(res['ok'])
-        self.assertEqual(res['version'], '0.23.0')
-        self.assertEqual(len(res['updatedSegments']), 4)
+        # 3. Successful POST /api/vps/update as authenticated admin with per-session CSRF
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'vps_upd.sqlite3'):
+            st_setup, h_setup, res_setup = self.request_full('/api/auth/setup', {'password': 'AdminPassword123'}, {'Origin': 'http://127.0.0.1:3000'})
+            self.assertEqual(st_setup, 200)
+            adm_headers = self.session_headers(h_setup, res_setup)
+            status, res = self.request('/api/vps/update', {}, adm_headers)
+            self.assertEqual(status, 200)
+            self.assertTrue(res['ok'])
+            self.assertEqual(res['version'], '0.23.0')
+            self.assertEqual(len(res['updatedSegments']), 4)
 
     def test_api_keys_management_and_persistence(self):
-        headers = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'keys_test.sqlite3'):
+            # Unauthenticated GET /api/keys rejected with 401
+            st_unauth, _ = self.request('/api/keys', headers={'Origin': 'http://127.0.0.1:3000'})
+            self.assertEqual(st_unauth, 401)
 
-        # 1. GET /api/keys returns valid structure
-        status, keys = self.request('/api/keys', headers=headers)
-        self.assertEqual(status, 200)
-        self.assertTrue(keys['ok'])
-        self.assertIn('gemini', keys)
-        self.assertIn('openai', keys)
-        self.assertIn('ninerouter', keys)
-        self.assertIn('telegram', keys)
+            st_setup, h_setup, res_setup = self.request_full('/api/auth/setup', {'password': 'AdminPassword123'}, {'Origin': 'http://127.0.0.1:3000'})
+            self.assertEqual(st_setup, 200)
+            headers = self.session_headers(h_setup, res_setup)
 
-        # 2. POST /api/keys save Gemini key
-        status, res = self.request('/api/keys', {'provider': 'gemini', 'action': 'save', 'apiKey': 'AIzaSyTestGeminiKey123', 'model': 'gemini-3.8-flash'}, headers)
-        self.assertEqual(status, 200)
-        self.assertTrue(res['ok'])
-        self.assertEqual(res['action'], 'saved')
-        self.assertTrue(res['ai']['gemini']['enabled'])
+            # 1. GET /api/keys returns valid structure for admin
+            status, keys = self.request('/api/keys', headers=headers)
+            self.assertEqual(status, 200)
+            self.assertTrue(keys['ok'])
+            self.assertIn('gemini', keys)
+            self.assertIn('openai', keys)
+            self.assertIn('ninerouter', keys)
+            self.assertIn('telegram', keys)
 
-        # 3. POST /api/keys save Telegram bot token and chat id
-        status, res = self.request('/api/keys', {'provider': 'telegram', 'action': 'save', 'botToken': '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ', 'chatId': '987654321'}, headers)
-        self.assertEqual(status, 200)
-        self.assertTrue(res['ok'])
-        self.assertTrue(res['telegram'])
+            # 2. POST /api/keys save Gemini key
+            status, res = self.request('/api/keys', {'provider': 'gemini', 'action': 'save', 'apiKey': 'AIzaSyTestGeminiKey123', 'model': 'gemini-3.8-flash'}, headers)
+            self.assertEqual(status, 200)
+            self.assertTrue(res['ok'])
+            self.assertEqual(res['action'], 'saved')
+            self.assertTrue(res['ai']['gemini']['enabled'])
 
-        # 4. GET /api/keys shows masked keys without revealing full key by default
-        status, keys = self.request('/api/keys', headers=headers)
-        self.assertEqual(status, 200)
-        self.assertTrue(keys['gemini']['configured'])
-        self.assertTrue(keys['telegram']['configured'])
-        self.assertIn('••••••••', keys['gemini']['keyMasked'])
-        self.assertIn('••••••••', keys['telegram']['tokenMasked'])
-        self.assertEqual(keys['gemini']['rawKey'], '')
+            # 3. POST /api/keys save Telegram bot token and chat id
+            status, res = self.request('/api/keys', {'provider': 'telegram', 'action': 'save', 'botToken': '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ', 'chatId': '987654321'}, headers)
+            self.assertEqual(status, 200)
+            self.assertTrue(res['ok'])
+            self.assertTrue(res['telegram'])
 
-        # 5. GET /api/keys?reveal=1 reveals raw key with valid CSRF/session
-        status, keys_revealed = self.request('/api/keys?reveal=1', headers=headers)
-        self.assertEqual(status, 200)
-        self.assertEqual(keys_revealed['gemini']['rawKey'], 'AIzaSyTestGeminiKey123')
-        self.assertEqual(keys_revealed['telegram']['rawToken'], '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ')
+            # 4. GET /api/keys shows masked keys without revealing full key by default
+            status, keys = self.request('/api/keys', headers=headers)
+            self.assertEqual(status, 200)
+            self.assertTrue(keys['gemini']['configured'])
+            self.assertTrue(keys['telegram']['configured'])
+            self.assertIn('••••••••', keys['gemini']['keyMasked'])
+            self.assertIn('••••••••', keys['telegram']['tokenMasked'])
+            self.assertEqual(keys['gemini']['rawKey'], '')
 
-        # 6. POST /api/keys delete Gemini key and Telegram key
-        status, res = self.request('/api/keys', {'provider': 'gemini', 'action': 'delete'}, headers)
-        self.assertEqual(status, 200)
-        self.assertTrue(res['ok'])
-        self.assertEqual(res['action'], 'deleted')
-        self.assertFalse(res['ai']['gemini']['enabled'])
+            # 5. GET /api/keys?reveal=1 reveals raw key for authenticated admin
+            status, keys_revealed = self.request('/api/keys?reveal=1', headers=headers)
+            self.assertEqual(status, 200)
+            self.assertEqual(keys_revealed['gemini']['rawKey'], 'AIzaSyTestGeminiKey123')
+            self.assertEqual(keys_revealed['telegram']['rawToken'], '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ')
 
-        status, res = self.request('/api/keys', {'provider': 'telegram', 'action': 'delete'}, headers)
-        self.assertEqual(status, 200)
-        self.assertTrue(res['ok'])
-        self.assertFalse(res['telegram'])
+            # 6. POST /api/keys delete Gemini key and Telegram key
+            status, res = self.request('/api/keys', {'provider': 'gemini', 'action': 'delete'}, headers)
+            self.assertEqual(status, 200)
+            self.assertTrue(res['ok'])
+            self.assertEqual(res['action'], 'deleted')
+            self.assertFalse(res['ai']['gemini']['enabled'])
 
-        # Verify deletion in GET /api/keys
-        status, keys_after = self.request('/api/keys', headers=headers)
-        self.assertFalse(keys_after['gemini']['configured'])
-        self.assertFalse(keys_after['telegram']['configured'])
+            status, res = self.request('/api/keys', {'provider': 'telegram', 'action': 'delete'}, headers)
+            self.assertEqual(status, 200)
+            self.assertTrue(res['ok'])
+            self.assertFalse(res['telegram'])
+
+            # Verify deletion in GET /api/keys
+            status, keys_after = self.request('/api/keys', headers=headers)
+            self.assertFalse(keys_after['gemini']['configured'])
+            self.assertFalse(keys_after['telegram']['configured'])
 
     def test_security_headers_on_responses(self):
         req = urllib.request.Request(self.url + '/index.html', headers={'Host': '127.0.0.1:3000'})
@@ -347,32 +370,41 @@ class Backend(unittest.TestCase):
         self.assertRaises(ValueError, s.validate_router_base, 'http://metadata.google.internal/v1')
         self.assertRaises(ValueError, s.validate_router_base, 'ftp://127.0.0.1:20128/v1')
         self.assertRaises(ValueError, s.validate_router_base, 'http://127.0.0.1:20128/api/v2')
-        # Valid loopback and HTTPS should pass
-        self.assertEqual(s.validate_router_base('http://127.0.0.1:20128/v1'), 'http://127.0.0.1:20128/v1')
-        self.assertEqual(s.validate_router_base('https://api.example.com/v1'), 'https://api.example.com/v1')
+        # HTTP API default (allow_private=False) blocks loopback, private, and HTTP
+        self.assertRaises(ValueError, s.validate_router_base, 'http://127.0.0.1:20128/v1')
+        self.assertRaises(ValueError, s.validate_router_base, 'http://host.docker.internal:20128/v1')
+        self.assertRaises(ValueError, s.validate_router_base, 'https://10.0.0.1/v1')
+        with patch('socket.getaddrinfo', return_value=[(2, 1, 6, '', ('127.0.0.1', 443))]):
+            self.assertRaises(ValueError, s.validate_router_base, 'https://rebind.example.com/v1')
+        with patch('socket.getaddrinfo', return_value=[(2, 1, 6, '', ('93.184.216.34', 443))]):
+            self.assertEqual(s.validate_router_base('https://api.example.com/v1'), 'https://api.example.com/v1')
+        # Server env mode (allow_private=True) permits loopback gateway while still rejecting metadata
+        self.assertEqual(s.validate_router_base('http://127.0.0.1:20128/v1', allow_private=True), 'http://127.0.0.1:20128/v1')
+        self.assertRaises(ValueError, s.validate_router_base, 'http://169.254.169.254/v1', allow_private=True)
 
     def test_master_password_auth_protection_and_unauthorized_rejection(self):
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'auth_test.sqlite3'):
             headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
 
-            # 1. Setup master password
-            status, setup_res = self.request('/api/auth/setup', {'password': 'TestPassword123'}, headers_csrf)
+            # 1. Setup master password (cookie-based session + per-session CSRF, no raw token in JSON)
+            status, h_setup, setup_res = self.request_full('/api/auth/setup', {'password': 'TestPassword123'}, headers_csrf)
             self.assertEqual(status, 200)
             self.assertTrue(setup_res['ok'])
-            token = setup_res['token']
-            self.assertTrue(token)
+            self.assertNotIn('token', setup_res)
+            self.assertTrue(setup_res.get('csrf'))
+            self.assertIn('inveys_session=', h_setup.get('Set-Cookie', ''))
+            self.assertIn('HttpOnly', h_setup.get('Set-Cookie', ''))
 
-            # 2. Configure a test API key with authenticated session
-            headers_authed = {**headers_csrf, 'Authorization': f'Bearer {token}'}
+            # 2. Configure a test API key with authenticated admin session
+            headers_authed = self.session_headers(h_setup, setup_res)
             status, res = self.request('/api/keys', {'provider': 'gemini', 'action': 'save', 'apiKey': 'SecretKeyAuth123'}, headers_authed)
             self.assertEqual(status, 200)
 
-            # 3. Unauthenticated request with CSRF only MUST NOT reveal secrets
+            # 3. Unauthenticated request with CSRF only MUST return 401
             status, unauth_keys = self.request('/api/keys?reveal=1', headers=headers_csrf)
-            self.assertEqual(status, 200)
-            self.assertEqual(unauth_keys['gemini']['rawKey'], '')
+            self.assertEqual(status, 401)
 
-            # 4. Authenticated request with token DOES reveal secrets
+            # 4. Authenticated admin request DOES reveal secrets
             status, authed_keys = self.request('/api/keys?reveal=1', headers=headers_authed)
             self.assertEqual(status, 200)
             self.assertEqual(authed_keys['gemini']['rawKey'], 'SecretKeyAuth123')
@@ -391,44 +423,45 @@ class Backend(unittest.TestCase):
 
     def test_multi_user_registration_login_and_tenant_isolation(self):
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'multi_user_test.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
 
             # 1. Validation checks on registration
-            bad_email_st, _ = self.request('/api/auth/register', {'email': 'invalid-email', 'password': 'pass123'}, headers_csrf)
+            bad_email_st, _ = self.request('/api/auth/register', {'email': 'invalid-email', 'password': 'pass123'}, headers_origin)
             self.assertEqual(bad_email_st, 400)
-            short_pw_st, _ = self.request('/api/auth/register', {'email': 'user@example.com', 'password': '123'}, headers_csrf)
+            short_pw_st, _ = self.request('/api/auth/register', {'email': 'user@example.com', 'password': '123'}, headers_origin)
             self.assertEqual(short_pw_st, 400)
 
             # 2. Register User 1
-            st1, res1 = self.request('/api/auth/register', {'email': 'hendra@inveys.io', 'password': 'PasswordHendra123', 'name': 'Hendra'}, headers_csrf)
+            st1, h1, res1 = self.request_full('/api/auth/register', {'email': 'hendra@inveys.io', 'password': 'PasswordHendra123', 'name': 'Hendra'}, headers_origin)
             self.assertEqual(st1, 200)
             self.assertTrue(res1['ok'])
-            token1 = res1['token']
+            self.assertNotIn('token', res1)
             self.assertEqual(res1['user']['email'], 'hendra@inveys.io')
             self.assertEqual(res1['user']['name'], 'Hendra')
+            headers_u1 = self.session_headers(h1, res1)
 
             # 3. Duplicate email registration rejected
-            dup_st, dup_res = self.request('/api/auth/register', {'email': 'hendra@inveys.io', 'password': 'OtherPassword123'}, headers_csrf)
+            dup_st, dup_res = self.request('/api/auth/register', {'email': 'hendra@inveys.io', 'password': 'OtherPassword123'}, headers_origin)
             self.assertEqual(dup_st, 400)
 
             # 4. Register User 2
-            st2, res2 = self.request('/api/auth/register', {'email': 'partner@inveys.io', 'password': 'PasswordPartner123', 'name': 'Partner'}, headers_csrf)
+            st2, h2, res2 = self.request_full('/api/auth/register', {'email': 'partner@inveys.io', 'password': 'PasswordPartner123', 'name': 'Partner'}, headers_origin)
             self.assertEqual(st2, 200)
-            token2 = res2['token']
+            headers_u2 = self.session_headers(h2, res2)
 
             # 5. User 1 logs in with email & password
-            st_login, res_login = self.request('/api/auth/login', {'email': 'hendra@inveys.io', 'password': 'PasswordHendra123'}, headers_csrf)
+            st_login, h_login, res_login = self.request_full('/api/auth/login', {'email': 'hendra@inveys.io', 'password': 'PasswordHendra123'}, headers_origin)
             self.assertEqual(st_login, 200)
-            self.assertTrue(res_login['token'])
+            self.assertNotIn('token', res_login)
+            self.assertIn('inveys_session=', h_login.get('Set-Cookie', ''))
+            self.assertTrue(res_login.get('csrf'))
 
             # 6. Tenant Isolation: User 1 writes their workspace
-            headers_u1 = {**headers_csrf, 'Authorization': f'Bearer {token1}'}
             ws_u1_payload = {'workspace': {'id': 'ws_hendra', 'name': 'Hendra Vault', 'accounts': [{'id': 'a1', 'balance': 50000000}]}}
             st_ws1, _ = self.request('/api/workspace', ws_u1_payload, headers_u1)
             self.assertEqual(st_ws1, 200)
 
             # 7. User 2 writes their distinct workspace
-            headers_u2 = {**headers_csrf, 'Authorization': f'Bearer {token2}'}
             ws_u2_payload = {'workspace': {'id': 'ws_partner', 'name': 'Partner Vault', 'accounts': [{'id': 'a2', 'balance': 10000000}]}}
             st_ws2, _ = self.request('/api/workspace', ws_u2_payload, headers_u2)
             self.assertEqual(st_ws2, 200)
@@ -451,13 +484,14 @@ class Backend(unittest.TestCase):
             self.assertEqual(res_me['user']['email'], 'hendra@inveys.io')
 
     def test_payment_order_create_simulate_and_license_status(self):
-        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'payment_test.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+        with tempfile.TemporaryDirectory() as d, \
+             patch.object(s, 'DB', Path(d) / 'payment_test.sqlite3'), \
+             patch.dict(os.environ, {'INVEYS_ENABLE_PAYMENT_SIMULATOR': '1', 'INVEYS_LICENSE_SECRET': 'test-license-secret-key'}):
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
 
-            # 1. Register a user
-            _, res_user = self.request('/api/auth/register', {'email': 'buyer@inveys.io', 'password': 'PasswordBuyer123', 'name': 'Buyer'}, headers_csrf)
-            token = res_user['token']
-            user_headers = {**headers_csrf, 'Authorization': f'Bearer {token}'}
+            # 1. Register first user (admin) so simulator can be exercised when explicitly enabled
+            _, h_adm, res_user = self.request_full('/api/auth/register', {'email': 'buyer@inveys.io', 'password': 'PasswordBuyer123', 'name': 'Buyer'}, headers_origin)
+            user_headers = self.session_headers(h_adm, res_user)
 
             # 2. Create payment order for Pro Monthly (Rp 99.000)
             st_ord, res_ord = self.request('/api/payment/create', {'plan': 'pro', 'cycle': 'monthly'}, user_headers)
@@ -475,7 +509,7 @@ class Backend(unittest.TestCase):
             self.assertEqual(res_check['order']['status'], 'pending')
             self.assertEqual(res_check['order']['amount'], 99000)
 
-            # 4. Simulate payment settlement
+            # 4. Simulate payment settlement (requires explicit env flag + admin auth + CSRF)
             st_sim, res_sim = self.request('/api/payment/simulate', {'order_id': order_id}, user_headers)
             self.assertEqual(st_sim, 200)
             self.assertTrue(res_sim['ok'])
@@ -497,13 +531,15 @@ class Backend(unittest.TestCase):
             self.assertIsNotNone(res_lic['license'])
 
     def test_license_key_activation_flow(self):
-        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'lic_test.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+        with tempfile.TemporaryDirectory() as d, \
+             patch.object(s, 'DB', Path(d) / 'lic_test.sqlite3'), \
+             patch.dict(os.environ, {'INVEYS_LICENSE_SECRET': 'test-license-secret-key'}):
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
 
-            # 1. Register a user on default Plus plan
-            _, res_user = self.request('/api/auth/register', {'email': 'subscriber@inveys.io', 'password': 'PasswordSub123', 'name': 'Sub'}, headers_csrf)
-            token = res_user['token']
-            user_headers = {**headers_csrf, 'Authorization': f'Bearer {token}'}
+            # 1. Register first user (admin), then second user on default Plus plan
+            self.request_full('/api/auth/register', {'email': 'owner@inveys.io', 'password': 'PasswordOwner123', 'name': 'Owner'}, headers_origin)
+            _, h_sub, res_user = self.request_full('/api/auth/register', {'email': 'subscriber@inveys.io', 'password': 'PasswordSub123', 'name': 'Sub'}, headers_origin)
+            user_headers = self.session_headers(h_sub, res_user)
 
             # 2. Generate a valid Lifetime Ultra license key for this user
             valid_lic, _ = s.generate_license_key('usr_test', 'subscriber@inveys.io', 'ultra', expires_at=None)
@@ -515,9 +551,12 @@ class Backend(unittest.TestCase):
             self.assertEqual(res_act['plan'], 'ultra')
             self.assertTrue(res_act['isLifetime'])
 
-            # 4. Reject invalid license key
+            # 4. Reject invalid license key & forged signature
             st_inv, res_inv = self.request('/api/license/activate', {'license_key': 'IV-INVALID-KEY'}, user_headers)
             self.assertEqual(st_inv, 400)
+            forged = valid_lic[:-4] + '0000'
+            st_forged, _ = self.request('/api/license/activate', {'license_key': forged}, user_headers)
+            self.assertEqual(st_forged, 400)
 
             # 5. Reject license issued for a different email
             foreign_lic, _ = s.generate_license_key('usr_other', 'other@inveys.io', 'ultra', expires_at=None)
@@ -525,29 +564,40 @@ class Backend(unittest.TestCase):
             self.assertEqual(st_for, 400)
 
     def test_midtrans_webhook_processing(self):
-        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'webhook_test.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+        import hashlib
+        with tempfile.TemporaryDirectory() as d, \
+             patch.object(s, 'DB', Path(d) / 'webhook_test.sqlite3'), \
+             patch.dict(os.environ, {'MIDTRANS_SERVER_KEY': 'SB-Mid-server-TestKey123', 'INVEYS_LICENSE_SECRET': 'test-license-secret-key'}):
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
 
-            # 1. Create order
-            st_ord, res_ord = self.request('/api/payment/create', {'email': 'webhook@inveys.io', 'name': 'Webhook User', 'plan': 'lifetime', 'cycle': 'lifetime'}, headers_csrf)
+            # Register user to own the order
+            _, h_user, res_user = self.request_full('/api/auth/register', {'email': 'webhook@inveys.io', 'password': 'PasswordWh123', 'name': 'Webhook User'}, headers_origin)
+            user_headers = self.session_headers(h_user, res_user)
+
+            # 1. Create order (mock outbound Snap API so test stays offline)
+            with patch.object(s, 'create_midtrans_transaction', return_value={'isLive': False}):
+                st_ord, res_ord = self.request('/api/payment/create', {'email': 'webhook@inveys.io', 'name': 'Webhook User', 'plan': 'lifetime', 'cycle': 'lifetime'}, user_headers)
             self.assertEqual(st_ord, 200)
             order_id = res_ord['orderId']
 
-            # 2. Trigger Midtrans webhook (settlement)
+            # 2. Trigger Midtrans webhook with valid SHA-512 signature (settlement)
+            gross_amount = str(res_ord['amount'])
+            sig_key = hashlib.sha512(f"{order_id}200{gross_amount}SB-Mid-server-TestKey123".encode('utf-8')).hexdigest()
             webhook_payload = {
                 'order_id': order_id,
                 'status_code': '200',
-                'gross_amount': str(res_ord['amount']),
+                'gross_amount': gross_amount,
+                'signature_key': sig_key,
                 'transaction_status': 'settlement',
                 'fraud_status': 'accept',
                 'payment_type': 'qris'
             }
-            st_wh, res_wh = self.request('/api/payment/webhook/midtrans', webhook_payload, headers_csrf)
+            st_wh, res_wh = self.request('/api/payment/webhook/midtrans', webhook_payload, headers_origin)
             self.assertEqual(st_wh, 200)
             self.assertTrue(res_wh['ok'])
 
-            # 3. Check order is paid
-            st_check, res_check = self.request(f'/api/payment/order/{order_id}', headers=headers_csrf)
+            # 3. Check order is paid (authenticated owner)
+            st_check, res_check = self.request(f'/api/payment/order/{order_id}', headers=user_headers)
             self.assertEqual(st_check, 200)
             self.assertEqual(res_check['order']['status'], 'paid')
             self.assertEqual(res_check['order']['plan'], 'lifetime')
@@ -555,31 +605,29 @@ class Backend(unittest.TestCase):
 
     def test_admin_user_roles_and_control_panel_api(self):
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'admin_test.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
 
             # 1. First user registers -> automatically becomes Admin with ULTRA plan
-            st_adm, res_adm = self.request('/api/auth/register', {
+            st_adm, h_adm, res_adm = self.request_full('/api/auth/register', {
                 'email': 'admin@inveys.io',
                 'password': 'password123',
                 'name': 'Main Administrator'
-            }, headers_csrf)
+            }, headers_origin)
             self.assertEqual(st_adm, 200)
             self.assertEqual(res_adm['user']['role'], 'admin')
             self.assertEqual(res_adm['user']['plan'], 'ultra')
-            admin_token = res_adm['token']
-            admin_headers = {**headers_csrf, 'Authorization': f'Bearer {admin_token}'}
+            admin_headers = self.session_headers(h_adm, res_adm)
 
             # 2. Second user registers -> regular user with PLUS plan
-            st_usr, res_usr = self.request('/api/auth/register', {
+            st_usr, h_usr, res_usr = self.request_full('/api/auth/register', {
                 'email': 'regular@inveys.io',
                 'password': 'password123',
                 'name': 'Regular Member'
-            }, headers_csrf)
+            }, headers_origin)
             self.assertEqual(st_usr, 200)
             self.assertEqual(res_usr['user']['role'], 'user')
             self.assertEqual(res_usr['user']['plan'], 'plus')
-            user_token = res_usr['token']
-            user_headers = {**headers_csrf, 'Authorization': f'Bearer {user_token}'}
+            user_headers = self.session_headers(h_usr, res_usr)
 
             # 3. Regular user tries to access /api/admin/overview -> 403 Forbidden
             st_denied, _ = self.request('/api/admin/overview', headers=user_headers)
@@ -626,7 +674,7 @@ class Backend(unittest.TestCase):
             st_sus, res_sus = self.request('/api/auth/login', {
                 'email': 'client@domain.com',
                 'password': 'password456'
-            }, headers_csrf)
+            }, headers_origin)
             self.assertEqual(st_sus, 403)
             self.assertIn('ditangguhkan', res_sus['error'])
 
@@ -647,7 +695,7 @@ class Backend(unittest.TestCase):
             st_relog, res_relog = self.request('/api/auth/login', {
                 'email': 'client@domain.com',
                 'password': 'brandNewPassword999'
-            }, headers_csrf)
+            }, headers_origin)
             self.assertEqual(st_relog, 200)
             self.assertEqual(res_relog['user']['status'], 'active')
 
@@ -662,26 +710,26 @@ class Backend(unittest.TestCase):
 
     def test_admin_database_export_and_disaster_recovery(self):
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'inbox.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
             # 1. Unauthenticated gets 401
             st_unauth, _, _ = self.raw_request('/api/admin/database/export')
             self.assertEqual(st_unauth, 401)
 
             # 2. Register first user (Admin)
-            _, res_adm = self.request('/api/auth/register', {
+            _, h_adm, res_adm = self.request_full('/api/auth/register', {
                 'email': 'admin_dr@inveys.io',
                 'password': 'password123',
                 'name': 'Disaster Recovery Admin'
-            }, headers_csrf)
-            adm_headers = {'Authorization': 'Bearer ' + res_adm['token'], 'Origin': 'http://127.0.0.1:3000'}
+            }, headers_origin)
+            adm_headers = self.session_headers(h_adm, res_adm)
 
             # 3. Register second user (standard user)
-            _, res_user = self.request('/api/auth/register', {
+            _, h_usr, res_user = self.request_full('/api/auth/register', {
                 'email': 'regular_dr@inveys.io',
                 'password': 'password123',
                 'name': 'Regular User'
-            }, headers_csrf)
-            usr_headers = {'Authorization': 'Bearer ' + res_user['token'], 'Origin': 'http://127.0.0.1:3000'}
+            }, headers_origin)
+            usr_headers = self.session_headers(h_usr, res_user)
 
             # 4. Standard user gets 403 Forbidden
             st_forbid, _, _ = self.raw_request('/api/admin/database/export', usr_headers)
@@ -697,27 +745,27 @@ class Backend(unittest.TestCase):
 
     def test_admin_audit_logs_and_security_trail(self):
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'inbox.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
             # Register Admin
-            _, res_adm = self.request('/api/auth/register', {
+            _, h_adm, res_adm = self.request_full('/api/auth/register', {
                 'email': 'security_officer@inveys.io',
                 'password': 'secPassword123'
-            }, headers_csrf)
-            adm_headers = {'Authorization': 'Bearer ' + res_adm['token'], 'Origin': 'http://127.0.0.1:3000'}
+            }, headers_origin)
+            adm_headers = self.session_headers(h_adm, res_adm)
 
             # Register User
-            _, res_usr = self.request('/api/auth/register', {
+            _, h_usr, res_usr = self.request_full('/api/auth/register', {
                 'email': 'standard_user@inveys.io',
                 'password': 'secPassword123'
-            }, headers_csrf)
-            usr_headers = {'Authorization': 'Bearer ' + res_usr['token'], 'Origin': 'http://127.0.0.1:3000'}
+            }, headers_origin)
+            usr_headers = self.session_headers(h_usr, res_usr)
 
             # Regular user cannot access audit logs
             st_forbid, _ = self.request('/api/admin/audit-logs', headers=usr_headers)
             self.assertEqual(st_forbid, 403)
 
             # Trigger a failed login
-            self.request('/api/auth/login', {'email': 'unknown@inveys.io', 'password': 'wrong'}, headers_csrf)
+            self.request('/api/auth/login', {'email': 'unknown@inveys.io', 'password': 'wrong'}, headers_origin)
 
             # Admin reads audit logs
             st_logs, res_logs = self.request('/api/admin/audit-logs', headers=adm_headers)
@@ -729,24 +777,24 @@ class Backend(unittest.TestCase):
 
     def test_system_broadcast_announcement(self):
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'inbox.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
             # Initial public broadcast is inactive
             st_init, res_init = self.request('/api/broadcast')
             self.assertEqual(st_init, 200)
             self.assertFalse(res_init['broadcast']['active'])
 
             # Register Admin & User
-            _, res_adm = self.request('/api/auth/register', {
+            _, h_adm, res_adm = self.request_full('/api/auth/register', {
                 'email': 'sysadmin@inveys.io',
                 'password': 'passAdmin123'
-            }, headers_csrf)
-            adm_headers = {'Authorization': 'Bearer ' + res_adm['token'], 'Origin': 'http://127.0.0.1:3000'}
+            }, headers_origin)
+            adm_headers = self.session_headers(h_adm, res_adm)
 
-            _, res_usr = self.request('/api/auth/register', {
+            _, h_usr, res_usr = self.request_full('/api/auth/register', {
                 'email': 'member@inveys.io',
                 'password': 'passAdmin123'
-            }, headers_csrf)
-            usr_headers = {'Authorization': 'Bearer ' + res_usr['token'], 'Origin': 'http://127.0.0.1:3000'}
+            }, headers_origin)
+            usr_headers = self.session_headers(h_usr, res_usr)
 
             # User cannot post broadcast
             st_forbid, _ = self.request('/api/admin/broadcast', {
@@ -775,24 +823,24 @@ class Backend(unittest.TestCase):
 
     def test_admin_telegram_notifications(self):
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'inbox.sqlite3'):
-            headers_csrf = {'Origin': 'http://127.0.0.1:3000', 'X-INVEYS-CSRF': s.TOKEN}
+            headers_origin = {'Origin': 'http://127.0.0.1:3000'}
             
             # 1. Unauthenticated test call -> 401
             st_unauth, _ = self.request('/api/admin/telegram/test', {})
             self.assertEqual(st_unauth, 401)
 
             # Register Admin & User
-            _, res_adm = self.request('/api/auth/register', {
+            _, h_adm, res_adm = self.request_full('/api/auth/register', {
                 'email': 'admin_tg@inveys.io',
                 'password': 'passAdmin123'
-            }, headers_csrf)
-            adm_headers = {'Authorization': 'Bearer ' + res_adm['token'], 'Origin': 'http://127.0.0.1:3000'}
+            }, headers_origin)
+            adm_headers = self.session_headers(h_adm, res_adm)
 
-            _, res_usr = self.request('/api/auth/register', {
+            _, h_usr, res_usr = self.request_full('/api/auth/register', {
                 'email': 'user_tg@inveys.io',
                 'password': 'passAdmin123'
-            }, headers_csrf)
-            usr_headers = {'Authorization': 'Bearer ' + res_usr['token'], 'Origin': 'http://127.0.0.1:3000'}
+            }, headers_origin)
+            usr_headers = self.session_headers(h_usr, res_usr)
 
             # 2. Regular user cannot trigger telegram test -> 403
             st_forbid, _ = self.request('/api/admin/telegram/test', {}, usr_headers)
@@ -837,90 +885,97 @@ class Backend(unittest.TestCase):
 
     def test_email_otp_generation_verification_and_security_lockout(self):
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'otp_test.sqlite3'):
-            headers_csrf = {'Host': '127.0.0.1:3000', 'Origin': 'http://127.0.0.1:3000'}
+            headers_origin = {'Host': '127.0.0.1:3000', 'Origin': 'http://127.0.0.1:3000'}
             # Register user
             st_reg, res_reg = self.request('/api/auth/register', {
                 'email': 'support@inveys.io',
                 'password': 'PasswordSecure123',
                 'name': 'inveys'
-            }, headers_csrf)
+            }, headers_origin)
             self.assertEqual(st_reg, 200)
 
             # Invalid email format -> 400
-            st_bad, res_bad = self.request('/api/auth/send-otp', {'email': 'invalid-email'}, headers_csrf)
+            st_bad, res_bad = self.request('/api/auth/send-otp', {'email': 'invalid-email'}, headers_origin)
             self.assertEqual(st_bad, 400)
 
             # Non-existent email -> 404
-            st_notfound, res_notfound = self.request('/api/auth/send-otp', {'email': 'unknown@inveys.io'}, headers_csrf)
+            st_notfound, res_notfound = self.request('/api/auth/send-otp', {'email': 'unknown@inveys.io'}, headers_origin)
             self.assertEqual(st_notfound, 404)
 
             # Valid send-otp
             with patch.object(s, 'send_email_otp', return_value=(True, 'Sent')) as mock_send:
-                st_send, res_send = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_csrf)
+                st_send, res_send = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_origin)
                 self.assertEqual(st_send, 200)
                 self.assertTrue(res_send['ok'])
                 mock_send.assert_called_once()
                 otp_code = mock_send.call_args[0][1]
                 self.assertEqual(len(otp_code), 6)
 
+            # Stored OTP in SQLite MUST be hashed, never plaintext
+            with s.db() as c:
+                stored_otp = c.execute('SELECT otp_code FROM email_otps ORDER BY id DESC LIMIT 1').fetchone()[0]
+                self.assertTrue(stored_otp.startswith('hmac:'))
+                self.assertNotIn(otp_code, stored_otp)
+
             # Rate-limiting: sending again within 60s -> 429
-            st_rate, res_rate = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_csrf)
+            st_rate, res_rate = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_origin)
             self.assertEqual(st_rate, 429)
 
             # Verify with wrong OTP -> 400
-            st_wrong, res_wrong = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': '000000'}, headers_csrf)
+            st_wrong, res_wrong = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': '000000'}, headers_origin)
             self.assertEqual(st_wrong, 400)
             self.assertIn('tidak sesuai', res_wrong['error'])
 
-            # Verify with correct OTP -> 200
-            st_ok, res_ok = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_csrf)
+            # Verify with correct OTP -> 200 (cookie set, no raw token in JSON)
+            st_ok, h_ok, res_ok = self.request_full('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_origin)
             self.assertEqual(st_ok, 200)
             self.assertTrue(res_ok['ok'])
             self.assertEqual(res_ok['user']['email'], 'support@inveys.io')
             self.assertEqual(res_ok['user']['role'], 'admin')
-            self.assertTrue(res_ok['token'])
+            self.assertNotIn('token', res_ok)
+            self.assertIn('inveys_session=', h_ok.get('Set-Cookie', ''))
+            self.assertTrue(res_ok.get('csrf'))
 
             # Re-verify already used OTP -> 400
-            st_used, res_used = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_csrf)
+            st_used, res_used = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_origin)
             self.assertEqual(st_used, 400)
 
     def test_support_inveys_admin_auto_provisioning_and_otp_access(self):
-        # 1. Helper function is_admin_email validation
+        # 1. Helper function is_admin_email validation (exact ADMIN_EMAILS only, NO admin@* prefix)
         self.assertTrue(s.is_admin_email('support@inveys.io'))
         self.assertTrue(s.is_admin_email('admin@inveys.io'))
-        self.assertTrue(s.is_admin_email('admin@customcorp.com'))
+        self.assertFalse(s.is_admin_email('admin@customcorp.com'))
         self.assertFalse(s.is_admin_email('user@inveys.io'))
         self.assertFalse(s.is_admin_email(''))
         self.assertFalse(s.is_admin_email(None))
 
         with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'admin_prov.sqlite3'):
-            headers_csrf = {'Host': '127.0.0.1:3000', 'Origin': 'http://127.0.0.1:3000'}
+            headers_origin = {'Host': '127.0.0.1:3000', 'Origin': 'http://127.0.0.1:3000'}
 
             # 2. Existing regular user exists in database first
             st_u1, res_u1 = self.request('/api/auth/register', {
                 'email': 'first_user@domain.com',
                 'password': 'FirstPassword123!',
                 'name': 'First User'
-            }, headers_csrf)
+            }, headers_origin)
             self.assertEqual(st_u1, 200)
 
             # 3. Request OTP for support@inveys.io even when not yet registered -> SUCCEEDS (not 404)
             with patch.object(s, 'send_email_otp', return_value=(True, 'Sent')) as mock_send:
-                st_otp, res_otp = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_csrf)
+                st_otp, res_otp = self.request('/api/auth/send-otp', {'email': 'support@inveys.io'}, headers_origin)
                 self.assertEqual(st_otp, 200)
                 self.assertTrue(res_otp['ok'])
                 mock_send.assert_called_once()
                 otp_code = mock_send.call_args[0][1]
 
             # 4. Verify OTP for support@inveys.io -> user created as admin with ULTRA plan
-            st_ver, res_ver = self.request('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_csrf)
+            st_ver, h_ver, res_ver = self.request_full('/api/auth/verify-otp', {'email': 'support@inveys.io', 'otp': otp_code}, headers_origin)
             self.assertEqual(st_ver, 200)
             self.assertEqual(res_ver['user']['email'], 'support@inveys.io')
             self.assertEqual(res_ver['user']['role'], 'admin')
             self.assertEqual(res_ver['user']['plan'], 'ultra')
-            support_token = res_ver['token']
             support_id = res_ver['user']['id']
-            adm_headers = {**headers_csrf, 'Authorization': f'Bearer {support_token}'}
+            adm_headers = self.session_headers(h_ver, res_ver)
 
             # 5. support@inveys.io can access /api/admin/overview
             st_ov, res_ov = self.request('/api/admin/overview', headers=adm_headers)
@@ -951,12 +1006,12 @@ class Backend(unittest.TestCase):
             self.assertEqual(st_cr_adm, 200)
 
             # Login as secondary admin
-            st_log2, res_log2 = self.request('/api/auth/login', {
+            st_log2, h_log2, res_log2 = self.request_full('/api/auth/login', {
                 'email': 'secondary_admin@inveys.io',
                 'password': 'AdminPassword2!'
-            }, headers_csrf)
+            }, headers_origin)
             self.assertEqual(st_log2, 200)
-            adm2_headers = {**headers_csrf, 'Authorization': f'Bearer {res_log2["token"]}'}
+            adm2_headers = self.session_headers(h_log2, res_log2)
 
             # Secondary admin attempting to delete protected support@inveys.io is blocked
             st_del, res_del = self.request('/api/admin/users/delete', {'id': support_id}, adm2_headers)
@@ -968,5 +1023,192 @@ class Backend(unittest.TestCase):
             with s.db() as c:
                 row = c.execute('SELECT role, plan, status FROM users WHERE email = "support@inveys.io"').fetchone()
                 self.assertEqual(row, ('admin', 'ultra', 'active'))
+
+    def test_security_critical1_setup_lockout_and_admin_prefix(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'crit1.sqlite3'):
+            origin = {'Origin': 'http://127.0.0.1:3000'}
+            # Initialize server with first owner
+            st1, _, _ = self.request_full('/api/auth/setup', {'email': 'owner@inveys.io', 'password': 'Password123!'}, origin)
+            self.assertEqual(st1, 200)
+
+            # Subsequent /api/auth/setup (both email and master branches) MUST return 403
+            st2, _ = self.request('/api/auth/setup', {'email': 'attacker@evil.com', 'password': 'Password123!'}, origin)
+            self.assertEqual(st2, 403)
+            st3, _ = self.request('/api/auth/setup', {'password': 'Password123!'}, origin)
+            self.assertEqual(st3, 403)
+
+            # Registering admin@evil.com MUST NOT grant admin or ultra
+            st4, _, res4 = self.request_full('/api/auth/register', {'email': 'admin@evil.com', 'password': 'Password123!', 'plan': 'ultra'}, origin)
+            self.assertEqual(st4, 200)
+            self.assertEqual(res4['user']['role'], 'user')
+            self.assertEqual(res4['user']['plan'], 'plus')
+
+            # Public registration of explicit admin email MUST be blocked once initialized
+            st5, _ = self.request('/api/auth/register', {'email': 'admin@inveys.io', 'password': 'Password123!'}, origin)
+            self.assertEqual(st5, 403)
+
+    def test_security_critical3_admin_only_routes_env_injection_and_router_key(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'crit3.sqlite3'):
+            origin = {'Origin': 'http://127.0.0.1:3000'}
+            # 1. First user (admin), second user (standard)
+            _, h_adm, res_adm = self.request_full('/api/auth/register', {'email': 'adm@inveys.io', 'password': 'Password123!'}, origin)
+            _, h_usr, res_usr = self.request_full('/api/auth/register', {'email': 'usr@inveys.io', 'password': 'Password123!'}, origin)
+            usr_headers = self.session_headers(h_usr, res_usr)
+
+            # Standard user blocked with 403 on all sensitive server endpoints
+            self.assertEqual(self.request('/api/keys', headers=usr_headers)[0], 403)
+            self.assertEqual(self.request('/api/keys?reveal=1', headers=usr_headers)[0], 403)
+            self.assertEqual(self.request('/api/keys', {'provider': 'gemini', 'action': 'save', 'apiKey': 'x'}, usr_headers)[0], 403)
+            self.assertEqual(self.request('/api/vps/update', {}, usr_headers)[0], 403)
+            self.assertEqual(self.request('/api/telegram/inbox', {}, usr_headers)[0], 403)
+            self.assertEqual(self.request('/api/telegram/ack', {'id': 1}, usr_headers)[0], 403)
+            self.assertEqual(self.request('/api/telegram/send', {'text': 'hi', 'consent': True}, usr_headers)[0], 403)
+
+            # .env newline injection rejected
+            with self.assertRaises(ValueError):
+                s.save_server_setting('GEMINI_MODEL', 'flash\nADMIN_EMAILS=evil@example.com')
+            with self.assertRaises(ValueError):
+                s.save_server_setting('GEMINI_MODEL', 'flash\rADMIN_EMAILS=evil@example.com')
+
+            # test_api_key_connection('9router', ...) refuses sending stored key to a different caller baseUrl
+            with patch.dict(os.environ, {'NINEROUTER_API_KEY': 'stored-secret', 'NINEROUTER_BASE_URL': 'http://127.0.0.1:20128/v1'}), \
+                 patch('socket.getaddrinfo', return_value=[(2, 1, 6, '', ('93.184.216.34', 443))]):
+                res = s.test_api_key_connection('9router', {'baseUrl': 'https://attacker.example.com/v1'})
+                self.assertFalse(res['ok'])
+                self.assertIn('eksplisit', res['error'].lower())
+
+    def test_security_critical4_billing_webhooks_license_and_order_idor(self):
+        import hashlib, hmac
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'crit4.sqlite3'):
+            origin = {'Origin': 'http://127.0.0.1:3000'}
+            _, h_adm, res_adm = self.request_full('/api/auth/register', {'email': 'adm4@inveys.io', 'password': 'Password123!'}, origin)
+            _, h_u1, res_u1 = self.request_full('/api/auth/register', {'email': 'u1@inveys.io', 'password': 'Password123!', 'plan': 'ultra'}, origin)
+            _, h_u2, res_u2 = self.request_full('/api/auth/register', {'email': 'u2@inveys.io', 'password': 'Password123!'}, origin)
+            adm_headers = self.session_headers(h_adm, res_adm)
+            u1_headers = self.session_headers(h_u1, res_u1)
+            u2_headers = self.session_headers(h_u2, res_u2)
+
+            # Self-selected plan on register forced to plus
+            self.assertEqual(res_u1['user']['plan'], 'plus')
+
+            # Create order for u1
+            st_o, res_o = self.request('/api/payment/create', {'plan': 'pro', 'cycle': 'monthly'}, u1_headers)
+            self.assertEqual(st_o, 200)
+            oid = res_o['orderId']
+
+            # Order IDOR: unauthenticated -> 401, other user -> 403, owner -> 200
+            self.assertEqual(self.request(f'/api/payment/order/{oid}')[0], 401)
+            self.assertEqual(self.request(f'/api/payment/order/{oid}', headers=u2_headers)[0], 403)
+            self.assertEqual(self.request(f'/api/payment/order/{oid}', headers=u1_headers)[0], 200)
+
+            # /api/payment/simulate disabled by default -> 403 even for admin
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop('INVEYS_ENABLE_PAYMENT_SIMULATOR', None)
+                self.assertEqual(self.request('/api/payment/simulate', {'order_id': oid}, adm_headers)[0], 403)
+            # Even when enabled, non-admin gets 403
+            with patch.dict(os.environ, {'INVEYS_ENABLE_PAYMENT_SIMULATOR': '1'}):
+                self.assertEqual(self.request('/api/payment/simulate', {'order_id': oid}, u1_headers)[0], 403)
+
+            # Webhooks fail closed (503) when secrets unset
+            with patch.dict(os.environ, {'MIDTRANS_SERVER_KEY': '', 'MAYAR_WEBHOOK_SECRET': ''}):
+                self.assertEqual(self.request('/api/payment/webhook/midtrans', {'order_id': oid, 'status_code': '200', 'gross_amount': '99000', 'transaction_status': 'settlement'}, origin)[0], 503)
+                self.assertEqual(self.request('/api/payment/webhook/mayar', {'event': 'payment.received', 'data': {'order_id': oid}}, origin)[0], 503)
+
+            # Midtrans rejects wrong signature (403) and amount mismatch (400)
+            with patch.dict(os.environ, {'MIDTRANS_SERVER_KEY': 'mid-sec', 'INVEYS_LICENSE_SECRET': 'lic-sec'}):
+                self.assertEqual(self.request('/api/payment/webhook/midtrans', {'order_id': oid, 'status_code': '200', 'gross_amount': '99000', 'signature_key': 'bad', 'transaction_status': 'settlement'}, origin)[0], 403)
+                bad_amt_sig = hashlib.sha512(f"{oid}2001mid-sec".encode()).hexdigest()
+                self.assertEqual(self.request('/api/payment/webhook/midtrans', {'order_id': oid, 'status_code': '200', 'gross_amount': '1', 'signature_key': bad_amt_sig, 'transaction_status': 'settlement'}, origin)[0], 400)
+
+            # Mayar rejects bad signature (403) and accepts valid HMAC-SHA256 signature
+            with patch.dict(os.environ, {'MAYAR_WEBHOOK_SECRET': 'mayar-sec', 'INVEYS_LICENSE_SECRET': 'lic-sec'}):
+                mayar_body = {'event': 'payment.received', 'data': {'order_id': oid, 'amount': res_o['amount']}}
+                self.assertEqual(self.request('/api/payment/webhook/mayar', mayar_body, {**origin, 'X-Callback-Signature': 'deadbeef'})[0], 403)
+                raw = json.dumps(mayar_body).encode()
+                good_sig = hmac.new(b'mayar-sec', raw, hashlib.sha256).hexdigest()
+                self.assertEqual(self.request('/api/payment/webhook/mayar', mayar_body, {**origin, 'X-Callback-Signature': good_sig})[0], 200)
+
+            # verify_license_key fails without secret, rejects non-allowlisted plans (XSS), and rejects forged sig
+            with patch.dict(os.environ, {'INVEYS_LICENSE_SECRET': ''}):
+                ok, _ = s.verify_license_key('IV-ULTRA-AAAAAA-LIFETIME-12345678', 'u1@inveys.io')
+                self.assertFalse(ok)
+            with patch.dict(os.environ, {'INVEYS_LICENSE_SECRET': 'lic-sec'}):
+                ok_xss, _ = s.verify_license_key('IV-"onclick="alert(1)-AAAAAA-LIFETIME-12345678', 'u1@inveys.io')
+                self.assertFalse(ok_xss)
+
+    def test_security_high6_7_8_9_and_medium10(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s, 'DB', Path(d) / 'sec_misc.sqlite3'):
+            origin = {'Origin': 'http://127.0.0.1:3000'}
+
+            # High #6: HTML/quote chars in email rejected
+            self.assertEqual(self.request('/api/auth/register', {'email': '"<script>@evil.com', 'password': 'Password123!'}, origin)[0], 400)
+
+            # High #7: crypto _is_safe_proxy blocks RFC1918, 0.0.0.0, host.docker.internal, and private DNS
+            for bad_proxy in (
+                'http://10.0.0.1:8080',
+                'http://172.16.0.1:8080',
+                'http://192.168.1.1:8080',
+                'http://0.0.0.0:8080',
+                'http://host.docker.internal:8080',
+            ):
+                self.assertFalse(s.inveys_crypto._is_safe_proxy(bad_proxy))
+            with patch('socket.getaddrinfo', return_value=[(2, 1, 6, '', ('169.254.169.254', 8080))]):
+                self.assertFalse(s.inveys_crypto._is_safe_proxy('http://evil-rebind.example:8080'))
+            with patch('socket.getaddrinfo', return_value=[(2, 1, 6, '', ('93.184.216.34', 8080))]):
+                self.assertTrue(s.inveys_crypto._is_safe_proxy('http://public-proxy.example:8080'))
+
+            # High #8: Secure cookie when X-Forwarded-Proto: https, per-session CSRF enforced on POST, tight Origin
+            st_r, h_r, res_r = self.request_full(
+                '/api/auth/register',
+                {'email': 'csrfuser@inveys.io', 'password': 'Password123!'},
+                {**origin, 'X-Forwarded-Proto': 'https'}
+            )
+            self.assertEqual(st_r, 200)
+            self.assertIn('Secure', h_r.get('Set-Cookie', ''))
+            self.assertIn('HttpOnly', h_r.get('Set-Cookie', ''))
+            self.assertNotIn('token', res_r)
+
+            cookie_only = {'Origin': 'http://127.0.0.1:3000', 'Cookie': h_r.get('Set-Cookie', '').split(';', 1)[0]}
+            # Missing CSRF -> 403, static s.TOKEN -> 403, per-session CSRF -> 200
+            self.assertEqual(self.request('/api/workspace', {'workspace': {'id': 'w1'}}, cookie_only)[0], 403)
+            self.assertEqual(self.request('/api/workspace', {'workspace': {'id': 'w1'}}, {**cookie_only, 'X-INVEYS-CSRF': s.TOKEN})[0], 403)
+            self.assertEqual(self.request('/api/workspace', {'workspace': {'id': 'w1'}}, {**cookie_only, 'X-INVEYS-CSRF': res_r['csrf']})[0], 200)
+
+            # Unauthenticated /api/status must NOT leak CSRF token
+            st_st, res_st = self.request('/api/status', headers=origin)
+            self.assertEqual(st_st, 200)
+            self.assertEqual(res_st['csrf'], '')
+
+            # Tight Origin rejects http://inveys.io, arbitrary localhost port, and Origin: null
+            self.assertEqual(self.request('/api/status', headers={'Host': 'inveys.io', 'Origin': 'http://inveys.io'})[0], 403)
+            self.assertEqual(self.request('/api/status', headers={'Host': '127.0.0.1:3000', 'Origin': 'http://localhost:9999'})[0], 403)
+            self.assertEqual(self.request('/api/status', headers={'Host': '127.0.0.1:3000', 'Origin': 'null'})[0], 403)
+
+            # High #9: Trusted proxy rightmost non-trusted XFF extraction + per-account rate limiting
+            dummy = object.__new__(s.Handler)
+            dummy.client_address = ('127.0.0.1', 54321)
+            dummy.headers = {'X-Forwarded-For': '1.2.3.4, 203.0.113.55'}
+            self.assertEqual(dummy.get_client_ip(), '203.0.113.55')
+            dummy.client_address = ('198.51.100.9', 54321)
+            self.assertEqual(dummy.get_client_ip(), '198.51.100.9')
+            with patch.dict(os.environ, {'TRUSTED_PROXIES': '127.0.0.1/32,172.16.0.0/12'}):
+                dummy.client_address = ('172.18.0.2', 54321)
+                dummy.headers = {'X-Forwarded-For': '9.9.9.9, 198.51.100.42'}
+                self.assertEqual(dummy.get_client_ip(), '198.51.100.42')
+
+            # Per-account lockout across rotating IPs
+            acct = 'victim-rate@inveys.io'
+            s.clear_failed_login('10.1.1.1', acct)
+            for idx in range(s.MAX_FAILED_ATTEMPTS):
+                s.record_failed_login(f'198.51.100.{idx + 10}', acct)
+            self.assertFalse(s.check_rate_limit('203.0.113.99', acct))
+            s.clear_failed_login('203.0.113.99', acct)
+
+            # Medium #10: OTP fails closed (503) when SMTP unconfigured & never notifies Telegram
+            with patch.dict(os.environ, {'SMTP_HOST': '', 'INVEYS_DEV_LOG_OTP': '0'}), \
+                 patch.object(s, 'notify_admin_telegram') as mock_tg:
+                st_otp, _ = self.request('/api/auth/send-otp', {'email': 'csrfuser@inveys.io'}, origin)
+                self.assertEqual(st_otp, 503)
+                mock_tg.assert_not_called()
 
 if __name__=='__main__':unittest.main()

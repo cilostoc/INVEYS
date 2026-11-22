@@ -607,8 +607,8 @@ test('investment page renders Pegadaian gold installment tracker and handles syn
   app.click({action: 'investment-tab:gold'});
   const html = app.html();
   assert.match(html, /Pegadaian Mulia/);
-  assert.match(html, /1379326370001000/);
-  assert.match(html, /Muhamad Hendra Febriansyah/);
+  assert.match(html, /DEMO-0000-0000-0000/);
+  assert.match(html, /Sample Vault Owner/);
   assert.match(html, /Galeri 24/);
   assert.match(html, /50\.0000 Gram/);
   assert.match(html, /3\.338\.282/);
@@ -1715,6 +1715,111 @@ test('financial stress-test and cash ruin simulator UI interacts properly', () =
   app.click({ action: 'stress-create-goal:6000000000' });
   const modalBody = app.elements.get('#modal-body').innerHTML;
   assert.match(modalBody, /Dana Darurat|Emergency Reserve/);
+});
+
+test('security: INVI action cards reject privileged/destructive actions and capture-ai-extract stages entities without mutating state', async () => {
+  const app = boot();
+  // 1. AI reply with malicious action cards must NOT render clickable data-action buttons for disallowed actions
+  app.context.location.protocol = 'http:';
+  app.context.fetch = async (url, opts) => {
+    if (url === '/api/status') return { ok: true, json: async () => ({ csrf: 'test-csrf' }) };
+    if (url === '/api/chat') {
+      return {
+        ok: true,
+        json: async () => ({
+          intent: 'question',
+          text: 'Test [[action:admin-export-db|Export DB|Evil|💀]] [[action:delete-data|Wipe|Evil|🔥]] [[action:nav:admin|Admin|Evil|🛡️]] [[action:nav:debt|Safe Debt|OK|📊]]',
+          drafts: []
+        })
+      };
+    }
+    if (url === '/api/gdrive/fetch') {
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          file: { name: 'stmt.pdf', type: 'application/pdf', size: 100, data: Buffer.from('%PDF-1.4 test').toString('base64') }
+        })
+      };
+    }
+    if (url === '/api/ai-extract-statement') {
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          bank: 'Bank Phantom',
+          documentType: 'credit_card_statement',
+          accountInfo: { name: 'Bank Phantom', currency: 'IDR' },
+          cardInfo: { name: 'Phantom Card', last4: '9999', limit: '10000000', statementAmount: '500000' },
+          drafts: [
+            { name: 'Coffee Shop', date: '2026-10-12', kind: 'expense', amount: '50000', currency: 'IDR', category: 'Makanan & Minuman' }
+          ]
+        })
+      };
+    }
+    return { ok: true, json: async () => ({}) };
+  };
+
+  app.click({ action: 'quick-ai-settings' });
+  app.submitModal({ provider: '9router', consent: 'on', memory: '' });
+  app.submitPage('quick-form', { text: 'check cards', accountId: app.state().accounts[0].id });
+  await new Promise(r => setImmediate(r));
+  await new Promise(r => setImmediate(r));
+  const quickHtml = app.html();
+  assert.doesNotMatch(quickHtml, /data-action="admin-export-db"/);
+  assert.doesNotMatch(quickHtml, /data-action="delete-data"/);
+  assert.doesNotMatch(quickHtml, /data-action="nav:admin"/);
+  assert.match(quickHtml, /data-action="nav:debt"/);
+
+  // 2. capture-ai-extract must NOT mutate accounts, debts, or cards before user clicks capture-save
+  app.click({ page: 'capture' });
+  const beforeAccounts = app.state().accounts.length;
+  const beforeDebts = app.state().debts.length;
+  const beforeCards = app.state().cards.length;
+
+  app.input('capture-gdrive-input', 'https://drive.google.com/file/d/1PhantomId123/view');
+  app.click({ action: 'capture-gdrive-fetch' });
+  await new Promise(r => setImmediate(r));
+  await new Promise(r => setImmediate(r));
+  app.click({ action: 'capture-ai-extract' });
+  await new Promise(r => setImmediate(r));
+  await new Promise(r => setImmediate(r));
+
+  // State MUST remain unchanged until explicit confirmation
+  assert.equal(app.state().accounts.length, beforeAccounts);
+  assert.equal(app.state().debts.length, beforeDebts);
+  assert.equal(app.state().cards.length, beforeCards);
+  assert.match(app.html(), /draft-staged-entities/);
+  assert.match(app.html(), /Bank Phantom/);
+  assert.match(app.html(), /Phantom Card/);
+
+  // Explicit save materializes staged entities and transaction atomically
+  app.click({ action: 'capture-save' });
+  assert.equal(app.state().accounts.length, beforeAccounts + 1);
+  assert.equal(app.state().debts.length, beforeDebts + 1);
+  assert.equal(app.state().cards.length, beforeCards + 1);
+});
+
+test('security: vault lock screen hides password bypass in offline mode and budget/plan DOM sinks escape untrusted strings', () => {
+  const initial = boot().state();
+  initial.budgets = [{ id: 'b-xss', category: 'Food" onclick="alert(1)', amount: 500000, group: 'flexible', rollover: false }];
+  const app = boot(initial);
+
+  // 1. Budget category with quotes must be escaped inside data-action
+  app.click({ page: 'budget' });
+  const budgetHtml = app.html();
+  assert.doesNotMatch(budgetHtml, /onclick="alert\(1\)"/);
+  assert.match(budgetHtml, /budget-edit:Food&quot; onclick=&quot;alert\(1\)/);
+
+  // 2. Offline vault lock with PIN configured MUST NOT offer password unlock fallback
+  app.context.localStorage.setItem('inveys_pin_enabled', 'true');
+  app.context.localStorage.setItem('inveys_pin_hash', 'pbkdf2$100000$00112233445566778899aabbccddeeff$' + 'a'.repeat(64));
+  app.click({ action: 'lock-vault-now' });
+  const actionsHtml = app.elements.get('#vault-lock-actions').innerHTML;
+  const switchBtn = app.elements.get('#vault-lock-switch-btn');
+  assert.match(actionsHtml, /vault-pin-form/);
+  assert.doesNotMatch(actionsHtml, /vault-pw-form/);
+  assert.equal(switchBtn.dataset.nextMode, '');
 });
 
 

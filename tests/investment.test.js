@@ -112,8 +112,8 @@ test('portfolio target allocation rebalancer computes drift, recommendations and
 
 test('Pegadaian gold installment model computes metrics, amortization schedule and CAGR scenarios accurately',()=>{
   const c = INV.defaultGoldContract;
-  assert.equal(c.contractNo, '1379326370001000');
-  assert.equal(c.borrowerName, 'Muhamad Hendra Febriansyah');
+  assert.equal(c.contractNo, 'DEMO-0000-0000-0000');
+  assert.equal(c.borrowerName, 'Sample Vault Owner');
   assert.equal(c.weightGrams, 50.0);
   assert.equal(c.initialPurchasePrice, 126604000);
   assert.equal(c.totalCommitment, 166914120);

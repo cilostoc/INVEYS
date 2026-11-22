@@ -243,14 +243,15 @@
   const link = (text, target) => `<button class="quiet-link" data-page="${target}">${text}${icon('arrow')}</button>`;
   function toast(message){$('#toast').classList.remove('success');$('#toast').textContent=t(message);$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
   let isServerMode=Boolean(typeof globalThis!=='undefined'&&globalThis.__INVEYS_SERVER_MODE__), isAuthenticated=true, serverSyncBusy=false, currentUser=(typeof globalThis!=='undefined'&&globalThis.__INVEYS_CURRENT_USER__)||null;
+  const csrfHeaders=(extra={})=>({...extra,...(typeof service!=='undefined'&&service&&service.csrf?{'X-INVEYS-CSRF':service.csrf}:{})});
   async function syncToServer(){
     if(serverSyncBusy||!isServerMode||!isAuthenticated)return;
     try{
       serverSyncBusy=true;
-      const token=localStorage.getItem('inveys_token');
       const res=await fetch('/api/workspace',{
         method:'POST',
-        headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},
+        credentials:'same-origin',
+        headers:csrfHeaders({'Content-Type':'application/json'}),
         body:JSON.stringify({workspace:state})
       });
       if(res.ok){
@@ -267,7 +268,7 @@
   function save(){
     try {E.validate(state);localStorage.setItem(storageKey,JSON.stringify(state));persistent=true;} catch(error){persistent=false;toast('Changes are in memory only. Export your workspace to keep them.');}
     $('.local-status').innerHTML=`<i></i>${isServerMode?'VPS Synced':(persistent?'Saved on this device':'Not saved · Export to keep changes')}`;
-    const member=state.members[0]||{name:currentUser?.name||'Hendra Febriansyah',initials:'HF'};
+    const member=state.members[0]||{name:currentUser?.name||'Vault Owner',initials:'VO'};
     const activeOwnerName=currentUser?.name||member.name;
     const wsName=(state.name&&state.name!=='Morgan household')?state.name:(activeOwnerName.includes(' ')?`${activeOwnerName.split(' ')[0]}'s Vault`:`${activeOwnerName}'s Vault`);
     const wsNameEl=$('#workspace-name');if(wsNameEl)wsNameEl.textContent=wsName;
@@ -1905,17 +1906,17 @@
               </div>
               <div class="anomaly-card-main">
                 <div class="anomaly-vendor-info">
-                  <span class="anomaly-emoji">${h.emoji || '🎬'}</span>
+                  <span class="anomaly-emoji">${escape(h.emoji || '🎬')}</span>
                   <div>
                     <b>${escape(h.name)}</b>
                     <p>${amount(h.registeredAmount, h.currency)} &rarr; <span class="expense-amount">${amount(h.newAmount, h.currency)}</span> (+${amount(h.diff, h.currency)})</p>
                   </div>
                 </div>
                 <div class="anomaly-actions">
-                  <button type="button" class="btn btn-sm btn-primary" data-action="anomaly-apply-hike:${h.id}:${h.newAmount}" title="${L('Sesuaikan nominal rencana ke harga baru','Update planned amount to new price')}">
+                  <button type="button" class="btn btn-sm btn-primary" data-action="anomaly-apply-hike:${escape(h.id)}:${escape(h.newAmount)}" title="${L('Sesuaikan nominal rencana ke harga baru','Update planned amount to new price')}">
                     ⚡ ${L('Sesuaikan Rencana','Update Plan')}
                   </button>
-                  <button type="button" class="btn btn-sm btn-subtle" data-action="anomaly-dismiss:${h.key}" title="${L('Abaikan notifikasi ini','Dismiss alert')}">
+                  <button type="button" class="btn btn-sm btn-subtle" data-action="anomaly-dismiss:${escape(h.key)}" title="${L('Abaikan notifikasi ini','Dismiss alert')}">
                     ✕ ${L('Abaikan','Dismiss')}
                   </button>
                 </div>
@@ -2129,7 +2130,7 @@
   let captureAccount='',captureKind='receipt',captureProvider='9router',captureFiles=[],captureGdriveUrl='',draftFilter='all';
   try{captureProvider=localStorage.getItem('inveys_capture_provider')||'9router';}catch(e){}
   let quickAccount='',quickText='',quickReply='';
-  let drafts=[],captureText='',captureStatus='',captureBusy=false,service={},telegramItems=[],museAnswer='',fxBusy=false,recorder=null,voiceRecognition=null;
+  let drafts=[],stagedCaptureEntities={accounts:[],cards:[]},captureText='',captureStatus='',captureBusy=false,service={},telegramItems=[],museAnswer='',fxBusy=false,recorder=null,voiceRecognition=null;
 
   function captureAddFiles(fileList){
     if(!fileList||!fileList.length) return;
@@ -2182,10 +2183,8 @@
   state.fx.auto ??= true;
   async function api(path,data){
     if(typeof fetch!=='function'||!/^https?:$/.test(location.protocol||''))throw Error(L('Jalankan server lokal: python3 serve.py','Run the local server: python3 serve.py'));
-    if(!service.csrf){const r=await fetch('/api/status');if(!r.ok)throw Error('Local server unavailable');service=await r.json();}
-    const token=typeof localStorage!=='undefined'?localStorage.getItem('inveys_token'):null;
-    const authHeaders=token?{'Authorization':'Bearer '+token}:{};
-    const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json','X-INVEYS-CSRF':service.csrf,...authHeaders}:authHeaders,body:data?JSON.stringify(data):undefined});const result=await r.json();if(!r.ok)throw Error(result.error||'Service unavailable');return result;
+    if(!service.csrf){const r=await fetch('/api/status',{credentials:'same-origin'});if(!r.ok)throw Error('Local server unavailable');service=await r.json();}
+    const r=await fetch('/api/'+path,{method:data?'POST':'GET',credentials:'same-origin',headers:data?csrfHeaders({'Content-Type':'application/json'}):{},body:data?JSON.stringify(data):undefined});const result=await r.json();if(!r.ok)throw Error(result.error||'Service unavailable');return result;
   }
   async function refreshFX(){if(fxBusy)return;fxBusy=true;state.fx.lastAttempt=new Date().toISOString();try{
     const endpoint=/^https?:$/.test(location.protocol||'')?'/api/fx':'https://api.frankfurter.dev/v2/rates?base=IDR&quotes=USD,EUR,GBP,SGD,AUD,JPY';
@@ -2420,9 +2419,18 @@
       </div>
     ` : '';
 
+    const stagedNoticeHtml = (stagedCaptureEntities.accounts.length || stagedCaptureEntities.cards.length) ? `
+      <div class="draft-staged-entities" style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:10px;padding:12px 16px;margin:12px 0;">
+        <b style="display:block;font-size:13px;margin-bottom:6px;">🛡️ ${L('Entitas baru diusulkan AI (belum disimpan ke brankas sampai Anda klik "Simpan yang dipilih")','AI-proposed new entities (not saved to your vault until you click "Save selected")')}</b>
+        ${stagedCaptureEntities.accounts.length ? `<div style="font-size:12px;color:var(--muted);">${L('Akun baru diusulkan:','Proposed new accounts:')} ${stagedCaptureEntities.accounts.map(acc=>`<b>${escape(acc.name)}</b> (${escape(acc.currency)})`).join(', ')}</div>` : ''}
+        ${stagedCaptureEntities.cards.length ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${L('Kartu kredit diusulkan:','Proposed credit cards:')} ${stagedCaptureEntities.cards.map(c=>`<b>${escape(c.card.name)}</b> (•••• ${escape(c.card.last4)})`).join(', ')}</div>` : ''}
+      </div>
+    ` : '';
+
     return `<section class="panel panel-pad" style="margin-top:24px">
       <h2>${L('Tinjau draft','Review drafts')} · ${drafts.length}</h2>
       <p class="note">${L('Duplikasi potensial harus dikonfirmasi dengan alasan. Statement historis secara default hanya dicatat ke jurnal agar saldo snapshot tidak dihitung dua kali.','Potential duplicates need confirmation with a reason. Historical statements default to journal-only to avoid counting snapshot balances twice.')}</p>
+      ${stagedNoticeHtml}
       ${diffHudHtml}
       ${errorDrafts.length > 0 ? `
         <div class="draft-error-alert" style="background:rgba(239,68,68,0.12);border:1px solid var(--danger,#ef4444);border-radius:10px;padding:12px 16px;margin:12px 0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -2532,7 +2540,7 @@
             </label>
             <label>${L('Akun','Account')}
               <select id="draft-accountId-${i}" data-draft="${i}" data-key="accountId" class="${d.errors?.accountId?'field-invalid':''}">
-                ${state.accounts.map(a=>`<option value="${a.id}" ${a.id===d.accountId?'selected':''}>${escape(a.name)} (${a.currency})</option>`).join('')}
+                ${[...state.accounts,...stagedCaptureEntities.accounts.filter(sa=>!state.accounts.some(ea=>ea.id===sa.id))].map(a=>`<option value="${escape(a.id)}" ${a.id===d.accountId?'selected':''}>${escape(a.name)} (${escape(a.currency)})${stagedCaptureEntities.accounts.some(sa=>sa.id===a.id)?' · '+L('Usulan Baru','Proposed'):''}</option>`).join('')}
               </select>
               ${d.errors?.accountId?`<div class="inline-field-error" id="draft-err-accountId-${i}"><span style="font-size:14px">⚠️</span><span>${escape(d.errors.accountId)}</span></div>`:''}
             </label>
@@ -2612,6 +2620,22 @@
     if(!chosenIndices.length) throw Error(L('Pilih minimal satu draft','Select at least one draft'));
 
     const next = structuredClone(state);
+    // Materialize AI-proposed accounts & credit cards ONLY on explicit user confirmation (commitDrafts)
+    const referencedAccountIds = new Set(chosenIndices.map(idx => drafts[idx].accountId));
+    for (const proposedAcc of stagedCaptureEntities.accounts) {
+      if (referencedAccountIds.has(proposedAcc.id) && !next.accounts.some(acc => acc.id === proposedAcc.id)) {
+        next.accounts.push(structuredClone(proposedAcc));
+      }
+    }
+    for (const proposedCardEntry of stagedCaptureEntities.cards) {
+      const { debt, card } = proposedCardEntry;
+      if (card && !next.cards.some(c => c.id === card.id || c.last4 === card.last4 || c.name.toLowerCase() === card.name.toLowerCase())) {
+        if (debt && !next.debts.some(db => db.id === debt.id)) {
+          next.debts.push(structuredClone(debt));
+        }
+        next.cards.push(structuredClone(card));
+      }
+    }
     let firstError = null;
 
     for(const idx of chosenIndices){
@@ -2697,7 +2721,7 @@
       if(d.kind==='transfer')tx.targetId=d.targetId;
       E.applyTransaction(next,tx);
     }
-    E.validate(next);localStorage.setItem(storageKey,JSON.stringify(next));state=next;const ids=[...new Set(chosen.map(d=>d.inboxId).filter(x=>x!==null&&x!==undefined))].filter(id=>drafts.filter(d=>d.inboxId===id).every(d=>chosen.includes(d)||state.transactions.some(t=>t.sourceKey===d.sourceKey)));drafts=[];captureText='';save();for(const id of ids)api('telegram/ack',{id}).catch(()=>toast(L('Tersimpan lokal; ack Telegram gagal. Baris sumber tetap dilindungi dari impor ulang.','Saved locally; Telegram acknowledgement failed. Source rows remain protected from reimport.')));
+    E.validate(next);localStorage.setItem(storageKey,JSON.stringify(next));state=next;const ids=[...new Set(chosen.map(d=>d.inboxId).filter(x=>x!==null&&x!==undefined))].filter(id=>drafts.filter(d=>d.inboxId===id).every(d=>chosen.includes(d)||state.transactions.some(t=>t.sourceKey===d.sourceKey)));drafts=[];stagedCaptureEntities={accounts:[],cards:[]};captureText='';save();for(const id of ids)api('telegram/ack',{id}).catch(()=>toast(L('Tersimpan lokal; ack Telegram gagal. Baris sumber tetap dilindungi dari impor ulang.','Saved locally; Telegram acknowledgement failed. Source rows remain protected from reimport.')));
     veyPlaySound('love');
     veyCustomMood = 'celebrate';
     veySpeech = L('🎉 Catatan berhasil disimpan ke brankas finansial!', '🎉 Records successfully saved to your financial vault!');
@@ -3089,7 +3113,7 @@
       }
       break;
     }
-    case 'capture-clear':drafts=[];captureText='';captureStatus='';quickReply='';render();break;
+    case 'capture-clear':drafts=[];stagedCaptureEntities={accounts:[],cards:[]};captureText='';captureStatus='';quickReply='';render();break;
     case 'capture-select-clean':{
       drafts.forEach(d=>{d.selected=!R.duplicates(state,d).length;});
       render();
@@ -3276,6 +3300,66 @@
         let detectedSources=[];
         let createdAccountNotices=[];
         let createdCardNotices=[];
+        const nextStagedEntities={accounts:[],cards:[]};
+
+        const resolveOrStageTargetAccount = (result, fallbackLabel) => {
+          const bName=(result.accountInfo?.name||result.bank||'').toLowerCase();
+          let targetAcc=state.accounts.find(acc=>bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase())));
+          if(!targetAcc){
+            targetAcc=nextStagedEntities.accounts.find(acc=>bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase())));
+          }
+          if(!targetAcc){
+            const accName=result.accountInfo?.name||result.bank||fallbackLabel;
+            targetAcc={
+              id:uid(),
+              name:accName,
+              type:result.accountInfo?.type||'Checking',
+              balance:0,
+              currency:result.accountInfo?.currency||result.currency||(result.drafts&&result.drafts[0]?.currency)||a.currency||state.currency,
+              owner:state.members[0]?.id||'shared',
+              updated:date(),
+              balancePolicy:'ledger'
+            };
+            nextStagedEntities.accounts.push(targetAcc);
+            createdAccountNotices.push(accName);
+          }
+          return targetAcc;
+        };
+
+        const stageProposedCard = (result, targetAcc) => {
+          if(!(result.cardInfo||result.documentType==='credit_card_statement')) return;
+          const cardName=result.cardInfo?.name||result.bank||'Kartu Kredit';
+          const last4=String(result.cardInfo?.last4||'1234').padStart(4,'0').slice(-4);
+          const exists=state.cards.some(c=>c.last4===last4||c.name.toLowerCase()===cardName.toLowerCase())
+            || nextStagedEntities.cards.some(e=>e.card.last4===last4||e.card.name.toLowerCase()===cardName.toLowerCase());
+          if(!exists){
+            const debtId=uid();
+            const stmtAmt=result.cardInfo?.statementAmount?Math.round(parseFloat(result.cardInfo.statementAmount)*100):0;
+            const minAmt=result.cardInfo?.minimumPayment?Math.round(parseFloat(result.cardInfo.minimumPayment)*100):Math.max(5000000,Math.round(stmtAmt*0.05));
+            const debt={
+              id:debtId,
+              name:'Tagihan '+cardName,
+              balance:stmtAmt,
+              minimum:minAmt>0?minAmt:5000000,
+              apr:21.0,
+              currency:targetAcc.currency
+            };
+            const card={
+              id:uid(),
+              debtId:debtId,
+              name:cardName,
+              owner:state.members[0]?.id||'shared',
+              last4:last4,
+              limit:result.cardInfo?.limit?Math.round(parseFloat(result.cardInfo.limit)*100):Math.max(1000000000,stmtAmt*2),
+              statementAmount:stmtAmt,
+              paid:0,
+              dueDate:result.cardInfo?.dueDate&&E.validDate(result.cardInfo.dueDate)?result.cardInfo.dueDate:date(),
+              reminderDays:7
+            };
+            nextStagedEntities.cards.push({debt,card});
+            createdCardNotices.push(cardName);
+          }
+        };
 
         const normalizeDraft = (d, targetAcc, fi, i, prefix='ai') => {
           let kind = d.kind || 'expense';
@@ -3337,63 +3421,9 @@
             const result=await api('ai-extract-statement',payload);
             if(!result.drafts||!result.drafts.length) continue;
 
-            // Auto-create or match bank account
-            let targetAcc=state.accounts.find(acc=>{
-              const bName=(result.accountInfo?.name||result.bank||'').toLowerCase();
-              return bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase()));
-            });
-            if(!targetAcc){
-              const accName=result.accountInfo?.name||result.bank||'Bank Account';
-              targetAcc={
-                id:uid(),
-                name:accName,
-                type:result.accountInfo?.type||'Checking',
-                balance:0,
-                currency:result.accountInfo?.currency||result.currency||(result.drafts&&result.drafts[0]?.currency)||a.currency||state.currency,
-                owner:state.members[0]?.id||'shared',
-                updated:date(),
-                balancePolicy:'ledger'
-              };
-              state.accounts.push(targetAcc);
-              captureAccount=targetAcc.id;
-              createdAccountNotices.push(accName);
-            }
-
-            // Auto-create or match credit card if statement is credit card
-            if(result.cardInfo||result.documentType==='credit_card_statement'){
-              const cardName=result.cardInfo?.name||result.bank||'Kartu Kredit';
-              const last4=String(result.cardInfo?.last4||'1234').padStart(4,'0').slice(-4);
-              let card=state.cards.find(c=>c.last4===last4||c.name.toLowerCase()===cardName.toLowerCase());
-              if(!card){
-                const debtId=uid();
-                const stmtAmt=result.cardInfo?.statementAmount?Math.round(parseFloat(result.cardInfo.statementAmount)*100):0;
-                const minAmt=result.cardInfo?.minimumPayment?Math.round(parseFloat(result.cardInfo.minimumPayment)*100):Math.max(5000000,Math.round(stmtAmt*0.05));
-                const debt={
-                  id:debtId,
-                  name:'Tagihan '+cardName,
-                  balance:stmtAmt,
-                  minimum:minAmt>0?minAmt:5000000,
-                  apr:21.0,
-                  currency:targetAcc.currency
-                };
-                state.debts.push(debt);
-                card={
-                  id:uid(),
-                  debtId:debtId,
-                  name:cardName,
-                  owner:state.members[0]?.id||'shared',
-                  last4:last4,
-                  limit:result.cardInfo?.limit?Math.round(parseFloat(result.cardInfo.limit)*100):Math.max(1000000000,stmtAmt*2),
-                  statementAmount:stmtAmt,
-                  paid:0,
-                  dueDate:result.cardInfo?.dueDate&&E.validDate(result.cardInfo.dueDate)?result.cardInfo.dueDate:date(),
-                  reminderDays:7
-                };
-                state.cards.push(card);
-                createdCardNotices.push(cardName);
-              }
-            }
-            save();
+            // Stage proposed bank account / credit card without mutating state before user confirmation
+            const targetAcc=resolveOrStageTargetAccount(result,'Bank Account');
+            stageProposedCard(result,targetAcc);
 
             const srcName=result.bank||file.name||'Dokumen';
             if(!detectedSources.includes(srcName)) detectedSources.push(srcName);
@@ -3413,60 +3443,8 @@
           };
           const result=await api('ai-extract-statement',payload);
           if(result.drafts&&result.drafts.length){
-            let targetAcc=state.accounts.find(acc=>{
-              const bName=(result.accountInfo?.name||result.bank||'').toLowerCase();
-              return bName&&(acc.name.toLowerCase().includes(bName)||bName.includes(acc.name.toLowerCase()));
-            });
-            if(!targetAcc){
-              const accName=result.accountInfo?.name||result.bank||'Google Drive Statement';
-              targetAcc={
-                id:uid(),
-                name:accName,
-                type:result.accountInfo?.type||'Checking',
-                balance:0,
-                currency:result.accountInfo?.currency||result.currency||(result.drafts&&result.drafts[0]?.currency)||a.currency||state.currency,
-                owner:state.members[0]?.id||'shared',
-                updated:date(),
-                balancePolicy:'ledger'
-              };
-              state.accounts.push(targetAcc);
-              captureAccount=targetAcc.id;
-              createdAccountNotices.push(accName);
-            }
-            if(result.cardInfo||result.documentType==='credit_card_statement'){
-              const cardName=result.cardInfo?.name||result.bank||'Kartu Kredit';
-              const last4=String(result.cardInfo?.last4||'1234').padStart(4,'0').slice(-4);
-              let card=state.cards.find(c=>c.last4===last4||c.name.toLowerCase()===cardName.toLowerCase());
-              if(!card){
-                const debtId=uid();
-                const stmtAmt=result.cardInfo?.statementAmount?Math.round(parseFloat(result.cardInfo.statementAmount)*100):0;
-                const minAmt=result.cardInfo?.minimumPayment?Math.round(parseFloat(result.cardInfo.minimumPayment)*100):Math.max(5000000,Math.round(stmtAmt*0.05));
-                const debt={
-                  id:debtId,
-                  name:'Tagihan '+cardName,
-                  balance:stmtAmt,
-                  minimum:minAmt>0?minAmt:5000000,
-                  apr:21.0,
-                  currency:targetAcc.currency
-                };
-                state.debts.push(debt);
-                card={
-                  id:uid(),
-                  debtId:debtId,
-                  name:cardName,
-                  owner:state.members[0]?.id||'shared',
-                  last4:last4,
-                  limit:result.cardInfo?.limit?Math.round(parseFloat(result.cardInfo.limit)*100):Math.max(1000000000,stmtAmt*2),
-                  statementAmount:stmtAmt,
-                  paid:0,
-                  dueDate:result.cardInfo?.dueDate&&E.validDate(result.cardInfo.dueDate)?result.cardInfo.dueDate:date(),
-                  reminderDays:7
-                };
-                state.cards.push(card);
-                createdCardNotices.push(cardName);
-              }
-            }
-            save();
+            const targetAcc=resolveOrStageTargetAccount(result,'Google Drive Statement');
+            stageProposedCard(result,targetAcc);
             detectedSources.push(result.bank||'Google Drive');
             const parsed=result.drafts.map((d,i)=>normalizeDraft(d,targetAcc,0,i,'ai-gd'));
             aggregatedDrafts.push(...parsed);
@@ -3503,6 +3481,7 @@
         if(R.pairTransferDrafts&&aggregatedDrafts.length>1){
           aggregatedDrafts=R.pairTransferDrafts(aggregatedDrafts,state.accounts);
         }
+        stagedCaptureEntities=nextStagedEntities;
         drafts=aggregatedDrafts.map(d=>({...d,selected:!R.duplicates(state,d).length}));
         captureFiles=[];
         captureGdriveUrl='';
@@ -3512,8 +3491,8 @@
         if(gdIn) gdIn.value='';
 
         const srcLabel=detectedSources.join(', ')||'dokumen';
-        const accInfo=createdAccountNotices.length?L(` · Akun baru "${createdAccountNotices.join(', ')}" dibuat otomatis`,` · New account "${createdAccountNotices.join(', ')}" created`):'';
-        const cardInfo=createdCardNotices.length?L(` · Kartu kredit "${createdCardNotices.join(', ')}" dibuat otomatis`,` · Credit card "${createdCardNotices.join(', ')}" created`):'';
+        const accInfo=createdAccountNotices.length?L(` · Akun baru "${createdAccountNotices.join(', ')}" diusulkan untuk ditinjau`,` · New account "${createdAccountNotices.join(', ')}" proposed for review`):'';
+        const cardInfo=createdCardNotices.length?L(` · Kartu kredit "${createdCardNotices.join(', ')}" diusulkan untuk ditinjau`,` · Credit card "${createdCardNotices.join(', ')}" proposed for review`):'';
         captureStatus=L(`⚡ AI (${chosenProvider}) berhasil mengekstrak ${drafts.length} transaksi dari ${srcLabel}${accInfo}${cardInfo}.`,`⚡ AI (${chosenProvider}) extracted ${drafts.length} transactions from ${srcLabel}${accInfo}${cardInfo}.`);
         toast(captureStatus);
       }catch(err){
@@ -4332,14 +4311,20 @@
   let aiBusy=false,aiGeneration=0;
   const aiProviderName=id=>({local:L('Lokal (Kalkulator)','Local (Calculator)'),openai:'OpenAI (ChatGPT / GPT-4o)',gemini:'Google Gemini',claude:'Anthropic Claude',openrouter:'OpenRouter',muse:'Meta AI (Muse Spark)','9router':'9Router Gateway'})[id]||id;
   const aiProviderBadge=id=>({gemini:'✨ Google Gemini',openai:'⚡ GPT-4o Mini',claude:'🎭 Claude',openrouter:'🌐 OpenRouter','9router':'🚀 9Router',muse:'✧ Meta AI',local:'🔢 Local'})[id]||id;
+  const SAFE_AI_ACTION_RE=/^(?:nav:(?:home|operations|shared|reports|forecast|accounts|investment|calendar|budget|cashflow|transactions|categories|goals|debt|scenarios|montecarlo|stresstest|cards|household|copilot|capture|integrations|updates|plans)|open-scenario|open-tax-(?:djp|pph21|umkm|zakat)|goal-new|fund:[a-zA-Z0-9_-]+)$/;
   function aiRichText(value){
     let s=String(value||'');
     const actionCards=[];
     s=s.replace(/\[\[action:([^|\]]+)\|([^|\]]+)(?:\|([^|\]]+))?(?:\|([^|\]]+))?\]\]/g, (match, act, title, subtitle, emoji) => {
+      const cleanAct = act.trim();
+      const cleanTitle = title.trim();
+      if (!SAFE_AI_ACTION_RE.test(cleanAct)) {
+        return cleanTitle;
+      }
       const idx=actionCards.length;
       actionCards.push({
-        action: act.trim(),
-        title: title.trim(),
+        action: cleanAct,
+        title: cleanTitle,
         subtitle: (subtitle || '').trim(),
         emoji: (emoji || '⚡').trim()
       });
@@ -4355,7 +4340,7 @@
 
     s=s.replace(/__ACTION_CARD_(\d+)__/g, (_, idxStr) => {
       const card = actionCards[parseInt(idxStr, 10)];
-      if (!card) return '';
+      if (!card || !SAFE_AI_ACTION_RE.test(card.action)) return '';
       return `<div class="invi-action-card"><div class="invi-action-card-info"><span class="invi-action-card-emoji">${escape(card.emoji)}</span><div><b>${escape(card.title)}</b>${card.subtitle ? `<small>${escape(card.subtitle)}</small>` : ''}</div></div><button type="button" class="btn btn-sm btn-primary invi-action-card-btn" data-action="${escape(card.action)}">${escape(card.title)} &rarr;</button></div>`;
     });
     return s;
@@ -6859,7 +6844,7 @@
             </tbody>
           </table>
         </div>
-        <p class="note" style="margin-top:14px">${L('Berdasarkan Surat Penegasan Persetujuan Pembiayaan Pegadaian Mulia No. 1379326370001000. Angsuran ke-60 disesuaikan sebesar Rp 2.464.539 untuk pelunasan tepat nol rupiah.','Based on Pegadaian Mulia Financing Confirmation Contract #1379326370001000. Month 60 is adjusted to Rp 2,464,539 for exact zero payoff.')}</p>
+        <p class="note" style="margin-top:14px">${L(`Berdasarkan Surat Penegasan Persetujuan Pembiayaan Pegadaian Mulia No. ${escape(c.contractNo || 'DEMO-0000-0000-0000')}. Angsuran ke-60 disesuaikan sebesar Rp 2.464.539 untuk pelunasan tepat nol rupiah.`,`Based on Pegadaian Mulia Financing Confirmation Contract #${escape(c.contractNo || 'DEMO-0000-0000-0000')}. Month 60 is adjusted to Rp 2,464,539 for exact zero payoff.`)}</p>
       </div>`;
       openModal(L('Jadwal Amortisasi 60 Bulan — Pegadaian Mulia Emas 50g','60-Month Amortization Schedule — Pegadaian Mulia Gold 50g'),html);
       return;
@@ -7994,7 +7979,7 @@
     const statusBanner=`<div class="panel panel-pad" style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div>
         <span style="font-size:11px;font-weight:700;color:var(--accent,#34d399);text-transform:uppercase;letter-spacing:1px;">${L('Status Akun & Brankas','Account & Vault Status')}</span>
-        <h3 style="margin:4px 0 0 0;font-size:18px;">INVEYS ${activePlan.toUpperCase()} · ${currentUser?currentUser.email:(isServerMode?'Cloud Node':'Local Vault')}</h3>
+        <h3 style="margin:4px 0 0 0;font-size:18px;">INVEYS ${escape(String(activePlan).toUpperCase())} · ${escape(currentUser?currentUser.email:(isServerMode?'Cloud Node':'Local Vault'))}</h3>
         <p class="note" style="margin:4px 0 0 0;">${L('Fitur sinkronisasi multi-device & brankas multi-tenant aktif.','Multi-device synchronization & tenant vault active.')}</p>
       </div>
       <div style="display:flex;gap:8px;">
@@ -8032,10 +8017,10 @@
           if(errEl)errEl.style.display='none';
           if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Memverifikasi...';}
           try{
-            const token=localStorage.getItem('inveys_token');
             const res=await fetch('/api/license/activate',{
               method:'POST',
-              headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},
+              credentials:'same-origin',
+              headers:csrfHeaders({'Content-Type':'application/json'}),
               body:JSON.stringify({license_key:keyVal})
             });
             const data=await res.json();
@@ -8073,7 +8058,7 @@
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <label style="font-size:12px;font-weight:600;">${L('Email Akun Penerima Lisensi','License Recipient Email')}</label>
-            <input type="email" id="checkout-email" value="${currentUser?.email||''}" placeholder="nama@domain.com" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.15);color:inherit;">
+            <input type="email" id="checkout-email" value="${escape(currentUser?.email||'')}" placeholder="nama@domain.com" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.15);color:inherit;">
           </div>
           <div id="checkout-active-area"></div>
           <div id="checkout-action-row" class="button-group" style="margin-top:6px;">
@@ -8090,10 +8075,10 @@
           btn.disabled=true;
           btn.textContent=L('Membuat pesanan…','Creating order…');
           try{
-            const token=localStorage.getItem('inveys_token');
             const res=await fetch('/api/payment/create',{
               method:'POST',
-              headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},
+              credentials:'same-origin',
+              headers:csrfHeaders({'Content-Type':'application/json'}),
               body:JSON.stringify({plan:id,cycle:planCycle,email})
             });
             const data=await res.json();
@@ -8103,18 +8088,18 @@
               area.innerHTML=`
                 <div style="background:rgba(0,0,0,0.25);border:1px dashed var(--accent,#34d399);border-radius:10px;padding:16px;text-align:center;display:flex;flex-direction:column;gap:12px;">
                   <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:8px;">
-                    <span style="font-size:12px;color:var(--text-muted,#94a3b8);">${L('ID Transaksi:','Order ID:')} <b>${data.orderId}</b></span>
+                    <span style="font-size:12px;color:var(--text-muted,#94a3b8);">${L('ID Transaksi:','Order ID:')} <b>${escape(data.orderId)}</b></span>
                     <b style="color:var(--accent,#34d399);font-size:16px;">${planMoney(data.amount)}</b>
                   </div>
                   <div style="padding:12px;background:#fff;border-radius:8px;max-width:200px;margin:0 auto;display:flex;flex-direction:column;align-items:center;">
                     <div style="font-size:10px;font-weight:900;color:#000;letter-spacing:1px;margin-bottom:4px;">QRIS NASIONAL</div>
                     <div style="width:160px;height:160px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#0f172a;border:2px solid #000;border-radius:4px;font-size:11px;padding:8px;word-break:break-all;font-family:monospace;">
-                      [QR CODE: ${data.orderId}]
+                      [QR CODE: ${escape(data.orderId)}]
                     </div>
                     <small style="color:#64748b;font-size:9px;margin-top:4px;">BCA · Mandiri · GoPay · ShopeePay · OVO</small>
                   </div>
                   <div style="font-size:12px;color:var(--text-muted,#94a3b8);">
-                    ${L('Virtual Account:','Virtual Account:')} <b style="color:#fff;letter-spacing:1px;font-family:monospace;">${data.vaNumber}</b>
+                    ${L('Virtual Account:','Virtual Account:')} <b style="color:#fff;letter-spacing:1px;font-family:monospace;">${escape(data.vaNumber)}</b>
                   </div>
                   <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">
                     <button type="button" class="btn primary" id="btn-simulate-pay" style="width:100%;background:linear-gradient(135deg,#34d399,#059669);">${L('⚡ Konfirmasi / Simulasikan Pembayaran Lunas','⚡ Confirm / Simulate Paid Order')}</button>
@@ -8129,7 +8114,8 @@
                 try{
                   const sRes=await fetch('/api/payment/simulate',{
                     method:'POST',
-                    headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},
+                    credentials:'same-origin',
+                    headers:csrfHeaders({'Content-Type':'application/json'}),
                     body:JSON.stringify({order_id:data.orderId})
                   });
                   const sData=await sRes.json();
@@ -8138,9 +8124,9 @@
                     <div style="background:rgba(52,211,153,0.1);border:1px solid var(--accent,#34d399);border-radius:10px;padding:16px;text-align:center;">
                       <div style="font-size:24px;margin-bottom:6px;">🎉</div>
                       <b style="font-size:16px;color:var(--accent,#34d399);">${L('Pembayaran Berhasil! Lisensi Aktif','Payment Successful! License Active')}</b>
-                      <p style="font-size:12px;margin:8px 0;color:var(--text-muted,#94a3b8);">${L('Akun Anda telah di-upgrade ke paket','Your account is upgraded to')} <b>INVEYS ${sData.plan.toUpperCase()}</b>.</p>
+                      <p style="font-size:12px;margin:8px 0;color:var(--text-muted,#94a3b8);">${L('Akun Anda telah di-upgrade ke paket','Your account is upgraded to')} <b>INVEYS ${escape(String(sData.plan||'').toUpperCase())}</b>.</p>
                       <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-family:monospace;font-size:13px;letter-spacing:1px;margin:12px 0;word-break:break-all;color:#34d399;">
-                        ${sData.licenseKey}
+                        ${escape(sData.licenseKey)}
                       </div>
                       <button type="button" class="btn primary" data-action="modal-close" style="width:100%;margin-top:8px;">${L('Tutup & Nikmati Fitur','Close & Enjoy')}</button>
                     </div>
@@ -8226,14 +8212,12 @@
     if (adminData.loading) return;
     adminData.loading = true;
     adminData.error = null;
-    const token = localStorage.getItem('inveys_token');
-    const headers = token ? {'Authorization': 'Bearer ' + token} : {};
     try {
       const [ovRes, usrRes, auditRes, bcastRes] = await Promise.all([
-        fetch('/api/admin/overview', { headers }),
-        fetch(`/api/admin/users${q ? '?q=' + encodeURIComponent(q) : ''}`, { headers }),
-        fetch('/api/admin/audit-logs?limit=50', { headers }),
-        fetch('/api/broadcast')
+        fetch('/api/admin/overview', { credentials: 'same-origin' }),
+        fetch(`/api/admin/users${q ? '?q=' + encodeURIComponent(q) : ''}`, { credentials: 'same-origin' }),
+        fetch('/api/admin/audit-logs?limit=50', { credentials: 'same-origin' }),
+        fetch('/api/broadcast', { credentials: 'same-origin' })
       ]);
       if (!ovRes.ok || !usrRes.ok) {
         if (ovRes.status === 403 || usrRes.status === 403) {
@@ -8309,7 +8293,7 @@
 
     return logs.map(log => {
       const cls = badgeClasses[log.action] || 'audit-badge neutral';
-      const label = actionLabels[log.action] || log.action;
+      const label = escape(actionLabels[log.action] || String(log.action || ''));
       const dateStr = log.createdAt ? new Date(log.createdAt * 1000).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US', {
         day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
       }) : '—';
@@ -8358,7 +8342,8 @@
       const initials = (u.name || u.email || 'US').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'US';
       const isAdmin = u.role === 'admin';
       const isSuspended = u.status === 'suspended';
-      const planClass = `badge-plan-${u.plan || 'plus'}`;
+      const planClassMap = { plus: 'badge-plan-plus', pro: 'badge-plan-pro', ultra: 'badge-plan-ultra', lifetime: 'badge-plan-lifetime' };
+      const planClass = planClassMap[u.plan] || 'badge-plan-plus';
       const dateFormatted = u.createdAt ? new Date(u.createdAt * 1000).toLocaleDateString() : '—';
       const lastActiveFormatted = u.lastActive ? new Date(u.lastActive * 1000).toLocaleDateString() : L('Belum login', 'Never');
       const wsText = u.hasWorkspace ? `<span class="admin-ws-badge ok">✓ ${((u.workspaceSizeBytes || 0) / 1024).toFixed(0)} KB</span>` : `<span class="admin-ws-badge empty">—</span>`;
@@ -8394,9 +8379,9 @@
           </td>
           <td>
             <div class="admin-actions-cell">
-              <button type="button" class="icon-button admin-action-btn" data-action="admin-edit-user:${u.id}" title="${L('Ubah Peran / Paket / Status', 'Edit Role / Plan / Status')}">✏️</button>
-              <button type="button" class="icon-button admin-action-btn" data-action="admin-reset-pw:${u.id}" title="${L('Reset Password', 'Reset Password')}">🔑</button>
-              <button type="button" class="icon-button admin-action-btn danger" data-action="admin-delete-user:${u.id}" title="${L('Hapus Akun Pengguna', 'Delete Account')}">🗑️</button>
+              <button type="button" class="icon-button admin-action-btn" data-action="admin-edit-user:${escape(u.id)}" title="${L('Ubah Peran / Paket / Status', 'Edit Role / Plan / Status')}">✏️</button>
+              <button type="button" class="icon-button admin-action-btn" data-action="admin-reset-pw:${escape(u.id)}" title="${L('Reset Password', 'Reset Password')}">🔑</button>
+              <button type="button" class="icon-button admin-action-btn danger" data-action="admin-delete-user:${escape(u.id)}" title="${L('Hapus Akun Pengguna', 'Delete Account')}">🗑️</button>
             </div>
           </td>
         </tr>
@@ -8508,11 +8493,11 @@
           const active = $('#adm-broadcast-active')?.checked || false;
           const btn = $('#adm-broadcast-save-btn');
           if (btn) { btn.disabled = true; btn.textContent = L('Menyimpan…', 'Saving…'); }
-          const token = localStorage.getItem('inveys_token');
-          const headers = { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) };
+          const headers = csrfHeaders({ 'Content-Type': 'application/json' });
           try {
             const res = await fetch('/api/admin/broadcast', {
               method: 'POST',
+              credentials: 'same-origin',
               headers,
               body: JSON.stringify({ message: msg, tone, active })
             });
@@ -8751,9 +8736,7 @@
   function adminAction(name, id, extra) {
     if (name === 'admin-export-db') {
       toast(L('Menyiapkan cadangan snapshot SQLite…', 'Preparing SQLite database snapshot…'));
-      const token = localStorage.getItem('inveys_token');
-      const headers = token ? {'Authorization': 'Bearer ' + token} : {};
-      fetch('/api/admin/database/export', { headers })
+      fetch('/api/admin/database/export', { credentials: 'same-origin' })
         .then(async res => {
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
@@ -8781,10 +8764,10 @@
     }
 
     if (name === 'admin-clear-broadcast') {
-      const token = localStorage.getItem('inveys_token');
-      const headers = { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) };
+      const headers = csrfHeaders({ 'Content-Type': 'application/json' });
       fetch('/api/admin/broadcast', {
         method: 'POST',
+        credentials: 'same-origin',
         headers,
         body: JSON.stringify({ message: '', tone: 'info', active: false })
       })
@@ -8812,10 +8795,10 @@
         btn.disabled = true;
         btn.innerHTML = '⏳ ' + L('Mengirim Uji Coba…', 'Sending Test…');
       }
-      const token = localStorage.getItem('inveys_token');
-      const headers = { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) };
+      const headers = csrfHeaders({ 'Content-Type': 'application/json' });
       fetch('/api/admin/telegram/test', {
         method: 'POST',
+        credentials: 'same-origin',
         headers,
         body: JSON.stringify({})
       })
@@ -8918,12 +8901,12 @@
           const errEl = $('#adm-c-error');
           if (errEl) errEl.style.display = 'none';
           if (btn) { btn.disabled = true; btn.textContent = L('Menyimpan…', 'Saving…'); }
-          const token = localStorage.getItem('inveys_token');
           try {
             const payload = Object.fromEntries(new FormData(form));
             const res = await fetch('/api/admin/users/create', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) },
+              credentials: 'same-origin',
+              headers: csrfHeaders({ 'Content-Type': 'application/json' }),
               body: JSON.stringify(payload)
             });
             const data = await res.json();
@@ -8996,12 +8979,12 @@
           const errEl = $('#adm-e-error');
           if (errEl) errEl.style.display = 'none';
           if (btn) { btn.disabled = true; btn.textContent = L('Menyimpan…', 'Saving…'); }
-          const token = localStorage.getItem('inveys_token');
           try {
             const payload = Object.fromEntries(new FormData(form));
             const res = await fetch('/api/admin/users/update', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) },
+              credentials: 'same-origin',
+              headers: csrfHeaders({ 'Content-Type': 'application/json' }),
               body: JSON.stringify(payload)
             });
             const data = await res.json();
@@ -9048,12 +9031,12 @@
           const errEl = $('#adm-r-error');
           if (errEl) errEl.style.display = 'none';
           if (btn) { btn.disabled = true; btn.textContent = L('Menyimpan…', 'Saving…'); }
-          const token = localStorage.getItem('inveys_token');
           try {
             const payload = Object.fromEntries(new FormData(form));
             const res = await fetch('/api/admin/users/reset-password', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) },
+              credentials: 'same-origin',
+              headers: csrfHeaders({ 'Content-Type': 'application/json' }),
               body: JSON.stringify(payload)
             });
             const data = await res.json();
@@ -9077,11 +9060,11 @@
         L('Hapus Akun Pengguna?', 'Delete User Account?'),
         `${L('Yakin ingin menghapus pengguna', 'Are you sure you want to delete user')} <b>${escape(u.email)}</b>? ${L('Seluruh data brankas, portofolio, dan backup miliknya di database VPS Hostinger akan dihapus secara permanen.', 'All personal vaults, portfolios, and backup records on this Hostinger VPS database will be permanently wiped.')}`,
         async () => {
-          const token = localStorage.getItem('inveys_token');
           try {
             const res = await fetch('/api/admin/users/delete', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer ' + token} : {}) },
+              credentials: 'same-origin',
+              headers: csrfHeaders({ 'Content-Type': 'application/json' }),
               body: JSON.stringify({ id: u.id })
             });
             const data = await res.json();
@@ -9314,8 +9297,8 @@
                       </td>
                       <td>
                         <div class="transaction-actions">
-                          <button type="button" class="transaction-icon" data-action="budget-edit:${cat.category}" title="${L('Edit Anggaran','Edit Budget')}">${icon('edit')}</button>
-                          ${cat.id ? `<button type="button" class="transaction-icon" data-action="budget-remove:${cat.category}" title="${L('Hapus Anggaran','Remove Budget')}">${icon('delete')}</button>` : ''}
+                          <button type="button" class="transaction-icon" data-action="budget-edit:${escape(cat.category)}" title="${L('Edit Anggaran','Edit Budget')}">${icon('edit')}</button>
+                          ${cat.id ? `<button type="button" class="transaction-icon" data-action="budget-remove:${escape(cat.category)}" title="${L('Hapus Anggaran','Remove Budget')}">${icon('delete')}</button>` : ''}
                         </div>
                       </td>
                     </tr>
@@ -9558,21 +9541,93 @@
     return !!assertion;
   }
 
-  async function hashPin(pin, salt = 'inveys_pin_salt') {
-    if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
-      try {
-        const enc = new TextEncoder();
-        const hashBuf = await window.crypto.subtle.digest('SHA-256', enc.encode(salt + pin));
-        return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
-      } catch (e) {}
+  const PIN_PBKDF2_ITERATIONS = 100000;
+  function getCryptoApi() {
+    if (typeof window !== 'undefined' && window.crypto) return window.crypto;
+    if (typeof globalThis !== 'undefined' && globalThis.crypto) return globalThis.crypto;
+    return null;
+  }
+  function randomHexBytes(len = 16) {
+    const c = getCryptoApi();
+    if (!c || typeof c.getRandomValues !== 'function') {
+      throw new Error(L('Konteks aman browser (WebCrypto) diperlukan untuk menghasilkan salt PIN.', 'Browser secure context (WebCrypto) is required to generate PIN salt.'));
     }
-    let h = 0;
-    const str = salt + pin;
-    for (let i = 0; i < str.length; i++) {
-      h = ((h << 5) - h) + str.charCodeAt(i);
-      h |= 0;
+    const bytes = new Uint8Array(len);
+    c.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function hexToBytes(hex) {
+    const out = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    return out;
+  }
+  function constantTimeEqual(a, b) {
+    const sa = String(a || ''), sb = String(b || '');
+    if (sa.length !== sb.length) return false;
+    let diff = 0;
+    for (let i = 0; i < sa.length; i++) diff |= sa.charCodeAt(i) ^ sb.charCodeAt(i);
+    return diff === 0;
+  }
+  async function hashPin(pin, saltHex = null, iterations = PIN_PBKDF2_ITERATIONS) {
+    const c = getCryptoApi();
+    if (!c || !c.subtle) {
+      throw new Error(L('WebCrypto (HTTPS / localhost) diperlukan untuk hashing PIN yang aman.', 'WebCrypto (HTTPS / localhost) is required for secure PIN hashing.'));
     }
-    return 'h_' + Math.abs(h);
+    const salt = saltHex || randomHexBytes(16);
+    const enc = new TextEncoder();
+    const keyMaterial = await c.subtle.importKey('raw', enc.encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+    const bits = await c.subtle.deriveBits(
+      { name: 'PBKDF2', salt: hexToBytes(salt), iterations, hash: 'SHA-256' },
+      keyMaterial,
+      256
+    );
+    const derivedHex = Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `pbkdf2$${iterations}$${salt}$${derivedHex}`;
+  }
+  async function verifyPin(pin, storedHash) {
+    const clean = String(pin || '').trim();
+    const stored = String(storedHash || '');
+    if (!clean || !stored) return false;
+    if (stored.startsWith('pbkdf2$')) {
+      const parts = stored.split('$');
+      if (parts.length !== 4) return false;
+      const iters = parseInt(parts[1], 10);
+      const salt = parts[2];
+      if (!Number.isFinite(iters) || iters < 10000 || !/^[0-9a-f]{16,}$/i.test(salt)) return false;
+      const calc = await hashPin(clean, salt, iters);
+      return constantTimeEqual(calc, stored);
+    }
+    // Legacy SHA-256 migration path (re-hashed to PBKDF2 upon successful verify)
+    const c = getCryptoApi();
+    if (c && c.subtle) {
+      const enc = new TextEncoder();
+      const buf = await c.subtle.digest('SHA-256', enc.encode('inveys_pin_salt' + clean));
+      const legacyHex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      if (constantTimeEqual(legacyHex, stored)) {
+        try {
+          const upgraded = await hashPin(clean);
+          localStorage.setItem('inveys_pin_hash', upgraded);
+        } catch (e) {}
+        return true;
+      }
+    }
+    return false;
+  }
+  function getPinBackoffState() {
+    try {
+      const raw = localStorage.getItem('inveys_pin_backoff');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { fails: 0, until: 0 };
+  }
+  function setPinBackoffState(st) {
+    try { localStorage.setItem('inveys_pin_backoff', JSON.stringify(st)); } catch (e) {}
+  }
+  function resetPinBackoff() {
+    try { localStorage.removeItem('inveys_pin_backoff'); } catch (e) {}
+  }
+  function canUsePasswordUnlock() {
+    return Boolean(isServerMode && currentUser && currentUser.email);
   }
 
   function openPinSetupModal() {
@@ -9580,8 +9635,11 @@
     openModal(currentPinHash ? L('Ubah PIN Keamanan', 'Change Security PIN') : L('Atur PIN Keamanan Baru', 'Set Up Security PIN'), `
       <form id="pin-setup-form" style="max-width:320px;margin:0 auto;text-align:center;">
         <div style="font-size:36px;margin-bottom:8px;">🔢</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:18px;">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">
           ${L('Masukkan 4 hingga 6 digit angka untuk membuka brankas finansial Anda secara kilat.', 'Enter 4 to 6 numeric digits to quickly unlock your financial vault.')}
+        </p>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:16px;">
+          ${L('Catatan: Kunci layar PIN lokal berfungsi sebagai layar privasi UI di browser ini (bukan enkripsi disk penuh).', 'Note: Local PIN lock acts as a browser UI privacy screen rather than full at-rest encryption.')}
         </p>
         ${currentPinHash ? `
           <div class="field" style="margin-bottom:12px;text-align:left;">
@@ -9611,29 +9669,34 @@
           const curInput = $('#current-pin-input');
           const newInput = $('#new-pin-input');
           const confInput = $('#confirm-pin-input');
-          if (currentPinHash && curInput) {
-            const curHash = await hashPin(curInput.value.trim());
-            if (curHash !== currentPinHash) {
-              toast('⚠️ ' + L('PIN Lama salah!', 'Current PIN is incorrect!'));
+          try {
+            if (currentPinHash && curInput) {
+              const okCur = await verifyPin(curInput.value.trim(), currentPinHash);
+              if (!okCur) {
+                toast('⚠️ ' + L('PIN Lama salah!', 'Current PIN is incorrect!'));
+                return;
+              }
+            }
+            const pin = (newInput?.value || '').trim();
+            const conf = (confInput?.value || '').trim();
+            if (!/^\d{4,6}$/.test(pin)) {
+              toast('⚠️ ' + L('PIN harus berupa 4 hingga 6 digit angka!', 'PIN must be 4 to 6 numeric digits!'));
               return;
             }
+            if (pin !== conf) {
+              toast('⚠️ ' + L('Konfirmasi PIN tidak cocok!', 'PIN confirmation does not match!'));
+              return;
+            }
+            const h = await hashPin(pin);
+            localStorage.setItem('inveys_pin_hash', h);
+            localStorage.setItem('inveys_pin_enabled', 'true');
+            resetPinBackoff();
+            closeModal();
+            toast('✅ ' + L('PIN keamanan berhasil disimpan!', 'Security PIN saved successfully!'));
+            render();
+          } catch (err) {
+            toast('⚠️ ' + (err.message || L('Gagal menyimpan PIN', 'Failed to save PIN')));
           }
-          const pin = (newInput?.value || '').trim();
-          const conf = (confInput?.value || '').trim();
-          if (!/^\d{4,6}$/.test(pin)) {
-            toast('⚠️ ' + L('PIN harus berupa 4 hingga 6 digit angka!', 'PIN must be 4 to 6 numeric digits!'));
-            return;
-          }
-          if (pin !== conf) {
-            toast('⚠️ ' + L('Konfirmasi PIN tidak cocok!', 'PIN confirmation does not match!'));
-            return;
-          }
-          const h = await hashPin(pin);
-          localStorage.setItem('inveys_pin_hash', h);
-          localStorage.setItem('inveys_pin_enabled', 'true');
-          closeModal();
-          toast('✅ ' + L('PIN keamanan berhasil disimpan!', 'Security PIN saved successfully!'));
-          render();
         });
       }
       const removeBtn = $('#remove-pin-btn');
@@ -9641,6 +9704,7 @@
         removeBtn.addEventListener('click', () => {
           localStorage.removeItem('inveys_pin_hash');
           localStorage.removeItem('inveys_pin_enabled');
+          resetPinBackoff();
           closeModal();
           toast(L('PIN keamanan dinonaktifkan', 'Security PIN disabled'));
           render();
@@ -9693,13 +9757,15 @@
 
   async function logoutUser() {
     try {
-      const token = localStorage.getItem('inveys_token');
       await fetch('/api/auth/logout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': 'Bearer ' + token } : {}) }
+        credentials: 'same-origin',
+        headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({})
       });
     } catch (e) {}
     localStorage.removeItem('inveys_token');
+    if (service) service.csrf = '';
     safeSessionRemove('inveys_vault_locked');
     isVaultLocked = false;
     currentUser = null;
@@ -9755,6 +9821,11 @@
 
     const bioEnabled = localStorage.getItem('inveys_bio_enabled') === 'true';
     const pinEnabled = localStorage.getItem('inveys_pin_enabled') === 'true' && !!localStorage.getItem('inveys_pin_hash');
+    const pwAllowed = canUsePasswordUnlock();
+
+    if (mode === 'pw' && !pwAllowed) {
+      mode = pinEnabled ? 'pin' : (bioEnabled ? 'default' : 'none');
+    }
 
     if (mode === 'default') {
       if (bioEnabled) {
@@ -9765,15 +9836,26 @@
           </button>
         `;
         if (switchBtn) {
-          switchBtn.textContent = pinEnabled ? L('Buka dengan PIN', 'Unlock with PIN') : L('Buka dengan Password', 'Unlock with Password');
-          switchBtn.dataset.nextMode = pinEnabled ? 'pin' : 'pw';
+          if (pinEnabled) {
+            switchBtn.style.display = '';
+            switchBtn.textContent = L('Buka dengan PIN', 'Unlock with PIN');
+            switchBtn.dataset.nextMode = 'pin';
+          } else if (pwAllowed) {
+            switchBtn.style.display = '';
+            switchBtn.textContent = L('Buka dengan Password', 'Unlock with Password');
+            switchBtn.dataset.nextMode = 'pw';
+          } else {
+            switchBtn.style.display = 'none';
+            switchBtn.textContent = '';
+            switchBtn.dataset.nextMode = '';
+          }
         }
         setTimeout(() => {
           $('#vault-trigger-bio-btn')?.addEventListener('click', () => triggerBiometricUnlock());
         }, 20);
         return;
       }
-      mode = pinEnabled ? 'pin' : 'pw';
+      mode = pinEnabled ? 'pin' : (pwAllowed ? 'pw' : 'none');
     }
 
     if (mode === 'pin') {
@@ -9785,22 +9867,50 @@
         </form>
       `;
       if (switchBtn) {
-        switchBtn.textContent = bioEnabled ? L('Buka dengan Biometrik', 'Unlock with Biometrics') : L('Buka dengan Password', 'Unlock with Password');
-        switchBtn.dataset.nextMode = bioEnabled ? 'default' : 'pw';
+        if (bioEnabled) {
+          switchBtn.style.display = '';
+          switchBtn.textContent = L('Buka dengan Biometrik', 'Unlock with Biometrics');
+          switchBtn.dataset.nextMode = 'default';
+        } else if (pwAllowed) {
+          switchBtn.style.display = '';
+          switchBtn.textContent = L('Buka dengan Password', 'Unlock with Password');
+          switchBtn.dataset.nextMode = 'pw';
+        } else {
+          switchBtn.style.display = 'none';
+          switchBtn.textContent = '';
+          switchBtn.dataset.nextMode = '';
+        }
       }
       setTimeout(() => {
         const form = $('#vault-pin-form');
         if (form) {
           form.addEventListener('submit', async e => {
             e.preventDefault();
+            const backoff = getPinBackoffState();
+            const nowMs = Date.now();
+            if (backoff.until && nowMs < backoff.until) {
+              const waitSec = Math.ceil((backoff.until - nowMs) / 1000);
+              showLockError(L(`Terlalu banyak percobaan PIN salah. Tunggu ${waitSec} detik.`, `Too many incorrect PIN attempts. Wait ${waitSec} seconds.`));
+              return;
+            }
             const entered = $('#vault-pin-input')?.value || '';
-            const hash = await hashPin(entered.trim());
-            if (hash === localStorage.getItem('inveys_pin_hash')) {
-              unlockVault();
-            } else {
-              showLockError(L('PIN salah. Silakan coba lagi.', 'Incorrect PIN. Please try again.'));
-              const inp = $('#vault-pin-input');
-              if (inp) { inp.value = ''; inp.focus(); }
+            try {
+              const ok = await verifyPin(entered.trim(), localStorage.getItem('inveys_pin_hash'));
+              if (ok) {
+                resetPinBackoff();
+                unlockVault();
+              } else {
+                const fails = (backoff.fails || 0) + 1;
+                const delaySec = fails >= 3 ? Math.min(300, 5 * Math.pow(2, fails - 3)) : 0;
+                setPinBackoffState({ fails, until: delaySec ? Date.now() + delaySec * 1000 : 0 });
+                showLockError(delaySec
+                  ? L(`PIN salah. Coba lagi dalam ${delaySec} detik.`, `Incorrect PIN. Try again in ${delaySec} seconds.`)
+                  : L('PIN salah. Silakan coba lagi.', 'Incorrect PIN. Please try again.'));
+                const inp = $('#vault-pin-input');
+                if (inp) { inp.value = ''; inp.focus(); }
+              }
+            } catch (err) {
+              showLockError(err.message || L('Verifikasi PIN gagal.', 'PIN verification failed.'));
             }
           });
         }
@@ -9808,7 +9918,7 @@
       return;
     }
 
-    if (mode === 'pw') {
+    if (mode === 'pw' && pwAllowed) {
       actionsEl.innerHTML = `
         <form id="vault-pw-form">
           <input type="password" id="vault-pw-input" placeholder="${L('Password Akun', 'Account Password')}" required autofocus style="margin-bottom:12px;text-align:left;width:100%;">
@@ -9816,36 +9926,68 @@
         </form>
       `;
       if (switchBtn) {
-        switchBtn.textContent = bioEnabled ? L('Buka dengan Biometrik', 'Unlock with Biometrics') : (pinEnabled ? L('Buka dengan PIN', 'Unlock with PIN') : '');
-        switchBtn.dataset.nextMode = bioEnabled ? 'default' : (pinEnabled ? 'pin' : '');
+        if (bioEnabled) {
+          switchBtn.style.display = '';
+          switchBtn.textContent = L('Buka dengan Biometrik', 'Unlock with Biometrics');
+          switchBtn.dataset.nextMode = 'default';
+        } else if (pinEnabled) {
+          switchBtn.style.display = '';
+          switchBtn.textContent = L('Buka dengan PIN', 'Unlock with PIN');
+          switchBtn.dataset.nextMode = 'pin';
+        } else {
+          switchBtn.style.display = 'none';
+          switchBtn.textContent = '';
+          switchBtn.dataset.nextMode = '';
+        }
       }
       setTimeout(() => {
         const form = $('#vault-pw-form');
         if (form) {
           form.addEventListener('submit', async e => {
             e.preventDefault();
+            if (!canUsePasswordUnlock()) {
+              showLockError(L('Buka dengan password hanya tersedia pada mode server cloud.', 'Password unlock is only available in cloud server mode.'));
+              return;
+            }
             const pw = $('#vault-pw-input')?.value || '';
-            if (isServerMode && currentUser?.email) {
-              const email = currentUser.email;
-              try {
-                const res = await fetch('/api/auth/login', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email, password: pw })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Password salah');
-                unlockVault();
-              } catch (err) {
-                showLockError(err.message);
-              }
-            } else {
+            const email = currentUser.email;
+            try {
+              const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password: pw })
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || 'Password salah');
+              if (data.csrf) service.csrf = data.csrf;
               unlockVault();
+            } catch (err) {
+              showLockError(err.message);
             }
           });
         }
       }, 20);
+      return;
     }
+
+    // No PIN, no Biometric, and no Server account configured: cannot unlock via unverified password
+    actionsEl.innerHTML = `
+      <div style="text-align:center;display:flex;flex-direction:column;gap:12px;">
+        <p style="font-size:12px;color:var(--muted);margin:0;">
+          ${L('Belum ada PIN atau Biometrik yang dikonfigurasi pada mode lokal ini. Atur PIN di Pengaturan untuk mengaktifkan perlindungan kunci layar.', 'No PIN or Biometric is configured in this local mode. Set up a PIN in Settings to enable lock-screen protection.')}
+        </p>
+        <button type="button" class="btn primary" id="vault-local-resume-btn" style="width:100%;">${L('Kembali ke Brankas Lokal', 'Return to Local Vault')}</button>
+      </div>
+    `;
+    if (switchBtn) {
+      switchBtn.style.display = 'none';
+      switchBtn.textContent = '';
+      switchBtn.dataset.nextMode = '';
+    }
+    setTimeout(() => {
+      $('#vault-local-resume-btn')?.addEventListener('click', () => unlockVault());
+    }, 20);
   }
 
   async function triggerBiometricUnlock() {
@@ -11380,15 +11522,14 @@
   document.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)){const target=event.target.closest?.('[role="button"][data-action], svg [data-action]');if(target?.dataset.action){event.preventDefault();act(target.dataset.action);}}if(event.key==='Escape')for(const item of $$('.report-popover[open],.quick-popover[open]')){item.open=false;if(item.classList?.contains?.('quick-popover'))item.querySelector('summary')?.focus();}if(event.key==='Escape'&&sidebarOpen){setSidebarOpen(false);$('#menu-button').focus();}});
   document.addEventListener('keydown',event=>{if(event.target?.id==='quick-text'&&event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();quickSend(event.target.value,$('#quick-account')?.value||quickAccount);}});
   async function checkServerAuth(){
+    try{localStorage.removeItem('inveys_token');}catch(e){}
     if(typeof fetch!=='function'||!/^https?:$/.test(location.protocol||''))return;
     try{
-      const token=localStorage.getItem('inveys_token');
-      const res=await fetch('/api/auth/status',{
-        headers:token?{'Authorization':'Bearer '+token}:{}
-      });
+      const res=await fetch('/api/auth/status',{credentials:'same-origin'});
       if(!res.ok)return;
       const data=await res.json();
       isServerMode=true;
+      if(data.csrf)service.csrf=data.csrf;
       fetchBroadcast();
       if(data.user){
         currentUser=data.user;
@@ -11402,9 +11543,7 @@
         if(currentUser)save();
         render();
         try{
-          const wsRes=await fetch('/api/workspace',{
-            headers:token?{'Authorization':'Bearer '+token}:{}
-          });
+          const wsRes=await fetch('/api/workspace',{credentials:'same-origin'});
           if(wsRes.ok){
             const wsData=await wsRes.json();
             if(wsData.workspace){
@@ -11598,12 +11737,13 @@
         }
         const res=await fetch(endpoint,{
           method:'POST',
+          credentials:'same-origin',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify(payload)
         });
         const data=await res.json();
         if(!res.ok)throw new Error(data.error||'Autentikasi gagal');
-        if(data.token)localStorage.setItem('inveys_token',data.token);
+        if(data.csrf)service.csrf=data.csrf;
         if(data.user)currentUser=data.user;
         hideAuthScreen();
         toast(mode==='register'?'Akun berhasil dibuat!':'Berhasil terautentikasi');

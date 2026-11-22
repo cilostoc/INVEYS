@@ -35,10 +35,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source code and assets
+# Copy application source code and assets (runtime scripts only)
 COPY src/ ./src/
 COPY server/ ./server/
-COPY scripts/ ./scripts/
+COPY scripts/build.py scripts/build-manifest.json scripts/create_admin.py ./scripts/
 COPY serve.py build.py package.json README.md CHANGELOG.md ./
 
 # Pre-compile the standalone HTML application bundle (inveys-app.html) during build

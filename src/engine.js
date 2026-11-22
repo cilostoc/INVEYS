@@ -26,10 +26,10 @@
     s.budgets ??= [];
     s.targetAllocations ??= [];
     s.goldInstallment = Object.assign({
-      contractNo: '1379326370001000',
-      applicationNo: '0217881506505922',
-      cif: '1011695038',
-      borrowerName: 'Muhamad Hendra Febriansyah',
+      contractNo: 'DEMO-0000-0000-0000',
+      applicationNo: 'DEMO-APP-00000000',
+      cif: 'DEMO-CIF-0000',
+      borrowerName: 'Sample Vault Owner',
       programName: 'Pegadaian Mulia Ultimate',
       brand: 'Galeri 24 (PT Pegadaian)',
       purity: '24 Karat (99.99%)',

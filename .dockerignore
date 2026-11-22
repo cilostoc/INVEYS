@@ -2,9 +2,13 @@
 .git
 .gitignore
 
-# Documentation & Test suites (kept out of runtime image to minimize size)
+# Documentation, tests & non-runtime scripts (kept out of runtime image)
 docs/
 tests/
+scripts/*
+!scripts/build.py
+!scripts/build-manifest.json
+!scripts/create_admin.py
 *.md
 !README.md
 !CHANGELOG.md
