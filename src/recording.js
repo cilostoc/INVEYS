@@ -19,9 +19,8 @@ function cleanMerchant(desc,kind){
   if(/Transfer/i.test(s))return 'ShopeePay Transfer';
   return 'ShopeePay';
  }
- if(/Ptshopbackmitrasejahtera|CITIBANK.*Shopback|CITIBANK.*0109163007/i.test(s))return 'ShopBack Indonesia';
- if(/Rickiherdianasurya/i.test(s))return 'Transfer dari Rickiherdianasurya (BSI)';
- if(/Transfer.*(Muhamad Hendra Febriansyah|Hendra)/i.test(s))return 'Transfer Masuk Rekening Pribadi';
+ if(/Ptshopbackmitrasejahtera|CITIBANK.*Shopback/i.test(s))return 'ShopBack Indonesia';
+ if(/Transfer.*Rekening Pribadi|Transfer BI-Fast dari Bank Lain/i.test(s))return 'Transfer Masuk Rekening Pribadi';
  if(/PAPER\.ID\s*:\s*1\/18/i.test(s))return 'Cicilan Paper.id (Bulan 1/18)';
  if(/PAPER\.ID\s*:\s*0\/18/i.test(s))return 'Pembalikan Transaksi Cicilan Paper.id';
  if(/BIAYA ADMIN BRING PAPER\.ID/i.test(s))return 'Biaya Admin Cicilan Paper.id';

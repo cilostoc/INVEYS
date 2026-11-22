@@ -195,5 +195,62 @@ class AI(unittest.TestCase):
    self.assertEqual(out['bank'], 'BCA')
    self.assertEqual(len(out['drafts']), 1)
 
+ def test_gdrive_ssrf_and_file_scheme_blocked(self):
+  from unittest.mock import MagicMock
+  import http.cookiejar, urllib.request
+  # 1. Restricted opener must NOT include FileHandler, FTPHandler, HTTPHandler, or DataHandler
+  opener = a._build_gdrive_opener(http.cookiejar.CookieJar())
+  handler_names = {type(h).__name__ for h in opener.handlers}
+  self.assertIn('HTTPSHandler', handler_names)
+  self.assertIn('_SafeGDriveRedirectHandler', handler_names)
+  for forbidden in ('FileHandler', 'FTPHandler', 'HTTPHandler', 'DataHandler'):
+   self.assertNotIn(forbidden, handler_names)
+
+  # 2. _validate_gdrive_url blocks file://, http://, non-Google hosts, non-443 ports, and private DNS
+  for bad_url in (
+   'file:///etc/passwd',
+   'http://drive.google.com/uc?id=123',
+   'https://169.254.169.254/latest/meta-data/',
+   'https://evil.example.com/uc?id=123',
+   'https://drive.google.com:8443/uc?id=123',
+  ):
+   with self.assertRaises(ValueError):
+    a._validate_gdrive_url(bad_url, resolve_dns=False)
+
+  with patch('socket.getaddrinfo', return_value=[(2, 1, 6, '', ('127.0.0.1', 443))]):
+   with self.assertRaises(ValueError):
+    a._validate_gdrive_url('https://drive.google.com/uc?id=123', resolve_dns=True)
+
+  with patch('socket.getaddrinfo', return_value=[(2, 1, 6, '', ('142.250.190.78', 443))]):
+   self.assertEqual(
+    a._validate_gdrive_url('https://doc-0k-12-docs.googleusercontent.com/docs/securesc/abc', resolve_dns=True),
+    'https://doc-0k-12-docs.googleusercontent.com/docs/securesc/abc'
+   )
+
+  # 3. Malicious HTML interstitial with file:///etc/passwd or metadata confirm_url MUST be rejected
+  for malicious_html in (
+   b'<!DOCTYPE html><html><body><a id="uc-download-link" href="file:///etc/passwd">Download</a></body></html>',
+   b'<!DOCTYPE html><html><body><form action="http://169.254.169.254/latest/meta-data/"></form></body></html>',
+   b'<!DOCTYPE html><html><body><form action="https://attacker.example/steal"></form></body></html>',
+  ):
+   fake_resp = MagicMock()
+   fake_resp.headers = {'Content-Type': 'text/html'}
+   fake_resp.read.return_value = malicious_html
+   fake_resp.geturl.return_value = 'https://drive.google.com/uc?export=download&id=1A2B3C'
+   fake_resp.__enter__.return_value = fake_resp
+   with patch('urllib.request.urlopen', return_value=fake_resp) as mock_open:
+    with self.assertRaises(ValueError) as ctx:
+     a.download_gdrive_file('https://drive.google.com/file/d/1A2B3C/view')
+    self.assertIn('ssrf', str(ctx.exception).lower())
+    self.assertEqual(mock_open.call_count, 1)
+
+  # 4. Redirect handler blocks redirects to non-Google hosts or private IPs
+  redir = a._SafeGDriveRedirectHandler()
+  req = urllib.request.Request('https://drive.google.com/uc?id=123')
+  with self.assertRaises(ValueError):
+   redir.redirect_request(req, None, 302, 'Found', {}, 'http://169.254.169.254/latest/meta-data/')
+  with self.assertRaises(ValueError):
+   redir.redirect_request(req, None, 302, 'Found', {}, 'file:///etc/passwd')
+
 if __name__=='__main__':
  unittest.main()
